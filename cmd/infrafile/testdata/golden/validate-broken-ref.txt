@@ -1,0 +1,10 @@
+$ infrafile validate testdata/fixtures/broken-ref
+[退出码 1]
+--- stdout
+testdata/fixtures/broken-ref/inventory/apps/blog.yaml:8: spec.deployments[1].server: 引用的 Server old-vps 已归档；在用的记录不能引用已归档的记录 [ref-archived]
+testdata/fixtures/broken-ref/inventory/apps/blog.yaml:9: spec.deployments[2].server: 引用的 Server web9 不存在 [ref]
+testdata/fixtures/broken-ref/inventory/apps/blog.yaml:10: spec.resources[0]: 引用的 Resource blog-db 不存在 [ref]
+testdata/fixtures/broken-ref/inventory/domains/example.com.yaml:6: spec.account: 引用的 Account cloudflare-main 不存在 [ref]
+testdata/fixtures/broken-ref/inventory/domains/example.com.yaml:11: spec.bindings[1].app: 引用的 App shop 不存在 [ref]
+发现 5 个问题（共检查 4 条记录）
+--- stderr

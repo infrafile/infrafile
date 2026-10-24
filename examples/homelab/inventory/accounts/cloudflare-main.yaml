@@ -1,0 +1,11 @@
+apiVersion: infrafile/v1alpha1
+kind: Account
+metadata:
+  name: cloudflare-main
+  description: 域名注册和 DNS
+spec:
+  provider: cloudflare
+  owner: ops@example.com
+  console_url: https://dash.cloudflare.com/
+  secrets:
+    api_token: env://CLOUDFLARE_API_TOKEN

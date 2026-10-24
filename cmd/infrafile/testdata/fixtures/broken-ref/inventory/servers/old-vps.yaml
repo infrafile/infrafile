@@ -1,0 +1,9 @@
+apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+  name: old-vps
+  archived:
+    date: 2026-06-01
+    reason: 迁移到 web1
+spec:
+  address: 203.0.113.99

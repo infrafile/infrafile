@@ -1,0 +1,17 @@
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata:
+  name: example.com
+spec:
+  registrar: cloudflare
+  account: cloudflare-main
+  expires_at: 2027-08-15
+  bindings:
+    - name: "@"
+      app: blog
+      server: web1
+    - name: wiki
+      app: wiki
+      server: web1
+    - name: assets
+      resource: assets-cdn

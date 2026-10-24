@@ -1,0 +1,543 @@
+$ infrafile schema export
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "schemas": {
+    "account.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Account",
+      "description": "云厂商、注册商、代码托管等平台上的一个账号。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "Account"
+        },
+        "metadata": {
+          "$ref": "common.schema.json#/$defs/metadata"
+        },
+        "spec": {
+          "type": "object",
+          "required": [
+            "provider"
+          ],
+          "additionalProperties": false,
+          "patternProperties": {
+            "^x-": true
+          },
+          "properties": {
+            "provider": {
+              "description": "平台标识，如 cloudflare、aliyun。",
+              "type": "string",
+              "minLength": 1
+            },
+            "account_id": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "console_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "secrets": {
+              "$ref": "common.schema.json#/$defs/secrets"
+            }
+          }
+        }
+      }
+    },
+    "app.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "App",
+      "description": "一个自己部署、运维的应用或服务。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "App"
+        },
+        "metadata": {
+          "$ref": "common.schema.json#/$defs/metadata"
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^x-": true
+          },
+          "properties": {
+            "deployments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "server"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "server": {
+                    "type": "string",
+                    "x-ref": "Server"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "$ref": "common.schema.json#/$defs/port"
+                  },
+                  "runtime": {
+                    "description": "运行方式，如 docker-compose、systemd。",
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "resources": {
+              "description": "依赖的云资源。",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "x-ref": "Resource"
+              }
+            },
+            "secrets": {
+              "$ref": "common.schema.json#/$defs/secrets"
+            }
+          }
+        }
+      }
+    },
+    "common.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "infrafile 公共定义",
+      "$defs": {
+        "apiVersion": {
+          "const": "infrafile/v1alpha1"
+        },
+        "name": {
+          "description": "主键：小写字母、数字、点和连字符，首尾是字母或数字。同 kind 内唯一，必须等于文件名。",
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$"
+        },
+        "date": {
+          "description": "日期，格式 YYYY-MM-DD。",
+          "type": "string",
+          "format": "date"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "metadata": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "$ref": "#/$defs/name"
+            },
+            "description": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "object",
+              "patternProperties": {
+                "^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            "archived": {
+              "description": "归档信息。下线的记录加上这一项，不要删除文件。",
+              "type": "object",
+              "required": [
+                "date",
+                "reason"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "date": {
+                  "$ref": "#/$defs/date"
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "secrets": {
+          "description": "凭据引用：键是凭据名，值是 sops://、op:// 或 env:// 引用，不写明文。",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(sops|op|env)://.+"
+          }
+        }
+      }
+    },
+    "config.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Config",
+      "description": "数据仓配置文件 infrafile.yaml。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "Config"
+        }
+      }
+    },
+    "domain.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Domain",
+      "description": "一个注册的域名。metadata.name 就是域名本身。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "Domain"
+        },
+        "metadata": {
+          "$ref": "common.schema.json#/$defs/metadata"
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^x-": true
+          },
+          "properties": {
+            "registrar": {
+              "type": "string"
+            },
+            "account": {
+              "description": "注册商账号。",
+              "type": "string",
+              "x-ref": "Account"
+            },
+            "dns_account": {
+              "description": "托管 DNS 的账号，与注册商不同时填写。",
+              "type": "string",
+              "x-ref": "Account"
+            },
+            "expires_at": {
+              "$ref": "common.schema.json#/$defs/date"
+            },
+            "bindings": {
+              "description": "子域名指向哪里。",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "description": "子域名，根域名写 @。",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "server": {
+                    "type": "string",
+                    "x-ref": "Server"
+                  },
+                  "app": {
+                    "type": "string",
+                    "x-ref": "App"
+                  },
+                  "resource": {
+                    "type": "string",
+                    "x-ref": "Resource"
+                  }
+                }
+              }
+            },
+            "secrets": {
+              "$ref": "common.schema.json#/$defs/secrets"
+            }
+          }
+        }
+      }
+    },
+    "repo.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Repo",
+      "description": "一个代码仓库。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "Repo"
+        },
+        "metadata": {
+          "$ref": "common.schema.json#/$defs/metadata"
+        },
+        "spec": {
+          "type": "object",
+          "required": [
+            "remote"
+          ],
+          "additionalProperties": false,
+          "patternProperties": {
+            "^x-": true
+          },
+          "properties": {
+            "remote": {
+              "type": "string",
+              "minLength": 1
+            },
+            "platform": {
+              "description": "托管平台，如 github、gitea。",
+              "type": "string"
+            },
+            "app": {
+              "description": "这个仓库是哪个应用的代码。",
+              "type": "string",
+              "x-ref": "App"
+            },
+            "deploys_to": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "server"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "server": {
+                    "type": "string",
+                    "x-ref": "Server"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "secrets": {
+              "$ref": "common.schema.json#/$defs/secrets"
+            }
+          }
+        }
+      }
+    },
+    "resource.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Resource",
+      "description": "服务器以外的云资源：数据库、CDN、对象存储等。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "Resource"
+        },
+        "metadata": {
+          "$ref": "common.schema.json#/$defs/metadata"
+        },
+        "spec": {
+          "type": "object",
+          "required": [
+            "provider",
+            "type"
+          ],
+          "additionalProperties": false,
+          "patternProperties": {
+            "^x-": true
+          },
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "description": "资源类型，如 mysql、redis、cdn、bucket。",
+              "type": "string",
+              "minLength": 1
+            },
+            "account": {
+              "type": "string",
+              "x-ref": "Account"
+            },
+            "server": {
+              "description": "自建在某台服务器上时填写。",
+              "type": "string",
+              "x-ref": "Server"
+            },
+            "resource_id": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "endpoint": {
+              "type": "string"
+            },
+            "expires_at": {
+              "$ref": "common.schema.json#/$defs/date"
+            },
+            "secrets": {
+              "$ref": "common.schema.json#/$defs/secrets"
+            }
+          }
+        }
+      }
+    },
+    "server.schema.json": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "title": "Server",
+      "description": "一台可以登录的机器：云主机、独立服务器、家里的 NAS 等。",
+      "type": "object",
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "apiVersion": {
+          "$ref": "common.schema.json#/$defs/apiVersion"
+        },
+        "kind": {
+          "const": "Server"
+        },
+        "metadata": {
+          "$ref": "common.schema.json#/$defs/metadata"
+        },
+        "spec": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "additionalProperties": false,
+          "patternProperties": {
+            "^x-": true
+          },
+          "properties": {
+            "provider": {
+              "type": "string"
+            },
+            "account": {
+              "description": "所属账号。",
+              "type": "string",
+              "x-ref": "Account"
+            },
+            "address": {
+              "description": "登录用的 IP 或主机名。",
+              "type": "string",
+              "minLength": 1
+            },
+            "private_address": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "ssh": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "user": {
+                  "type": "string"
+                },
+                "port": {
+                  "$ref": "common.schema.json#/$defs/port"
+                }
+              }
+            },
+            "hardware": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                },
+                "disk": {
+                  "type": "string"
+                },
+                "os": {
+                  "type": "string"
+                }
+              }
+            },
+            "expires_at": {
+              "$ref": "common.schema.json#/$defs/date"
+            },
+            "secrets": {
+              "$ref": "common.schema.json#/$defs/secrets"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+--- stderr

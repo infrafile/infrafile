@@ -1,0 +1,10 @@
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata:
+  name: assets-cdn
+spec:
+  provider: example-cloud
+  type: cdn
+  account: example-cloud-main
+  resource_id: cdn-0000000001
+  endpoint: assets.example.com

@@ -1,0 +1,11 @@
+apiVersion: infrafile/v1alpha1
+kind: Repo
+metadata:
+  name: blog
+spec:
+  remote: git@git.example.com:homelab/blog.git
+  platform: gitea
+  app: blog
+  deploys_to:
+    - server: web1
+      path: /srv/blog

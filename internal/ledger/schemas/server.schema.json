@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Server",
+  "description": "一台可以登录的机器：云主机、独立服务器、家里的 NAS 等。",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
+    "kind": {"const": "Server"},
+    "metadata": {"$ref": "common.schema.json#/$defs/metadata"},
+    "spec": {
+      "type": "object",
+      "required": ["address"],
+      "additionalProperties": false,
+      "patternProperties": {"^x-": true},
+      "properties": {
+        "provider": {"type": "string"},
+        "account": {"description": "所属账号。", "type": "string", "x-ref": "Account"},
+        "address": {"description": "登录用的 IP 或主机名。", "type": "string", "minLength": 1},
+        "private_address": {"type": "string"},
+        "region": {"type": "string"},
+        "instance_id": {"type": "string"},
+        "ssh": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "user": {"type": "string"},
+            "port": {"$ref": "common.schema.json#/$defs/port"}
+          }
+        },
+        "hardware": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {"type": "string"},
+            "memory": {"type": "string"},
+            "disk": {"type": "string"},
+            "os": {"type": "string"}
+          }
+        },
+        "expires_at": {"$ref": "common.schema.json#/$defs/date"},
+        "secrets": {"$ref": "common.schema.json#/$defs/secrets"}
+      }
+    }
+  }
+}

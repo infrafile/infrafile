@@ -1,0 +1,16 @@
+$ infrafile validate --json --base HEAD
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "records": 12,
+  "problems": [
+    {
+      "code": "deleted",
+      "file": "inventory/repos/wiki.yaml",
+      "message": "记录在 HEAD 中存在，现在被删除了；下线请改用 metadata.archived"
+    }
+  ]
+}
+--- stderr

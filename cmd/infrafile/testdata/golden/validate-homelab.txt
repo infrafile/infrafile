@@ -1,0 +1,5 @@
+$ infrafile validate ../../examples/homelab
+[退出码 0]
+--- stdout
+通过：13 条记录，没有发现问题
+--- stderr

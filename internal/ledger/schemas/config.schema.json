@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Config",
+  "description": "数据仓配置文件 infrafile.yaml。",
+  "type": "object",
+  "required": ["apiVersion", "kind"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
+    "kind": {"const": "Config"}
+  }
+}

@@ -1,0 +1,10 @@
+apiVersion: infrafile/v1alpha1
+kind: App
+metadata:
+  name: blog
+spec:
+  deployments:
+    - server: web1
+    - server: old-vps
+    - server: web9
+  resources: [blog-db]

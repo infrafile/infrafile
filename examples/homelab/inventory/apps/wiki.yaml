@@ -1,0 +1,11 @@
+apiVersion: infrafile/v1alpha1
+kind: App
+metadata:
+  name: wiki
+spec:
+  deployments:
+    - server: web1
+      path: /srv/wiki
+      port: 8081
+      runtime: systemd
+  x-backup: 每天凌晨同步到 db1

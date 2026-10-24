@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "App",
+  "description": "一个自己部署、运维的应用或服务。",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
+    "kind": {"const": "App"},
+    "metadata": {"$ref": "common.schema.json#/$defs/metadata"},
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {"^x-": true},
+      "properties": {
+        "deployments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["server"],
+            "additionalProperties": false,
+            "properties": {
+              "server": {"type": "string", "x-ref": "Server"},
+              "path": {"type": "string"},
+              "port": {"$ref": "common.schema.json#/$defs/port"},
+              "runtime": {"description": "运行方式，如 docker-compose、systemd。", "type": "string"}
+            }
+          }
+        },
+        "resources": {
+          "description": "依赖的云资源。",
+          "type": "array",
+          "items": {"type": "string", "x-ref": "Resource"}
+        },
+        "secrets": {"$ref": "common.schema.json#/$defs/secrets"}
+      }
+    }
+  }
+}

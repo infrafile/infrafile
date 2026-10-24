@@ -1,0 +1,10 @@
+$ infrafile validate --json ../../examples/homelab
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "ok": true,
+  "records": 13,
+  "problems": []
+}
+--- stderr

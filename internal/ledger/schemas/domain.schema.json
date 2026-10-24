@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Domain",
+  "description": "一个注册的域名。metadata.name 就是域名本身。",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
+    "kind": {"const": "Domain"},
+    "metadata": {"$ref": "common.schema.json#/$defs/metadata"},
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {"^x-": true},
+      "properties": {
+        "registrar": {"type": "string"},
+        "account": {"description": "注册商账号。", "type": "string", "x-ref": "Account"},
+        "dns_account": {"description": "托管 DNS 的账号，与注册商不同时填写。", "type": "string", "x-ref": "Account"},
+        "expires_at": {"$ref": "common.schema.json#/$defs/date"},
+        "bindings": {
+          "description": "子域名指向哪里。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"description": "子域名，根域名写 @。", "type": "string", "minLength": 1},
+              "server": {"type": "string", "x-ref": "Server"},
+              "app": {"type": "string", "x-ref": "App"},
+              "resource": {"type": "string", "x-ref": "Resource"}
+            }
+          }
+        },
+        "secrets": {"$ref": "common.schema.json#/$defs/secrets"}
+      }
+    }
+  }
+}

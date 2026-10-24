@@ -1,0 +1,14 @@
+apiVersion: infrafile/v1alpha1
+kind: App
+metadata:
+  name: blog
+  description: 个人博客
+spec:
+  deployments:
+    - server: web1
+      path: /srv/blog
+      port: 8080
+      runtime: docker-compose
+  resources: [blog-db, assets-cdn]
+  secrets:
+    admin_password: sops://secrets.enc.yaml#apps.blog.admin_password

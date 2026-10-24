@@ -1,0 +1,12 @@
+apiVersion: infrafile/v1alpha1
+kind: Account
+metadata:
+  name: example-cloud-main
+  description: 云主机和数据库所在的主账号
+spec:
+  provider: example-cloud
+  account_id: "100000000001"
+  owner: ops@example.com
+  console_url: https://console.example.com/
+  secrets:
+    api_token: sops://secrets.enc.yaml#accounts.example-cloud-main.api_token

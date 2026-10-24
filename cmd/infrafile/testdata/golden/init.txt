@@ -1,0 +1,13 @@
+$ infrafile init ledger
+[退出码 0]
+--- stdout
+已在 ledger 创建数据仓：
+  infrafile.yaml
+  inventory/servers/.gitkeep
+  inventory/apps/.gitkeep
+  inventory/domains/.gitkeep
+  inventory/accounts/.gitkeep
+  inventory/resources/.gitkeep
+  inventory/repos/.gitkeep
+下一步：在 inventory/<类型>/ 下添加记录，再运行 infrafile validate ledger
+--- stderr

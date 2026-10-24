@@ -1,0 +1,46 @@
+$ infrafile validate --json testdata/fixtures/broken-ref
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "records": 4,
+  "problems": [
+    {
+      "code": "ref-archived",
+      "file": "inventory/apps/blog.yaml",
+      "line": 8,
+      "path": "spec.deployments[1].server",
+      "message": "引用的 Server old-vps 已归档；在用的记录不能引用已归档的记录"
+    },
+    {
+      "code": "ref",
+      "file": "inventory/apps/blog.yaml",
+      "line": 9,
+      "path": "spec.deployments[2].server",
+      "message": "引用的 Server web9 不存在"
+    },
+    {
+      "code": "ref",
+      "file": "inventory/apps/blog.yaml",
+      "line": 10,
+      "path": "spec.resources[0]",
+      "message": "引用的 Resource blog-db 不存在"
+    },
+    {
+      "code": "ref",
+      "file": "inventory/domains/example.com.yaml",
+      "line": 6,
+      "path": "spec.account",
+      "message": "引用的 Account cloudflare-main 不存在"
+    },
+    {
+      "code": "ref",
+      "file": "inventory/domains/example.com.yaml",
+      "line": 11,
+      "path": "spec.bindings[1].app",
+      "message": "引用的 App shop 不存在"
+    }
+  ]
+}
+--- stderr

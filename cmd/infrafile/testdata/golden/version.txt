@@ -1,0 +1,5 @@
+$ infrafile version
+[退出码 0]
+--- stdout
+infrafile dev (commit none, built unknown)
+--- stderr

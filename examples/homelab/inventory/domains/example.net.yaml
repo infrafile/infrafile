@@ -1,0 +1,12 @@
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata:
+  name: example.net
+  description: 备用域名，暂时只做跳转
+spec:
+  registrar: example-registrar
+  dns_account: cloudflare-main
+  expires_at: 2026-12-31
+  bindings:
+    - name: "@"
+      server: web1

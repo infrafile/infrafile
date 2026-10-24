@@ -1,0 +1,5 @@
+$ infrafile schema export -o schemas
+[退出码 0]
+--- stdout
+已把 8 个 schema 写入 schemas
+--- stderr

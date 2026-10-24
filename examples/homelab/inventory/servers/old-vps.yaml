@@ -1,0 +1,13 @@
+apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+  name: old-vps
+  description: 早年的 VPS，已退租
+  archived:
+    date: 2026-06-01
+    reason: 迁移到 web1
+spec:
+  provider: example-cloud
+  account: example-cloud-main
+  address: 203.0.113.99
+  expires_at: 2026-06-30

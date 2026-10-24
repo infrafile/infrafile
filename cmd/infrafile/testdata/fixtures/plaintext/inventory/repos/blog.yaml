@@ -1,0 +1,7 @@
+apiVersion: infrafile/v1alpha1
+kind: Repo
+metadata:
+  name: blog
+  description: "部署密钥 AKIAIOSFODNN7EXAMPLE"
+spec:
+  remote: https://deploy:example-password@git.example.com/homelab/blog.git

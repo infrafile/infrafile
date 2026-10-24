@@ -1,0 +1,39 @@
+$ infrafile validate --json testdata/fixtures/plaintext
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "records": 2,
+  "problems": [
+    {
+      "code": "plaintext",
+      "file": "inventory/accounts/example-cloud-main.yaml",
+      "line": 7,
+      "path": "spec.x-webhook-token",
+      "message": "字段名像凭据，值却不是凭据引用；请放进 spec.secrets，写成 sops://、op:// 或 env:// 引用"
+    },
+    {
+      "code": "plaintext",
+      "file": "inventory/accounts/example-cloud-main.yaml",
+      "line": 9,
+      "path": "spec.secrets.access_key",
+      "message": "应为凭据引用（sops://、op:// 或 env://），不要写明文"
+    },
+    {
+      "code": "plaintext",
+      "file": "inventory/repos/blog.yaml",
+      "line": 5,
+      "path": "metadata.description",
+      "message": "疑似明文凭据（AWS 访问密钥），不要写进台账；凭据放进 spec.secrets，写成 sops://、op:// 或 env:// 引用"
+    },
+    {
+      "code": "plaintext",
+      "file": "inventory/repos/blog.yaml",
+      "line": 7,
+      "path": "spec.remote",
+      "message": "疑似明文凭据（URL 里的密码），不要写进台账；凭据放进 spec.secrets，写成 sops://、op:// 或 env:// 引用"
+    }
+  ]
+}
+--- stderr

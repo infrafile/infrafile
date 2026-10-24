@@ -1,0 +1,11 @@
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata:
+  name: blog-db
+spec:
+  provider: self-hosted
+  type: postgresql
+  server: db1
+  endpoint: 192.168.1.20:5432
+  secrets:
+    password: sops://secrets.enc.yaml#resources.blog-db.password

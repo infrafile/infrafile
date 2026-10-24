@@ -1,0 +1,11 @@
+apiVersion: infrafile/v1alpha1
+kind: Repo
+metadata:
+  name: wiki
+spec:
+  remote: https://git.example.com/homelab/wiki.git
+  platform: gitea
+  app: wiki
+  deploys_to:
+    - server: web1
+      path: /srv/wiki

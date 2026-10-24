@@ -1,0 +1,10 @@
+apiVersion: infrafile/v1alpha1
+kind: Account
+metadata:
+  name: example-cloud-main
+spec:
+  provider: example-cloud
+  x-webhook-token: not-a-reference
+  secrets:
+    access_key: AKIAIOSFODNN7EXAMPLE
+    api_token: sops://secrets.enc.yaml#accounts.example-cloud-main.api_token

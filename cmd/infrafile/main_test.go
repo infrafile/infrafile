@@ -19,6 +19,10 @@ func TestRun(t *testing.T) {
 		{"--version", []string{"--version"}, 0, "infrafile dev", ""},
 		{"help", []string{"help"}, 0, "用法", ""},
 		{"未知命令", []string{"nope"}, 2, "", `未知命令 "nope"`},
+		{"help 未知命令", []string{"help", "nope"}, 2, "", `未知命令 "nope"`},
+		{"schema 未知子命令", []string{"schema", "nope"}, 2, "", `未知命令 "nope"`},
+		{"多余参数", []string{"version", "x"}, 2, "", "不接受参数"},
+		{"未知选项", []string{"validate", "--bogus"}, 2, "", "用法"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

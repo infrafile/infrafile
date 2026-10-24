@@ -1,0 +1,5 @@
+$ infrafile validate --json testdata
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: testdata 不是数据仓：缺少 infrafile.yaml（可以用 infrafile init 创建）

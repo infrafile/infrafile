@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Account",
+  "description": "云厂商、注册商、代码托管等平台上的一个账号。",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
+    "kind": {"const": "Account"},
+    "metadata": {"$ref": "common.schema.json#/$defs/metadata"},
+    "spec": {
+      "type": "object",
+      "required": ["provider"],
+      "additionalProperties": false,
+      "patternProperties": {"^x-": true},
+      "properties": {
+        "provider": {"description": "平台标识，如 cloudflare、aliyun。", "type": "string", "minLength": 1},
+        "account_id": {"type": "string"},
+        "owner": {"type": "string"},
+        "console_url": {"type": "string", "format": "uri"},
+        "secrets": {"$ref": "common.schema.json#/$defs/secrets"}
+      }
+    }
+  }
+}

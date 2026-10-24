@@ -1,0 +1,5 @@
+$ infrafile init ../../examples/homelab
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: ../../examples/homelab/infrafile.yaml 已存在，../../examples/homelab 已经是数据仓

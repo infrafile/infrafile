@@ -1,0 +1,18 @@
+$ infrafile schema export --json -o schemas
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "dir": "schemas",
+  "written": [
+    "account.schema.json",
+    "app.schema.json",
+    "common.schema.json",
+    "config.schema.json",
+    "domain.schema.json",
+    "repo.schema.json",
+    "resource.schema.json",
+    "server.schema.json"
+  ]
+}
+--- stderr

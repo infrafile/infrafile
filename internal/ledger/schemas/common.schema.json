@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "infrafile 公共定义",
+  "$defs": {
+    "apiVersion": {
+      "const": "infrafile/v1alpha1"
+    },
+    "name": {
+      "description": "主键：小写字母、数字、点和连字符，首尾是字母或数字。同 kind 内唯一，必须等于文件名。",
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$"
+    },
+    "date": {
+      "description": "日期，格式 YYYY-MM-DD。",
+      "type": "string",
+      "format": "date"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"$ref": "#/$defs/name"},
+        "description": {"type": "string"},
+        "labels": {
+          "type": "object",
+          "patternProperties": {"^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {"type": "string"}},
+          "additionalProperties": false
+        },
+        "archived": {
+          "description": "归档信息。下线的记录加上这一项，不要删除文件。",
+          "type": "object",
+          "required": ["date", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "date": {"$ref": "#/$defs/date"},
+            "reason": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "secrets": {
+      "description": "凭据引用：键是凭据名，值是 sops://、op:// 或 env:// 引用，不写明文。",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^(sops|op|env)://.+"
+      }
+    }
+  }
+}

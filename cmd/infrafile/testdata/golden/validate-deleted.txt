@@ -1,0 +1,6 @@
+$ infrafile validate --base HEAD
+[退出码 1]
+--- stdout
+inventory/repos/wiki.yaml: 记录在 HEAD 中存在，现在被删除了；下线请改用 metadata.archived [deleted]
+发现 1 个问题（共检查 12 条记录）
+--- stderr

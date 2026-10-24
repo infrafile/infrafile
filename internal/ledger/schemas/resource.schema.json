@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Resource",
+  "description": "服务器以外的云资源：数据库、CDN、对象存储等。",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
+    "kind": {"const": "Resource"},
+    "metadata": {"$ref": "common.schema.json#/$defs/metadata"},
+    "spec": {
+      "type": "object",
+      "required": ["provider", "type"],
+      "additionalProperties": false,
+      "patternProperties": {"^x-": true},
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "type": {"description": "资源类型，如 mysql、redis、cdn、bucket。", "type": "string", "minLength": 1},
+        "account": {"type": "string", "x-ref": "Account"},
+        "server": {"description": "自建在某台服务器上时填写。", "type": "string", "x-ref": "Server"},
+        "resource_id": {"type": "string"},
+        "region": {"type": "string"},
+        "endpoint": {"type": "string"},
+        "expires_at": {"$ref": "common.schema.json#/$defs/date"},
+        "secrets": {"$ref": "common.schema.json#/$defs/secrets"}
+      }
+    }
+  }
+}
