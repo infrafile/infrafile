@@ -1,0 +1,22 @@
+version: 2
+
+builds:
+  - main: ./cmd/infrafile
+    binary: infrafile
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+# 签名与 Homebrew tap 在 v0.1 发版前补上，见 docs/plan/v0.1.md。
