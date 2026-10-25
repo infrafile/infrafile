@@ -47,6 +47,28 @@ func TestImportSSHConfigDraftAndCreateOnly(t *testing.T) {
 	}
 }
 
+func TestImportSSHLimitDoesNotPublish(t *testing.T) {
+	emptyRepo(t)
+	child, err := filepath.Abs("child.conf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeImportFile(t, child, "Host sample\n HostName 192.0.2.1\n")
+	writeImportFile(t, "ssh.conf", strings.Repeat(fmt.Sprintf("Include %q\n", child), 1024))
+	for _, destination := range [][]string{{"--write"}, {"--output", "review"}} {
+		var out, stderr bytes.Buffer
+		args := append([]string{"import", "ssh-config", "--file", "ssh.conf"}, destination...)
+		if code := run(args, &out, &stderr); code != 2 || out.Len() != 0 || !strings.Contains(stderr.String(), "1024") {
+			t.Fatalf("limit failure: exit=%d stdout=%s stderr=%s", code, &out, &stderr)
+		}
+		for _, path := range []string{"inventory", "review"} {
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatalf("limit failure created %s", path)
+			}
+		}
+	}
+}
+
 func TestImportSSHIncludesDefaultsAndReviewDirectory(t *testing.T) {
 	emptyRepo(t)
 	home := t.TempDir()

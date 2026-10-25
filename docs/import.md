@@ -29,6 +29,8 @@ infrafile import state --dir /path/to/my-infra --write --json
 
 ## SSH config 支持范围
 
+单次 SSH 导入最多累计读取 1,024 次文件、8 MiB 配置文本，重复 Include 也计入；所有 Host 共享 100 万次求值工作量上限（指令、参数及子配置引用均计数）。超限会报错，不写入草稿。解析和求值支持通过 Ctrl+C 或 SIGTERM 取消。
+
 从显式 `Host` 中发现字面别名；支持一个 Host 的多个别名、`*` / `?` 默认匹配、`!` 排除、首个匹配值优先、引号、注释、等号分隔。只导入 `HostName`、`User`、`Port`，未指定 HostName 时保留原别名作为 address；未指定 user / port 时不补造本机用户名或默认端口。
 
 Include 支持绝对路径、`~/`、相对路径和 glob；相对路径遵循用户 SSH 配置语义，以 `~/.ssh/` 为基准，即使主文件由 `--file` 指定也一样。文件按字典序读取，条件 Include 只在外层 Host 生效时应用，子文件不会改变外层匹配状态。循环或超过 16 层嵌套会报错。相关语义依据 [OpenSSH 配置手册](https://man.openbsd.org/ssh_config)及[配置解析源码](https://github.com/openssh/openssh-portable/blob/master/readconf.c)。

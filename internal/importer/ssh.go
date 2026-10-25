@@ -2,6 +2,7 @@ package importer
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -20,13 +21,25 @@ type directive struct {
 	includes [][]directive
 }
 
-func SSHConfig(file string) ([]Entry, error) {
+const (
+	maxSSHFiles       = 1024
+	maxSSHBytes       = 8 << 20
+	maxSSHEvaluations = 1_000_000
+)
+
+type sshBudget struct {
+	ctx                       context.Context
+	files, bytes, evaluations int
+}
+
+func SSHConfig(ctx context.Context, file string) ([]Entry, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.New("无法确定 SSH 用户目录")
 	}
 	aliases := map[string]bool{}
-	directives, err := readSSH(file, home, aliases, map[string]bool{})
+	budget := &sshBudget{ctx: ctx}
+	directives, err := budget.readSSH(file, home, aliases, map[string]bool{})
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +51,11 @@ func SSHConfig(file string) ([]Entry, error) {
 	entries := []Entry{}
 	for _, alias := range names {
 		values := map[string]string{}
-		if !evaluateSSH(directives, alias, values) {
+		declared, err := budget.evaluateSSH(directives, alias, values)
+		if err != nil {
+			return nil, err
+		}
+		if !declared {
 			continue
 		}
 		address := values["hostname"]
@@ -73,7 +90,14 @@ func SSHConfig(file string) ([]Entry, error) {
 	return entries, nil
 }
 
-func readSSH(file, home string, aliases, stack map[string]bool) ([]directive, error) {
+func (b *sshBudget) readSSH(file, home string, aliases, stack map[string]bool) ([]directive, error) {
+	if err := b.ctx.Err(); err != nil {
+		return nil, err
+	}
+	b.files++
+	if b.files > maxSSHFiles {
+		return nil, errors.New("SSH Include 累计读取超过 1024 次（重复引用也计入）")
+	}
 	canonical, err := filepath.EvalSymlinks(file)
 	if err != nil {
 		return nil, errors.New("无法读取 SSH config 或 Include 文件")
@@ -92,6 +116,13 @@ func readSSH(file, home string, aliases, stack map[string]bool) ([]directive, er
 	directives := []directive{}
 	scanner := bufio.NewScanner(f)
 	for line := 1; scanner.Scan(); line++ {
+		if err := b.ctx.Err(); err != nil {
+			return nil, err
+		}
+		b.bytes += len(scanner.Bytes()) + 1
+		if b.bytes > maxSSHBytes {
+			return nil, errors.New("SSH config 累计读取超过 8 MiB（重复引用也计入）")
+		}
 		text := strings.TrimSpace(scanner.Text())
 		if text == "" || strings.HasPrefix(text, "#") {
 			continue
@@ -137,7 +168,7 @@ func readSSH(file, home string, aliases, stack map[string]bool) ([]directive, er
 					return nil, errors.New("SSH Include 通配路径无效")
 				}
 				for _, included := range files {
-					child, err := readSSH(included, home, aliases, stack)
+					child, err := b.readSSH(included, home, aliases, stack)
 					if err != nil {
 						return nil, err
 					}
@@ -160,9 +191,19 @@ func readSSH(file, home string, aliases, stack map[string]bool) ([]directive, er
 	return directives, nil
 }
 
-func evaluateSSH(directives []directive, alias string, values map[string]string) bool {
+func (b *sshBudget) evaluateSSH(directives []directive, alias string, values map[string]string) (bool, error) {
+	if err := b.ctx.Err(); err != nil {
+		return false, err
+	}
 	active, declared := true, false
 	for _, d := range directives {
+		if err := b.ctx.Err(); err != nil {
+			return false, err
+		}
+		b.evaluations += 1 + len(d.values) + len(d.includes)
+		if b.evaluations > maxSSHEvaluations {
+			return false, errors.New("SSH config 累计求值工作量超过 1000000")
+		}
 		if d.key == "host" {
 			active = matchHost(d.values, alias)
 			for _, p := range d.values {
@@ -173,14 +214,18 @@ func evaluateSSH(directives []directive, alias string, values map[string]string)
 		} else if d.key == "include" {
 			if active {
 				for _, child := range d.includes {
-					declared = evaluateSSH(child, alias, values) || declared
+					childDeclared, err := b.evaluateSSH(child, alias, values)
+					if err != nil {
+						return false, err
+					}
+					declared = childDeclared || declared
 				}
 			}
 		} else if active && values[d.key] == "" {
 			values[d.key] = d.values[0]
 		}
 	}
-	return declared
+	return declared, nil
 }
 
 func matchHost(patterns []string, alias string) bool {

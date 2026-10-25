@@ -45,7 +45,7 @@ func newImportSourceCmd(opts *globalOpts, source string) *cobra.Command {
 				}
 				input = filepath.Join(home, ".ssh", "config")
 			}
-			entries, err = importer.SSHConfig(input)
+			entries, err = importer.SSHConfig(cmd.Context(), input)
 		}
 		if err != nil {
 			return err
@@ -62,6 +62,9 @@ func newImportSourceCmd(opts *globalOpts, source string) *cobra.Command {
 			if err != nil {
 				return err
 			}
+		}
+		if err := cmd.Context().Err(); err != nil {
+			return err
 		}
 		if destination != "" {
 			if err := result.Publish(destination); err != nil {
