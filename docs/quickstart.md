@@ -16,6 +16,13 @@ ifl version
 
 也可从 [Releases](https://github.com/infrafile/infrafile/releases) 下载对应系统和架构的压缩包；Windows 使用 zip。手动安装前按[发布指南的验签步骤](release.md#验签)核对产物。解压后包含 `infrafile`（Windows 为 `infrafile.exe`）、`examples/` 和 `docs/`；`ifl` 软链由 Homebrew 安装。
 
+macOS / Linux 手动解压后，在解压目录执行下面两行，将二进制加入当前终端的 PATH，再继续演练；Windows 可在 PowerShell 中运行 `.\infrafile.exe version`。
+
+```sh
+export PATH="$PWD:$PATH"
+infrafile version
+```
+
 ## 准备示例副本
 
 以下命令使用 macOS / Linux 的 shell。Homebrew 安装后：

@@ -37,6 +37,8 @@ git push origin v0.1.0
 需要 Cosign v3、GitHub CLI 和 Python 3。下列命令在新建的空临时目录中运行：
 
 ```sh
+(
+set -eu
 tag=v0.1.0
 gh release download "$tag" --repo infrafile/infrafile
 identity="https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/$tag"
@@ -54,6 +56,7 @@ for line in pathlib.Path('checksums.txt').read_text().splitlines():
     assert hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest() == expected, name
 print('all archive checksums passed')
 PY
+)
 ```
 
 身份必须同时匹配仓库、工作流路径、tag 和 OIDC issuer，不能只做哈希比对。命令依据 [GoReleaser 的 Cosign 签名说明](https://goreleaser.com/customization/sign/sign/)。解压本机平台归档，再运行 `infrafile version --json`，确认构建版本与 tag、commit 对应；运行随该 tag 的 `scripts/smoke.sh` 检查上手流程。
