@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.yaml.in/yaml/v3"
 )
 
 // 用真实子进程测试 stdio 边界，协议错误不依赖 Python 或 shell。
@@ -56,6 +58,18 @@ func pluginHelper() {
 			}
 			reply["result"] = map[string]any{"protocol_version": version, "capabilities": capabilities}
 		} else {
+			if mode == "time-write-failure" {
+				file := filepath.Join(os.Getenv("INFRAFILE_TEST_STATE"), "_sync.yaml")
+				if req.Params.Instance == "a" {
+					if os.Rename(file, file+".saved") != nil || os.Mkdir(file, 0o755) != nil {
+						os.Exit(8)
+					}
+				} else {
+					if os.Remove(file) != nil || os.Rename(file+".saved", file) != nil {
+						os.Exit(8)
+					}
+				}
+			}
 			data := map[string]any{"instance": req.Params.Instance, "region": req.Params.Config["region"], "id": uint64(9007199254740993), "large": json.RawMessage("18446744073709551617"), "decimal": json.RawMessage("0.1234567890123456789")}
 			switch mode {
 			case "sensitive":
@@ -70,6 +84,12 @@ func pluginHelper() {
 				data["api_key"] = "env://TEST"
 			case "password-url":
 				data["endpoint"] = "https://u:synthetic-plugin-private-value@example.com"
+			case "cookies":
+				data["cookies"] = []any{"session=synthetic-plugin-private-value"}
+			case "passwords":
+				data["passwords"] = []any{"synthetic-plugin-private-value"}
+			case "tokens":
+				data["accessTokens"] = []any{"synthetic-plugin-private-value"}
 			}
 			reply["result"] = map[string]any{"data": data}
 		}
@@ -137,6 +157,7 @@ func TestSyncExternalFailuresAreIsolated(t *testing.T) {
 		{"version", "protocol"}, {"capability", "capability"}, {"id", "protocol"}, {"jsonrpc", "protocol"},
 		{"error", "plugin"}, {"both", "protocol"}, {"malformed", "protocol"}, {"large", "protocol"}, {"shape", "protocol"},
 		{"sensitive", "sensitive"}, {"token", "sensitive"}, {"key-token", "sensitive"}, {"empty-secret", "sensitive"}, {"ref-secret", "sensitive"}, {"password-url", "sensitive"},
+		{"cookies", "sensitive"}, {"passwords", "sensitive"}, {"tokens", "sensitive"},
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
 			dir := syncRepo(t, twoPlugins)
@@ -188,6 +209,47 @@ func TestSyncExternalFailuresAreIsolated(t *testing.T) {
 				t.Fatal("改动了手写台账")
 			}
 		})
+	}
+}
+
+func TestSyncFailedTimeWriteDoesNotAdvanceLater(t *testing.T) {
+	fixturePlugin(t)
+	dir := syncRepo(t, "  aaa:\n    instances:\n      a: {region: test}\n      b: {region: test}\n")
+	t.Setenv("INFRAFILE_PLUGIN_MODE", "good")
+	t.Setenv("INFRAFILE_TEST_STATE", filepath.Join(dir, "state"))
+	var out, stderr bytes.Buffer
+	args := []string{"sync", "--dir", dir, "--json"}
+	before := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	if code := runAt(args, &out, &stderr, before); code != 0 {
+		t.Fatalf("seed exit %d: %s %s", code, &out, &stderr)
+	}
+	t.Setenv("INFRAFILE_PLUGIN_MODE", "time-write-failure")
+	out.Reset()
+	stderr.Reset()
+	if code := runAt(args, &out, &stderr, before.Add(time.Hour)); code != 1 {
+		t.Fatalf("exit %d: %s %s", code, &out, &stderr)
+	}
+	var report struct {
+		Results []struct {
+			OK   bool   `json:"ok"`
+			Code string `json:"code"`
+		} `json:"results"`
+	}
+	if json.Unmarshal(out.Bytes(), &report) != nil || len(report.Results) != 2 || report.Results[0].Code != "write" || !report.Results[1].OK {
+		t.Fatalf("write failure not isolated: %s", &out)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "state", "_sync.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var log struct {
+		Spec map[string]map[string]string `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &log); err != nil {
+		t.Fatal(err)
+	}
+	if log.Spec["aaa"]["a"] != "2026-12-01T12:00:00Z" || log.Spec["aaa"]["b"] != "2026-12-01T13:00:00Z" {
+		t.Fatalf("failed instance time advanced: %s", data)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"time"
 
@@ -137,16 +138,20 @@ func (s *state) Write(plugin, instance string, data []byte, now time.Time) (bool
 			return false, failure("write", "无法写入快照")
 		}
 	}
-	if s.log.Spec[plugin] == nil {
-		s.log.Spec[plugin] = map[string]string{}
+	updated := s.log
+	updated.Spec = maps.Clone(s.log.Spec)
+	updated.Spec[plugin] = maps.Clone(s.log.Spec[plugin])
+	if updated.Spec[plugin] == nil {
+		updated.Spec[plugin] = map[string]string{}
 	}
-	s.log.Spec[plugin][instance] = now.UTC().Format(time.RFC3339)
-	logData, err := yaml.Marshal(s.log)
+	updated.Spec[plugin][instance] = now.UTC().Format(time.RFC3339)
+	logData, err := yaml.Marshal(updated)
 	if err != nil {
 		return changed, failure("write", "无法编码同步时间")
 	}
 	if err := atomicWrite(s.root, "_sync.yaml", logData); err != nil {
 		return changed, failure("write", "快照已保存，但同步时间写入失败")
 	}
+	s.log = updated
 	return changed, nil
 }

@@ -31,16 +31,18 @@ func newSyncCmd(opts *globalOpts) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ok := true
+			cancelled := cmd.Context().Err() != nil
+			ok := !cancelled
 			for _, r := range results {
 				ok = ok && r.OK
 			}
 			if opts.json {
 				err = writeJSON(cmd.OutOrStdout(), struct {
-					Version string          `json:"version"`
-					OK      bool            `json:"ok"`
-					Results []plugin.Result `json:"results"`
-				}{jsonVersion, ok, results})
+					Version   string          `json:"version"`
+					OK        bool            `json:"ok"`
+					Results   []plugin.Result `json:"results"`
+					Cancelled bool            `json:"cancelled,omitempty"`
+				}{jsonVersion, ok, results, cancelled})
 				if err != nil {
 					return err
 				}
@@ -57,6 +59,9 @@ func newSyncCmd(opts *globalOpts) *cobra.Command {
 					}
 				}
 				fmt.Fprintf(cmd.OutOrStdout(), "同步 %d 个实例\n", len(results))
+				if cancelled {
+					fmt.Fprintln(cmd.OutOrStdout(), "同步已取消")
+				}
 			}
 			if !ok {
 				return exitCode(1)

@@ -30,19 +30,11 @@ var tokenPatterns = []struct {
 	{"URL 里的密码", regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^/\s:@]+:[^/\s@]+@`)},
 }
 
-var secretKeys = map[string]bool{
-	"password": true, "passwd": true, "pwd": true, "secret": true, "token": true,
-	"api_key": true, "apikey": true, "access_key": true, "secret_key": true,
-	"private_key": true, "client_secret": true, "auth_token": true, "access_token": true,
-}
-
 func secretKey(key string) bool {
-	k := strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(key, "x-")), "-", "_")
-	if secretKeys[k] {
-		return true
-	}
-	for _, suffix := range []string{"_password", "_passwd", "_secret", "_token"} {
-		if strings.HasSuffix(k, suffix) {
+	compact := strings.NewReplacer("_", "", "-", "", ".", "", " ", "").Replace(strings.ToLower(key))
+	compact = strings.TrimSuffix(compact, "s")
+	for _, suffix := range []string{"password", "passwd", "pwd", "secret", "token", "apikey", "accesskey", "accesskeyid", "secretkey", "privatekey", "secretaccesskey", "authorization", "cookie", "credential"} {
+		if strings.HasSuffix(compact, suffix) {
 			return true
 		}
 	}
@@ -55,13 +47,7 @@ func SnapshotSafe(v any) bool {
 	switch v := v.(type) {
 	case map[string]any:
 		for key, child := range v {
-			compact := strings.NewReplacer("_", "", "-", "", ".", "", " ", "").Replace(strings.ToLower(key))
-			for _, suffix := range []string{"password", "passwd", "pwd", "secret", "secrets", "token", "apikey", "accesskey", "accesskeyid", "secretkey", "privatekey", "secretaccesskey", "authorization", "cookie", "credential", "credentials"} {
-				if strings.HasSuffix(compact, suffix) {
-					return false
-				}
-			}
-			if !SnapshotSafe(key) || !SnapshotSafe(child) {
+			if secretKey(key) || !SnapshotSafe(key) || !SnapshotSafe(child) {
 				return false
 			}
 		}

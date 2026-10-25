@@ -87,7 +87,7 @@ spec:
 
 ## 凭据与信任边界
 
-写入前递归检查对象、数组、字段名和值：拒绝 password、token、api_key、private_key、clientSecret、authorization、cookie、credentials 等敏感名称及其变体，即使值为空、为对象或为引用也拒绝；另复用台账的常见令牌、私钥和 URL 密码检测。失败只报告固定错误，不输出字段值。外部 stderr 和 RPC 错误原文丢弃，避免插件错误日志携带凭据。
+写入前递归检查对象、数组、字段名和值：拒绝 password、token、api_key、private_key、clientSecret、authorization、cookie、credentials 等敏感名称及其常见复数变体（如 passwords、accessTokens、cookies），即使值为空、为对象或为引用也拒绝；另复用台账的常见令牌、私钥和 URL 密码检测。失败只报告固定错误，不输出字段值。外部 stderr 和 RPC 错误原文丢弃，避免插件错误日志携带凭据。
 
 实例配置同样接受台账明文检测。宿主不解析实例配置中的凭据引用，也不隐式解密；需要凭据的外部程序可以通过已有的 `infrafile run --secret ... -- infrafile sync ...` 获取环境变量。示例不需要凭据。
 

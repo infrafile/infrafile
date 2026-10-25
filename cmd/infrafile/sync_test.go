@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +61,28 @@ func TestSyncBuiltin(t *testing.T) {
 	gotConfig, _ := os.ReadFile(filepath.Join(dir, "infrafile.yaml"))
 	if string(gotConfig) != config {
 		t.Fatal("changed config")
+	}
+}
+
+func TestSyncCancelledReturnsFailure(t *testing.T) {
+	emptyRepo(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	cmd := newRoot(time.Now())
+	cmd.SetArgs([]string{"sync", "--json"})
+	var out, stderr bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&stderr)
+	var code exitCode
+	if err := cmd.ExecuteContext(ctx); !errors.As(err, &code) || code != 1 {
+		t.Fatalf("cancelled sync reported success: %v %s", err, &out)
+	}
+	var result struct {
+		OK        bool `json:"ok"`
+		Cancelled bool `json:"cancelled"`
+	}
+	if json.Unmarshal(out.Bytes(), &result) != nil || result.OK || !result.Cancelled {
+		t.Fatalf("cancel status: %s", &out)
 	}
 }
 
@@ -128,6 +152,7 @@ func TestSyncConfigValidation(t *testing.T) {
 		"  example:\n    instances: {../escape: {}}\n",
 		"  example:\n    instances: {}\n",
 		"  example:\n    instances: {home: {password: synthetic-private-value}}\n",
+		"  example:\n    instances: {home: {clientSecret: synthetic-private-value}}\n",
 	} {
 		dir := syncRepo(t, config)
 		var out, stderr bytes.Buffer
