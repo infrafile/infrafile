@@ -165,6 +165,38 @@ func TestSSHConfig(t *testing.T) {
 	}
 }
 
+func TestSSHConfigOrdersHostsByName(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"web", "web-1"} {
+		data := "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata:\n  name: " + name + "\nspec:\n  address: 203.0.113.1\n"
+		if err := os.WriteFile(filepath.Join(dir, "inventory/servers", name+".yaml"), []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"ssh-config", dir, "--json"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("退出码 = %d，stderr = %s", code, &stderr)
+	}
+	var got struct {
+		Hosts []struct {
+			Name string `json:"name"`
+		} `json:"hosts"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, host := range got.Hosts {
+		names = append(names, host.Name)
+	}
+	if want := []string{"db1", "web", "web-1", "web1"}; !reflect.DeepEqual(names, want) {
+		t.Errorf("主机顺序 = %v，期望 %v", names, want)
+	}
+}
+
 func TestSSHConfigInputs(t *testing.T) {
 	for _, tt := range []struct {
 		name     string

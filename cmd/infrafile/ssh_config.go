@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -56,6 +57,7 @@ func newSSHConfigCmd(opts *globalOpts) *cobra.Command {
 				}
 				hosts = append(hosts, host)
 			}
+			sort.Slice(hosts, func(i, j int) bool { return hosts[i].Name < hosts[j].Name })
 			out := cmd.OutOrStdout()
 			if opts.json {
 				return writeJSON(out, struct {
