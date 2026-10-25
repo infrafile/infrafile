@@ -1,0 +1,360 @@
+{
+  "error": {
+    "error": {
+      "code": "arguments",
+      "message": "参数不合法；目标必须是已登记主键或标签"
+    },
+    "ok": false,
+    "version": "v1"
+  },
+  "expiry": {
+    "as_of": "2026-12-01",
+    "entries": [],
+    "ok": true,
+    "version": "v1",
+    "within_days": 30
+  },
+  "list": {
+    "records": [
+      {
+        "archived": false,
+        "key": "Resource/edge",
+        "kind": "Resource",
+        "labels": null,
+        "name": "edge"
+      }
+    ],
+    "version": "v1"
+  },
+  "plan": {
+    "dry_run": true,
+    "plan": {
+      "actions": [
+        {
+          "after": {
+            "paused": true
+          },
+          "before": {
+            "paused": false
+          },
+          "before_hash": "dd378757806b9729e36e913f3f919e1101861e9b279672f56a4b924f161b30b3",
+          "binding": {
+            "instance": "home",
+            "plugin": "aaa",
+            "zone_id": "example-zone"
+          },
+          "config_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "operation": "cdn-pause",
+          "parameters": {},
+          "record_hash": "ed9685ebbfa4450bdf556555268d83c6a90518f3b2cd418a83de8b63d73f2926",
+          "target": "Resource/edge"
+        }
+      ],
+      "generated_at": "2026-12-01T12:00:00Z",
+      "version": "v1"
+    },
+    "version": "v1"
+  },
+  "show": {
+    "file": "inventory/resources/edge.yaml",
+    "incoming": [],
+    "outgoing": [],
+    "record": {
+      "apiVersion": "infrafile/v1alpha1",
+      "kind": "Resource",
+      "metadata": {
+        "name": "edge"
+      },
+      "spec": {
+        "control": {
+          "instance": "home",
+          "plugin": "aaa",
+          "zone_id": "example-zone"
+        },
+        "provider": "aaa",
+        "type": "cdn"
+      }
+    },
+    "version": "v1"
+  },
+  "tools": [
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "检查在用资产到期日，默认30天，含已过期及边界当天。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "description": "台账主键 Kind/name；必须已登记。",
+            "pattern": "^(Server|App|Domain|Account|Resource|Repo)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "Server",
+              "App",
+              "Domain",
+              "Account",
+              "Resource",
+              "Repo"
+            ],
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "within_days": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "infrafile_expiry"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "按主键、类型或标签筛选台账（含归档）；标签精确匹配且全部满足。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "description": "台账主键 Kind/name；必须已登记。",
+            "pattern": "^(Server|App|Domain|Account|Resource|Repo)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "Server",
+              "App",
+              "Domain",
+              "Account",
+              "Resource",
+              "Repo"
+            ],
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "name": "infrafile_list"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "只读生成单动作计划，不保存、不执行。标签必须唯一匹配在用 Resource；改回源必须提供已登记的 origin_key。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "else": {
+          "not": {
+            "required": [
+              "origin_key"
+            ]
+          }
+        },
+        "if": {
+          "properties": {
+            "action": {
+              "const": "cdn-origin"
+            }
+          }
+        },
+        "oneOf": [
+          {
+            "not": {
+              "required": [
+                "labels"
+              ]
+            },
+            "required": [
+              "key"
+            ]
+          },
+          {
+            "not": {
+              "required": [
+                "key"
+              ]
+            },
+            "required": [
+              "labels"
+            ]
+          }
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "cdn-pause",
+              "cdn-resume",
+              "cdn-origin"
+            ]
+          },
+          "key": {
+            "description": "台账主键 Kind/name；必须已登记。",
+            "pattern": "^(Server|App|Domain|Account|Resource|Repo)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "Server",
+              "App",
+              "Domain",
+              "Account",
+              "Resource",
+              "Repo"
+            ],
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "origin_key": {
+            "pattern": "^(Server|Resource|Domain)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "then": {
+          "required": [
+            "origin_key"
+          ]
+        },
+        "type": "object"
+      },
+      "name": "infrafile_plan"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "返回与 CLI 校验相同的内嵌 JSON Schema。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "infrafile_schema"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "读取唯一记录和引用关系，省略凭据字段。Server：一台可以登录的机器：云主机、独立服务器、家里的 NAS 等。；App：一个自己部署、运维的应用或服务。；Domain：一个注册的域名。metadata.name 就是域名本身。；Account：云厂商、注册商、代码托管等平台上的一个账号。；Resource：服务器以外的云资源：数据库、CDN、对象存储等。；Repo：一个代码仓库。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "not": {
+              "required": [
+                "labels"
+              ]
+            },
+            "required": [
+              "key"
+            ]
+          },
+          {
+            "not": {
+              "required": [
+                "key"
+              ]
+            },
+            "required": [
+              "labels"
+            ]
+          }
+        ],
+        "properties": {
+          "key": {
+            "description": "台账主键 Kind/name；必须已登记。",
+            "pattern": "^(Server|App|Domain|Account|Resource|Repo)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "Server",
+              "App",
+              "Domain",
+              "Account",
+              "Resource",
+              "Repo"
+            ],
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "name": "infrafile_show"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "只读校验当前数据仓，返回问题代码与数量；详细诊断用 CLI validate。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "infrafile_validate"
+    }
+  ],
+  "validate": {
+    "codes": {},
+    "ok": true,
+    "problem_count": 0,
+    "records": 1,
+    "version": "v1"
+  }
+}

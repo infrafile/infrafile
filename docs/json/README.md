@@ -1,6 +1,6 @@
 # `--json` 输出
 
-每个命令都可以加全局选项 `--json`，把结果以 JSON 输出到标准输出。这些结构是给脚本和 agent 用的稳定契约：
+CLI 命令可以加全局选项 `--json`，把结果以 JSON 输出到标准输出。`mcp` 本身使用逐行 JSON-RPC，`--json` 不改变协议。下述 CLI 结构是给脚本和 agent 用的稳定契约：
 
 - 顶层都有 `"version": "v1"`，表示输出结构的版本。新增字段不升版本；删除、改名或改变字段含义时升版本。
 - 字段的确切输出由 `cmd/infrafile/testdata/golden/` 下的黄金测试锁定。
@@ -23,5 +23,7 @@
 | `infrafile plan` / `plan show` | [plan.md](plan.md) |
 | `infrafile apply` | [apply.md](apply.md) |
 | `infrafile dnscontrol` | [dnscontrol.md](dnscontrol.md) |
+| `infrafile agent guide` / `agent install` | [agent.md](agent.md) |
+| `infrafile mcp`（协议工具结果） | [mcp.md](mcp.md) |
 
 `show`、`expiry`、`ssh-config` 先校验整个数据仓。校验未通过时退出 2 且 stdout 为空；请用 `validate` 获取具体问题。查询结果只包含凭据引用，不解析或解密引用。

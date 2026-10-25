@@ -1,0 +1,14 @@
+$ infrafile agent install claude --json
+[退出码 0]
+--- stdout
+{
+  "build": {
+    "commit": "none",
+    "version": "dev"
+  },
+  "client": "claude",
+  "path": ".claude/skills/infrafile/SKILL.md",
+  "status": "created",
+  "version": "v1"
+}
+--- stderr

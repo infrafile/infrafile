@@ -65,6 +65,9 @@ func controlHelper() {
 				paused = false
 			}
 			state := map[string]any{"paused": paused}
+			if req.Params.Action == "cdn-origin" {
+				state["rules"] = []any{map[string]any{"id": "example-rule", "action": "route", "enabled": true, "action_parameters": map[string]any{"origin": map[string]any{"host": "old.example.net"}}}}
+			}
 			if os.Getenv("INFRAFILE_CONTROL_CASE") == "large" {
 				// 小 RPC 经缩进后也可能成为大计划，避免用多 MiB 文本拖慢 race 测试。
 				values := make([]string, 20000)

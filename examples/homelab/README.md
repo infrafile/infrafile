@@ -55,4 +55,15 @@ infrafile dnscontrol examples/homelab --json
 
 输出固定使用 NO_PURGE，不创建凭据文件、不访问 DNS。`control/edge.yaml` 是带虚构 Cloudflare ID 的控制目标草稿，不在 inventory 中，也不会启用真实插件。实际生成 plan 需要将草稿和实例配置放到自己的数据仓并填写自己的 ID；不要对示例 ID 执行云操作。自动化测试用模拟外部插件和 HTTP 回放验证 plan → apply → 回读，包括过期拒绝和回读不符。详见[受控写指南](../../docs/control.md)。
 
+M8 可以让 MCP 客户端启动以下命令，离线体验查询；stdout 是协议流：
+
+```sh
+infrafile mcp --dir examples/homelab
+infrafile agent guide
+```
+
+通过 `infrafile_list` 传 `{"kind":"Server","labels":{"role":"web"}}` 找到 Server/web1，再用 `infrafile_show` 传 `{"key":"Server/web1"}` 查看。缺少的示例密钥不会影响查询，返回值省略 secrets。Server/old-vps 可查询；plan 不接受归档目标。示例 web1 的 address 是 IP，不能作为 MCP 改回源的合法主机名。
+
+安装体验请在临时项目目录运行 `infrafile agent install codex --dir <临时目录>` 或 `claude`；安装内容与 `agent guide` 一致，重复运行不改文件。具体接入与六个工具契约见[Agent 指南](../../docs/agent.md)。
+
 约定：只用文档保留地址段（`192.0.2.0/24`、`198.51.100.0/24`、`203.0.113.0/24`）、私有地址和 `example.com` 系列域名。

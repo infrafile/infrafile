@@ -21,7 +21,7 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 
 ## 文档
 
-目前已完成 M0–M7：数据仓初始化、schema 导出、校验、查询、到期检查、SSH config 生成、凭据引用、插件宿主、九个第一方同步插件、SSH config / state 草稿导入，以及 plan / apply 受控写和 DNSControl 配置生成。导入默认只输出草稿，`--write` 只创建不存在的记录；Cloudflare 控制先生成计划，apply 前后回读确认。可先用[虚构示例](examples/homelab/README.md)体验；MCP 等后续能力仍按计划推进。
+目前已完成 M0–M8：账本、查询、凭据引用、插件与导入、plan / apply 受控写、DNSControl，以及本地 stdio MCP 和内嵌 Agent 指南。MCP 提供六个只读查询／计划工具，目标按台账主键或标签选择；线上变更仍通过 CLI 审阅计划并另行授权执行。可先用[虚构示例](examples/homelab/README.md)体验；发版按 M9 计划推进。
 
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
@@ -30,6 +30,8 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 - [第一方插件配置、观测字段与限制](docs/first-party-plugins.md)
 - [导入草稿与只建不覆盖](docs/import.md)
 - [受控写与 DNSControl](docs/control.md)
+- [Agent 接口、MCP 与指南安装](docs/agent.md)
+- [JSON 契约](docs/json/README.md)
 - [参与贡献](CONTRIBUTING.md)
 
 ## 第一方插件与最小权限

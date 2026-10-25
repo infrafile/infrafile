@@ -1,0 +1,5 @@
+$ infrafile agent install codex
+[退出码 0]
+--- stdout
+.agents/skills/infrafile/SKILL.md：created
+--- stderr

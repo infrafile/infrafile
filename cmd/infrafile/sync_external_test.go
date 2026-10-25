@@ -17,6 +17,9 @@ import (
 
 // 用真实子进程测试 stdio 边界，协议错误不依赖 Python 或 shell。
 func TestMain(m *testing.M) {
+	if os.Getenv("INFRAFILE_MCP_HELPER") == "1" {
+		os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	}
 	if os.Getenv("INFRAFILE_PLUGIN_HELPER") == "1" && strings.HasPrefix(filepath.Base(os.Args[0]), "infrafile-plugin-") {
 		pluginHelper()
 		os.Exit(0)

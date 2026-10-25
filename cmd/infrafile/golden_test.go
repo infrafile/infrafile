@@ -31,6 +31,12 @@ func TestGolden(t *testing.T) {
 	}{
 		{"version", []string{"version"}, nil},
 		{"version-json", []string{"version", "--json"}, nil},
+		{"agent-guide", []string{"agent", "guide"}, nil},
+		{"agent-guide-json", []string{"agent", "guide", "--json"}, nil},
+		{"agent-install", []string{"agent", "install", "codex"}, tempDir},
+		{"agent-install-codex-json", []string{"agent", "install", "codex", "--json"}, tempDir},
+		{"agent-install-claude-json", []string{"agent", "install", "claude", "--json"}, tempDir},
+		{"agent-install-repeat-json", []string{"agent", "install", "codex", "--json"}, func(t *testing.T) { tempDir(t); importCLI(t, 0, "agent", "install", "codex") }},
 
 		{"validate-homelab", []string{"validate", homelab}, nil},
 		{"validate-homelab-json", []string{"validate", "--json", homelab}, nil},
