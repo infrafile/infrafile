@@ -1,0 +1,67 @@
+$ infrafile show App/blog ../../examples/homelab --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "file": "inventory/apps/blog.yaml",
+  "record": {
+    "apiVersion": "infrafile/v1alpha1",
+    "kind": "App",
+    "metadata": {
+      "description": "个人博客",
+      "name": "blog"
+    },
+    "spec": {
+      "deployments": [
+        {
+          "path": "/srv/blog",
+          "port": 8080,
+          "runtime": "docker-compose",
+          "server": "web1"
+        }
+      ],
+      "resources": [
+        "blog-db",
+        "assets-cdn"
+      ],
+      "secrets": {
+        "admin_password": "sops://secrets.enc.yaml#apps.blog.admin_password"
+      }
+    }
+  },
+  "incoming": [
+    {
+      "kind": "Domain",
+      "name": "example.com",
+      "file": "inventory/domains/example.com.yaml",
+      "path": "spec.bindings[0].app"
+    },
+    {
+      "kind": "Repo",
+      "name": "blog",
+      "file": "inventory/repos/blog.yaml",
+      "path": "spec.app"
+    }
+  ],
+  "outgoing": [
+    {
+      "kind": "Server",
+      "name": "web1",
+      "file": "inventory/servers/web1.yaml",
+      "path": "spec.deployments[0].server"
+    },
+    {
+      "kind": "Resource",
+      "name": "blog-db",
+      "file": "inventory/resources/blog-db.yaml",
+      "path": "spec.resources[0]"
+    },
+    {
+      "kind": "Resource",
+      "name": "assets-cdn",
+      "file": "inventory/resources/assets-cdn.yaml",
+      "path": "spec.resources[1]"
+    }
+  ]
+}
+--- stderr

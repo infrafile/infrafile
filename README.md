@@ -21,6 +21,8 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 
 ## 文档
 
+目前已完成 M0–M2：数据仓初始化、schema 导出、校验、单条查询与关系、到期检查、SSH config 生成。可先用[虚构示例](examples/homelab/README.md)体验；凭据解析、云同步和受控写等后续能力仍按计划推进。
+
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
 - [参与贡献](CONTRIBUTING.md)

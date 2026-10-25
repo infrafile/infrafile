@@ -1,0 +1,6 @@
+$ infrafile expiry
+[退出码 0]
+--- stdout
+截至 2026-12-01（阈值 30 天）
+发现 0 条到期记录
+--- stderr

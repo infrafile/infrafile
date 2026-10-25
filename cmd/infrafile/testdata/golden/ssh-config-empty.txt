@@ -1,0 +1,4 @@
+$ infrafile ssh-config
+[退出码 0]
+--- stdout
+--- stderr

@@ -1,0 +1,5 @@
+$ infrafile show blog ../../examples/homelab
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: 名称 "blog" 匹配多条记录，请指定：App/blog、Repo/blog

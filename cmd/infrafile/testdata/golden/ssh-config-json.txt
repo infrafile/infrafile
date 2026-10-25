@@ -1,0 +1,21 @@
+$ infrafile ssh-config ../../examples/homelab --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "hosts": [
+    {
+      "name": "db1",
+      "hostname": "198.51.100.20",
+      "user": "admin",
+      "port": 2222
+    },
+    {
+      "name": "web1",
+      "hostname": "203.0.113.10",
+      "user": "deploy",
+      "port": 22
+    }
+  ]
+}
+--- stderr

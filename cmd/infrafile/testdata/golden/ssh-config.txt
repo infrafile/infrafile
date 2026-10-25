@@ -1,0 +1,13 @@
+$ infrafile ssh-config ../../examples/homelab
+[退出码 0]
+--- stdout
+Host db1
+  HostName 198.51.100.20
+  User admin
+  Port 2222
+
+Host web1
+  HostName 203.0.113.10
+  User deploy
+  Port 22
+--- stderr

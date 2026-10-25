@@ -1,0 +1,5 @@
+$ infrafile show missing ../../examples/homelab --json
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: 找不到记录 "missing"

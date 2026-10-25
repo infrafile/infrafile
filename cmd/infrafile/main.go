@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,7 @@ func (e exitCode) Error() string { return fmt.Sprintf("退出码 %d", int(e)) }
 // globalOpts 是所有命令共用的选项。
 type globalOpts struct {
 	json bool
+	now  time.Time
 }
 
 const usageTemplate = `用法:{{if not .HasAvailableSubCommands}}
@@ -53,7 +55,11 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
-	root := newRoot()
+	return runAt(args, stdout, stderr, time.Now())
+}
+
+func runAt(args []string, stdout, stderr io.Writer, now time.Time) int {
+	root := newRoot(now)
 	root.SetArgs(args)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
@@ -70,8 +76,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func newRoot() *cobra.Command {
-	opts := &globalOpts{}
+func newRoot(now time.Time) *cobra.Command {
+	opts := &globalOpts{now: now}
 	root := &cobra.Command{
 		Use:           "infrafile",
 		Short:         "git 后端的基础设施资产台账",
@@ -98,6 +104,9 @@ func newRoot() *cobra.Command {
 		newValidateCmd(opts),
 		newInitCmd(opts),
 		newSchemaCmd(opts),
+		newShowCmd(opts),
+		newExpiryCmd(opts),
+		newSSHConfigCmd(opts),
 	)
 	root.SetHelpCommand(&cobra.Command{
 		Use:   "help [命令]",

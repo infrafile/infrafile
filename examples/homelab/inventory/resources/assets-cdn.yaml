@@ -8,3 +8,4 @@ spec:
   account: example-cloud-main
   resource_id: cdn-0000000001
   endpoint: assets.example.com
+  expires_at: 2026-11-30

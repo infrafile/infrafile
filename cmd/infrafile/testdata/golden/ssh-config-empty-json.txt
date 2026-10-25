@@ -1,0 +1,8 @@
+$ infrafile ssh-config --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "hosts": []
+}
+--- stderr

@@ -1,0 +1,35 @@
+$ infrafile show old-vps ../../examples/homelab --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "file": "inventory/servers/old-vps.yaml",
+  "record": {
+    "apiVersion": "infrafile/v1alpha1",
+    "kind": "Server",
+    "metadata": {
+      "archived": {
+        "date": "2026-06-01",
+        "reason": "迁移到 web1"
+      },
+      "description": "早年的 VPS，已退租",
+      "name": "old-vps"
+    },
+    "spec": {
+      "account": "example-cloud-main",
+      "address": "203.0.113.99",
+      "expires_at": "2026-06-30",
+      "provider": "example-cloud"
+    }
+  },
+  "incoming": [],
+  "outgoing": [
+    {
+      "kind": "Account",
+      "name": "example-cloud-main",
+      "file": "inventory/accounts/example-cloud-main.yaml",
+      "path": "spec.account"
+    }
+  ]
+}
+--- stderr

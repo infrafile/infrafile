@@ -15,6 +15,7 @@ type Options struct {
 
 // Result 是一次校验的结果。
 type Result struct {
+	Repo     *ledger.Repo     // 同一次加载的记录，供查询命令在校验通过后使用
 	Records  int              // 成功加载的记录数
 	Problems []ledger.Problem // 已排序；没有问题时为空切片
 }
@@ -57,7 +58,7 @@ func Run(dir string, opts Options) (*Result, error) {
 		problems = []ledger.Problem{}
 	}
 	ledger.SortProblems(problems)
-	return &Result{Records: len(repo.Records), Problems: problems}, nil
+	return &Result{Repo: repo, Records: len(repo.Records), Problems: problems}, nil
 }
 
 func checkRefs(records []*ledger.Record, schemas *ledger.Schemas) []ledger.Problem {
@@ -74,46 +75,19 @@ func checkRefs(records []*ledger.Record, schemas *ledger.Schemas) []ledger.Probl
 
 	var problems []ledger.Problem
 	for _, r := range records {
-		for _, ref := range schemas.Refs(r.Kind) {
-			matchPath(r.Value, ref.Pattern, "", func(path string, v any) {
-				name, ok := v.(string)
-				if !ok {
-					return // 类型不对由 schema 报
-				}
-				target, ok := index[ref.Target][name]
-				switch {
-				case !ok:
-					problems = append(problems, ledger.Problem{Code: ledger.CodeRef, File: r.File,
-						Line: r.Line(path), Path: path,
-						Message: fmt.Sprintf("引用的 %s %s 不存在", ref.Target, name)})
-				case target.Archived() && !r.Archived():
-					problems = append(problems, ledger.Problem{Code: ledger.CodeRefArchived, File: r.File,
-						Line: r.Line(path), Path: path,
-						Message: fmt.Sprintf("引用的 %s %s 已归档；在用的记录不能引用已归档的记录", ref.Target, name)})
-				}
-			})
+		for _, ref := range r.References(schemas) {
+			target, ok := index[ref.Kind][ref.Name]
+			switch {
+			case !ok:
+				problems = append(problems, ledger.Problem{Code: ledger.CodeRef, File: r.File,
+					Line: r.Line(ref.Path), Path: ref.Path,
+					Message: fmt.Sprintf("引用的 %s %s 不存在", ref.Kind, ref.Name)})
+			case target.Archived() && !r.Archived():
+				problems = append(problems, ledger.Problem{Code: ledger.CodeRefArchived, File: r.File,
+					Line: r.Line(ref.Path), Path: ref.Path,
+					Message: fmt.Sprintf("引用的 %s %s 已归档；在用的记录不能引用已归档的记录", ref.Kind, ref.Name)})
+			}
 		}
 	}
 	return problems
-}
-
-// matchPath 找出 v 中符合 pattern 的所有值，"[]" 匹配数组的每个元素。
-func matchPath(v any, pattern []string, path string, fn func(path string, v any)) {
-	if len(pattern) == 0 {
-		fn(path, v)
-		return
-	}
-	if pattern[0] == "[]" {
-		items, _ := v.([]any)
-		for i, item := range items {
-			matchPath(item, pattern[1:], ledger.JoinIndex(path, i), fn)
-		}
-		return
-	}
-	m, _ := v.(map[string]any)
-	child, ok := m[pattern[0]]
-	if !ok {
-		return
-	}
-	matchPath(child, pattern[1:], ledger.JoinKey(path, pattern[0]), fn)
 }

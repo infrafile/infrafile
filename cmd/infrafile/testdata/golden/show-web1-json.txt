@@ -1,0 +1,93 @@
+$ infrafile show web1 ../../examples/homelab --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "file": "inventory/servers/web1.yaml",
+  "record": {
+    "apiVersion": "infrafile/v1alpha1",
+    "kind": "Server",
+    "metadata": {
+      "description": "跑博客和 wiki 的前端机",
+      "labels": {
+        "role": "web"
+      },
+      "name": "web1"
+    },
+    "spec": {
+      "account": "example-cloud-main",
+      "address": "203.0.113.10",
+      "expires_at": "2027-03-01",
+      "hardware": {
+        "cpu": "2 vCPU",
+        "disk": "80 GiB",
+        "memory": "4 GiB",
+        "os": "Debian 12"
+      },
+      "instance_id": "i-0000000000000001",
+      "private_address": "10.0.0.10",
+      "provider": "example-cloud",
+      "region": "example-east-1",
+      "secrets": {
+        "root_password": "sops://secrets.enc.yaml#servers.web1.root_password"
+      },
+      "ssh": {
+        "port": 22,
+        "user": "deploy"
+      }
+    }
+  },
+  "incoming": [
+    {
+      "kind": "App",
+      "name": "blog",
+      "file": "inventory/apps/blog.yaml",
+      "path": "spec.deployments[0].server"
+    },
+    {
+      "kind": "App",
+      "name": "wiki",
+      "file": "inventory/apps/wiki.yaml",
+      "path": "spec.deployments[0].server"
+    },
+    {
+      "kind": "Domain",
+      "name": "example.com",
+      "file": "inventory/domains/example.com.yaml",
+      "path": "spec.bindings[0].server"
+    },
+    {
+      "kind": "Domain",
+      "name": "example.com",
+      "file": "inventory/domains/example.com.yaml",
+      "path": "spec.bindings[1].server"
+    },
+    {
+      "kind": "Domain",
+      "name": "example.net",
+      "file": "inventory/domains/example.net.yaml",
+      "path": "spec.bindings[0].server"
+    },
+    {
+      "kind": "Repo",
+      "name": "blog",
+      "file": "inventory/repos/blog.yaml",
+      "path": "spec.deploys_to[0].server"
+    },
+    {
+      "kind": "Repo",
+      "name": "wiki",
+      "file": "inventory/repos/wiki.yaml",
+      "path": "spec.deploys_to[0].server"
+    }
+  ],
+  "outgoing": [
+    {
+      "kind": "Account",
+      "name": "example-cloud-main",
+      "file": "inventory/accounts/example-cloud-main.yaml",
+      "path": "spec.account"
+    }
+  ]
+}
+--- stderr

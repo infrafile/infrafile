@@ -1,0 +1,23 @@
+$ infrafile show old-vps ../../examples/homelab
+[退出码 0]
+--- stdout
+文件：inventory/servers/old-vps.yaml
+apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+    archived:
+        date: "2026-06-01"
+        reason: 迁移到 web1
+    description: 早年的 VPS，已退租
+    name: old-vps
+spec:
+    account: example-cloud-main
+    address: 203.0.113.99
+    expires_at: "2026-06-30"
+    provider: example-cloud
+
+入边（谁引用它）：0
+
+出边（它引用谁）：1
+  Account/example-cloud-main  spec.account
+--- stderr

@@ -1,0 +1,42 @@
+$ infrafile show web1 ../../examples/homelab
+[退出码 0]
+--- stdout
+文件：inventory/servers/web1.yaml
+apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+    description: 跑博客和 wiki 的前端机
+    labels:
+        role: web
+    name: web1
+spec:
+    account: example-cloud-main
+    address: 203.0.113.10
+    expires_at: "2027-03-01"
+    hardware:
+        cpu: 2 vCPU
+        disk: 80 GiB
+        memory: 4 GiB
+        os: Debian 12
+    instance_id: i-0000000000000001
+    private_address: 10.0.0.10
+    provider: example-cloud
+    region: example-east-1
+    secrets:
+        root_password: sops://secrets.enc.yaml#servers.web1.root_password
+    ssh:
+        port: 22
+        user: deploy
+
+入边（谁引用它）：7
+  App/blog  spec.deployments[0].server
+  App/wiki  spec.deployments[0].server
+  Domain/example.com  spec.bindings[0].server
+  Domain/example.com  spec.bindings[1].server
+  Domain/example.net  spec.bindings[0].server
+  Repo/blog  spec.deploys_to[0].server
+  Repo/wiki  spec.deploys_to[0].server
+
+出边（它引用谁）：1
+  Account/example-cloud-main  spec.account
+--- stderr
