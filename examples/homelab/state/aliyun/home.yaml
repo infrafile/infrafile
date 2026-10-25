@@ -1,0 +1,14 @@
+apiVersion: infrafile/v1alpha1
+kind: Snapshot
+metadata:
+  name: home
+spec:
+  domains:
+    - name: example.com
+      expires_at: '2031-01-01'
+    - name: example.org
+      expires_at: '2030-01-01'
+  cdn:
+    - name: static.example.com
+      id: fictional-cdn-id
+      cname: edge.example.net

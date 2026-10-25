@@ -36,4 +36,14 @@ PATH="$PWD/examples/plugins:$PATH" infrafile sync --dir examples/homelab --json
 
 到期输出随运行日期变化；黄金测试固定检查日期为 2026-12-01，此时 `assets-cdn` 已过期一天，`example.net` 恰好在 30 天边界，命令退出 1。
 
+M6 的 `imports/ssh.conf` 和 `state/` 内四份快照也是手写的虚构输入，不是真实服务观测。可以先预览：
+
+```sh
+infrafile import ssh-config --dir examples/homelab --file examples/homelab/imports/ssh.conf
+infrafile import state --dir examples/homelab --json
+infrafile import state --dir examples/homelab --output /tmp/infrafile-review
+```
+
+SSH 的 `web1` 和快照里的 `example.com` 已有记录，会跳过；其余会生成待审草稿。DNS 观测只报告跳过，Cloudflare zone 生成 Resource。要体验写入，请先把整个 homelab 复制到临时目录，再对副本执行 `import ... --write` 和 `validate`；第二次导入不会改动已有文件。细节见[导入指南](../../docs/import.md)。
+
 约定：只用文档保留地址段（`192.0.2.0/24`、`198.51.100.0/24`、`203.0.113.0/24`）、私有地址和 `example.com` 系列域名。

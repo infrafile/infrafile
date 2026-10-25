@@ -21,13 +21,14 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 
 ## 文档
 
-目前已完成 M0–M5：数据仓初始化、schema 导出、校验、查询、到期检查、SSH config 生成、凭据引用、插件宿主，以及九个第一方只读同步插件。可先用[虚构示例](examples/homelab/README.md)体验；导入和受控写等后续能力仍按计划推进。
+目前已完成 M0–M6：数据仓初始化、schema 导出、校验、查询、到期检查、SSH config 生成、凭据引用、插件宿主、九个第一方只读同步插件，以及 SSH config / state 草稿导入。导入默认只输出草稿，`--write` 只创建不存在的记录。可先用[虚构示例](examples/homelab/README.md)体验；受控写等后续能力仍按计划推进。
 
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
 - [凭据引用与运行命令](docs/secrets.md)
 - [插件与观测快照](docs/plugins.md)
 - [第一方插件配置、观测字段与限制](docs/first-party-plugins.md)
+- [导入草稿与只建不覆盖](docs/import.md)
 - [参与贡献](CONTRIBUTING.md)
 
 ## 第一方插件与最小权限

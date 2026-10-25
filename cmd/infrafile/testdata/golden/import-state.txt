@@ -1,0 +1,42 @@
+$ infrafile import state
+[退出码 0]
+--- stdout
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata:
+  name: example.org
+spec:
+  expires_at: "2030-01-01"
+  registrar: aliyun
+---
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata:
+  name: aliyun-home-cdn-static.example.com-67c01b69
+spec:
+  endpoint: static.example.com
+  provider: aliyun
+  resource_id: fictional-cdn-id
+  type: cdn
+---
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata:
+  name: cloudflare-home-dns-zone-example.net-f2943b01
+spec:
+  endpoint: example.net
+  provider: cloudflare
+  resource_id: fictional-zone-id
+  type: dns-zone
+---
+apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+  name: observed-web
+spec:
+  address: 203.0.113.20
+  hardware:
+    os: Linux 6.1-example
+--- stderr
+Domain/example.com：已存在，跳过
+state/dns/blog.yaml：跳过 [observation-only]

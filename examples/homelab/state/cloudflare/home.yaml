@@ -1,0 +1,9 @@
+apiVersion: infrafile/v1alpha1
+kind: Snapshot
+metadata:
+  name: home
+spec:
+  zones:
+    - id: fictional-zone-id
+      name: example.net
+      dns_records: []

@@ -84,6 +84,12 @@ func TestGolden(t *testing.T) {
 		{"sync-partial-json", []string{"sync", "--json"}, goldenSyncPartial},
 		{"sync-first-party", []string{"sync"}, firstPartyRepo},
 		{"sync-first-party-json", []string{"sync", "--json"}, firstPartyRepo},
+		{"import-ssh", []string{"import", "ssh-config", "--file", "imports/ssh.conf"}, goldenImport},
+		{"import-ssh-json", []string{"import", "ssh-config", "--file", "imports/ssh.conf", "--json"}, goldenImport},
+		{"import-state", []string{"import", "state"}, goldenImport},
+		{"import-state-json", []string{"import", "state", "--json"}, goldenImport},
+		{"import-state-write-json", []string{"import", "state", "--write", "--json"}, goldenImport},
+		{"import-state-repeat-json", []string{"import", "state", "--write", "--json"}, goldenImportWritten},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,6 +123,19 @@ func TestGolden(t *testing.T) {
 			}
 		})
 	}
+}
+
+func goldenImport(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+}
+
+func goldenImportWritten(t *testing.T) {
+	goldenImport(t)
+	importCLI(t, 0, "import", "state", "--write")
 }
 
 func goldenSync(t *testing.T) {

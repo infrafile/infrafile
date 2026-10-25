@@ -1,0 +1,9 @@
+apiVersion: infrafile/v1alpha1
+kind: Snapshot
+metadata:
+  name: observed-web
+spec:
+  host: 203.0.113.20
+  system: Linux
+  release: 6.1-example
+  architecture: x86_64

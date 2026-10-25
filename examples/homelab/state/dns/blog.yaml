@@ -1,0 +1,8 @@
+apiVersion: infrafile/v1alpha1
+kind: Snapshot
+metadata:
+  name: blog
+spec:
+  host: blog.example.com
+  addresses: [192.0.2.10]
+  canonical_name: blog.example.com

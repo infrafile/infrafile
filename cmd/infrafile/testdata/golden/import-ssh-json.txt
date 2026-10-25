@@ -1,0 +1,39 @@
+$ infrafile import ssh-config --file imports/ssh.conf --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "mode": "stdout",
+  "records": [
+    {
+      "source": "ssh-config/imported-web",
+      "kind": "Server",
+      "name": "imported-web",
+      "file": "servers/imported-web.yaml",
+      "status": "draft",
+      "record": {
+        "apiVersion": "infrafile/v1alpha1",
+        "kind": "Server",
+        "metadata": {
+          "name": "imported-web"
+        },
+        "spec": {
+          "address": "198.51.100.20",
+          "ssh": {
+            "port": 2222,
+            "user": "observer"
+          }
+        }
+      }
+    },
+    {
+      "source": "ssh-config/web1",
+      "kind": "Server",
+      "name": "web1",
+      "file": "servers/web1.yaml",
+      "status": "exists"
+    }
+  ],
+  "skipped": []
+}
+--- stderr

@@ -1,0 +1,14 @@
+$ infrafile import ssh-config --file imports/ssh.conf
+[退出码 0]
+--- stdout
+apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+  name: imported-web
+spec:
+  address: 198.51.100.20
+  ssh:
+    port: 2222
+    user: observer
+--- stderr
+Server/web1：已存在，跳过

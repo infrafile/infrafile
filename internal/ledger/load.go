@@ -174,6 +174,11 @@ func parseFile(dir, rel string) (*Document, []Problem) {
 	if err != nil {
 		return nil, []Problem{{Code: CodeParse, File: rel, Message: "读取失败：" + err.Error()}}
 	}
+	return ParseDocument(rel, data)
+}
+
+// ParseDocument 复用台账的 YAML 语义：拒绝重复键、多文档，并保留日期字符串。
+func ParseDocument(rel string, data []byte) (*Document, []Problem) {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	var root yaml.Node
 	if err := dec.Decode(&root); err != nil {

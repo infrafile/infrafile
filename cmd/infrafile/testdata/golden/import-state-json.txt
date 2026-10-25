@@ -1,0 +1,101 @@
+$ infrafile import state --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "mode": "stdout",
+  "records": [
+    {
+      "source": "state/aliyun/home.yaml",
+      "kind": "Domain",
+      "name": "example.com",
+      "file": "domains/example.com.yaml",
+      "status": "exists"
+    },
+    {
+      "source": "state/aliyun/home.yaml",
+      "kind": "Domain",
+      "name": "example.org",
+      "file": "domains/example.org.yaml",
+      "status": "draft",
+      "record": {
+        "apiVersion": "infrafile/v1alpha1",
+        "kind": "Domain",
+        "metadata": {
+          "name": "example.org"
+        },
+        "spec": {
+          "expires_at": "2030-01-01",
+          "registrar": "aliyun"
+        }
+      }
+    },
+    {
+      "source": "state/aliyun/home.yaml",
+      "kind": "Resource",
+      "name": "aliyun-home-cdn-static.example.com-67c01b69",
+      "file": "resources/aliyun-home-cdn-static.example.com-67c01b69.yaml",
+      "status": "draft",
+      "record": {
+        "apiVersion": "infrafile/v1alpha1",
+        "kind": "Resource",
+        "metadata": {
+          "name": "aliyun-home-cdn-static.example.com-67c01b69"
+        },
+        "spec": {
+          "endpoint": "static.example.com",
+          "provider": "aliyun",
+          "resource_id": "fictional-cdn-id",
+          "type": "cdn"
+        }
+      }
+    },
+    {
+      "source": "state/cloudflare/home.yaml",
+      "kind": "Resource",
+      "name": "cloudflare-home-dns-zone-example.net-f2943b01",
+      "file": "resources/cloudflare-home-dns-zone-example.net-f2943b01.yaml",
+      "status": "draft",
+      "record": {
+        "apiVersion": "infrafile/v1alpha1",
+        "kind": "Resource",
+        "metadata": {
+          "name": "cloudflare-home-dns-zone-example.net-f2943b01"
+        },
+        "spec": {
+          "endpoint": "example.net",
+          "provider": "cloudflare",
+          "resource_id": "fictional-zone-id",
+          "type": "dns-zone"
+        }
+      }
+    },
+    {
+      "source": "state/ssh/observed-web.yaml",
+      "kind": "Server",
+      "name": "observed-web",
+      "file": "servers/observed-web.yaml",
+      "status": "draft",
+      "record": {
+        "apiVersion": "infrafile/v1alpha1",
+        "kind": "Server",
+        "metadata": {
+          "name": "observed-web"
+        },
+        "spec": {
+          "address": "203.0.113.20",
+          "hardware": {
+            "os": "Linux 6.1-example"
+          }
+        }
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "source": "state/dns/blog.yaml",
+      "reason": "observation-only"
+    }
+  ]
+}
+--- stderr

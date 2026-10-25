@@ -19,5 +19,6 @@
 | `infrafile secret check` | [secret.md](secret.md) |
 | `infrafile run` | [run.md](run.md) |
 | `infrafile sync` | [sync.md](sync.md) |
+| `infrafile import ssh-config` / `import state` | [import.md](import.md) |
 
 `show`、`expiry`、`ssh-config` 先校验整个数据仓。校验未通过时退出 2 且 stdout 为空；请用 `validate` 获取具体问题。查询结果只包含凭据引用，不解析或解密引用。
