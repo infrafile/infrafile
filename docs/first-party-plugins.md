@@ -29,6 +29,8 @@ infrafile sync aliyun --dir /path/to/my-infra --timeout 60s --json
 
 云插件的所有认证字段都必须是 `env://`、`sops://` 或 `op://` 引用，不能填明文。SOPS 路径相对数据仓；引用支持范围见[凭据指南](secrets.md)。只有显式执行相应 `sync` 才解析值。`secret check` 目前检查 inventory 的 `spec.secrets`，不会预检插件配置中的引用；普通 `validate` 会检查配置里的明文风险。
 
+SOPS age 密钥命令受实例取消信号控制；仅支持非交互身份，不执行外部 age 插件或身份文件的口令交互。凭据解析超时也会保留该实例旧快照，并继续其他实例。
+
 | 插件 | 必填字段 | 可选字段 |
 |---|---|---|
 | `cloudflare` | `api_token` | `account_id` 限定账号 |

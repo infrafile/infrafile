@@ -8,8 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/infrafile/infrafile/internal/testutil"
 )
 
 type cloudReplay func(*http.Request) (*http.Response, error)
@@ -111,5 +115,41 @@ func TestFirstPartySyncWritesOnlyProjectedState(t *testing.T) {
 	after, _ := os.ReadFile("infrafile.yaml")
 	if !bytes.Equal(before, after) {
 		t.Fatal("modified config")
+	}
+}
+
+func TestFirstPartyCredentialTimeoutContinuesNextPlugin(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("密钥命令夹具使用 POSIX sleep")
+	}
+	emptyRepo(t)
+	testutil.IsolateKeys(t)
+	ref, _, _ := testutil.EncryptedFile(t, ".")
+	t.Setenv("SOPS_AGE_KEY_CMD", "sleep 1")
+	t.Setenv("INFRAFILE_TEST_CLOUD_AK", "synthetic-access-id")
+	config := fmt.Sprintf("apiVersion: infrafile/v1alpha1\nkind: Config\nplugins:\n  aliyun:\n    instances:\n      slow: {access_key_id: 'env://INFRAFILE_TEST_CLOUD_AK', access_key_secret: '%s'}\n  example:\n    instances:\n      next: {}\n", ref)
+	if err := os.WriteFile("infrafile.yaml", []byte(config), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, stderr bytes.Buffer
+	start := time.Now()
+	if code := run([]string{"sync", "--timeout", "50ms", "--json"}, &out, &stderr); code != 1 || time.Since(start) > 600*time.Millisecond {
+		t.Fatalf("credential blocked sync: exit=%d elapsed=%s", code, time.Since(start))
+	}
+	var result struct {
+		Results []struct {
+			Plugin string `json:"plugin"`
+			Code   string `json:"code"`
+			OK     bool   `json:"ok"`
+		} `json:"results"`
+	}
+	if json.Unmarshal(out.Bytes(), &result) != nil || len(result.Results) != 2 || result.Results[0].Code != "timeout" || !result.Results[1].OK || result.Results[1].Plugin != "example" {
+		t.Fatalf("timeout isolation: %s %s", &out, &stderr)
+	}
+	if _, err := os.Stat("state/example/next.yaml"); err != nil {
+		t.Fatal("following plugin did not write its snapshot")
+	}
+	if _, err := os.Stat("state/aliyun/slow.yaml"); !os.IsNotExist(err) {
+		t.Fatal("failed plugin wrote a snapshot")
 	}
 }

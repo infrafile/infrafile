@@ -2,16 +2,18 @@ package secret
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/getsops/sops/v3/aes"
 	sopsage "github.com/getsops/sops/v3/age"
 	"github.com/getsops/sops/v3/config"
-	"github.com/getsops/sops/v3/decrypt"
 	"github.com/getsops/sops/v3/logging"
 	sopsyaml "github.com/getsops/sops/v3/stores/yaml"
 	"go.yaml.in/yaml/v3"
@@ -26,7 +28,7 @@ func init() {
 
 var encryptedString = regexp.MustCompile(`^ENC\[AES256_GCM,data:[A-Za-z0-9+/=]*,iv:[A-Za-z0-9+/=]+,tag:[A-Za-z0-9+/=]+,type:str\]$`)
 
-func (r Resolver) sops(ref string, resolve bool) (string, error) {
+func (r Resolver) sops(ctx context.Context, ref string, resolve bool) (string, error) {
 	file, key, ok := strings.Cut(strings.TrimPrefix(ref, "sops://"), "#")
 	file, err := url.PathUnescape(file)
 	if !ok || err != nil || !filepath.IsLocal(file) || strings.ContainsAny(file, "?\\\x00") || key == "" || strings.ContainsAny(key, "#?\x00") {
@@ -84,9 +86,42 @@ func (r Resolver) sops(ref string, resolve bool) (string, error) {
 			return "", &Error{"invalid-config", "age 密钥命令已设置但为空，请取消设置或提供有效命令"}
 		}
 	}
-	plain, err := decrypt.Data(data, "yaml")
+	// 上游 decrypt.Data 不传递 context；自行加载 age 密钥，再沿用 SOPS 解密和 MAC 校验。
+	var dataKey []byte
+	for _, masterKey := range tree.Metadata.KeyGroups[0] {
+		key := masterKey.(*sopsage.MasterKey)
+		identities, err := ageIdentities(ctx, key.Recipient)
+		if err != nil {
+			return "", err
+		}
+		if len(identities) == 0 {
+			continue
+		}
+		identities.ApplyToMasterKey(key)
+		dataKey, err = key.Decrypt()
+		if err == nil {
+			break
+		}
+	}
+	if ctx.Err() != nil {
+		return "", &Error{"cancelled", "凭据操作已取消"}
+	}
+	if len(dataKey) == 0 {
+		return "", &Error{"decrypt-failed", "SOPS 解密或完整性校验失败，请检查 age 密钥和密文"}
+	}
+	defer clear(dataKey)
+	cipher := aes.NewCipher()
+	mac, err := tree.Decrypt(dataKey, cipher)
 	if err != nil {
 		return "", &Error{"decrypt-failed", "SOPS 解密或完整性校验失败，请检查 age 密钥和密文"}
+	}
+	originalMAC, err := cipher.Decrypt(tree.Metadata.MessageAuthenticationCode, dataKey, tree.Metadata.LastModified.Format(time.RFC3339))
+	if err != nil || originalMAC != mac {
+		return "", &Error{"decrypt-failed", "SOPS 解密或完整性校验失败，请检查 age 密钥和密文"}
+	}
+	plain, err := store.EmitPlainFile(tree.Branches)
+	if err != nil {
+		return "", &Error{"decrypt-failed", "SOPS 明文结构无法解析"}
 	}
 	defer clear(plain)
 	doc, err = secretDocument(plain)

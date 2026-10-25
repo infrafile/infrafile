@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -95,12 +96,66 @@ func TestSOPS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	store := sopsyaml.NewStore(&config.YAMLStoreConfig{})
+	tree, err := store.LoadEncryptedFile(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mac := tree.Metadata.MessageAuthenticationCode
+	badMAC := strings.Replace(string(data), mac, strings.Replace(mac, "data:", "data:AAAA", 1), 1)
+	if err := os.WriteFile(filepath.Join(dir, "secrets.enc.yaml"), []byte(badMAC), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Resolve(ctx, ref); err == nil || strings.Contains(err.Error(), want) {
+		t.Fatal("字段密文有效但 MAC 被篡改时未安全拒绝")
+	}
 	corrupt := strings.Replace(string(data), "password: ENC[AES256_GCM,data:", "password: ENC[AES256_GCM,data:AAAA", 1)
 	if err := os.WriteFile(filepath.Join(dir, "secrets.enc.yaml"), []byte(corrupt), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.Resolve(ctx, ref); err == nil || strings.Contains(err.Error(), want) {
 		t.Fatal("篡改密文未被拒绝或错误泄露凭据")
+	}
+}
+
+func TestSOPSKeyCommandsRespectContext(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("密钥命令夹具使用 POSIX shell")
+	}
+	testutil.IsolateKeys(t)
+	dir := t.TempDir()
+	ref, want, identity := testutil.EncryptedFile(t, dir)
+	r := secret.Resolver{Dir: dir}
+	command := filepath.Join(dir, "key-command")
+	script := "#!/bin/sh\ncase \"$INFRAFILE_KEY_MODE\" in\n hang) exec sleep 1 ;;\n fail) echo synthetic-private-error >&2; exit 1 ;;\n *) test -n \"$SOPS_AGE_RECIPIENT\" || exit 9; printf '%s\\n' \"$INFRAFILE_TEST_AGE_ID\" ;;\nesac\n"
+	if err := os.WriteFile(command, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("INFRAFILE_TEST_AGE_ID", identity)
+	for _, name := range []string{"SOPS_AGE_KEY_CMD", "SOPS_AGE_SSH_PRIVATE_KEY_CMD"} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv(name, command)
+			t.Setenv("INFRAFILE_KEY_MODE", "hang")
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer cancel()
+			start := time.Now()
+			value, err := r.Resolve(ctx, ref)
+			var failure *secret.Error
+			if !errors.As(err, &failure) || failure.Code != "cancelled" || value != "" || time.Since(start) > 500*time.Millisecond {
+				t.Fatalf("key command exceeded cancellation: elapsed=%s error=%v", time.Since(start), err)
+			}
+		})
+	}
+	t.Setenv("SOPS_AGE_KEY_CMD", command)
+	value, err := r.Resolve(context.Background(), ref)
+	if err != nil || value != want {
+		t.Fatal("密钥命令未能解密")
+	}
+	t.Setenv("INFRAFILE_KEY_MODE", "fail")
+	t.Setenv("SOPS_AGE_KEY", identity)
+	value, err = r.Resolve(context.Background(), ref)
+	if err != nil || value != want {
+		t.Fatal("密钥命令失败不应阻止其他已配置密钥")
 	}
 }
 

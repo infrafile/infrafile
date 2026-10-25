@@ -55,7 +55,7 @@ func (r Resolver) read(ctx context.Context, ref string, value bool) (string, err
 		return "", nil
 	}
 	if strings.HasPrefix(ref, "sops://") {
-		return r.sops(ref, value)
+		return r.sops(ctx, ref, value)
 	}
 	if strings.HasPrefix(ref, "op://") {
 		return readOP(ctx, ref, value)
