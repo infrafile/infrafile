@@ -65,7 +65,8 @@ func aliyunDomains(ctx context.Context, auth cloudAuth) ([]domainEntry, error) {
 			date := ""
 			var err error
 			if domain.Millis > 0 {
-				date = time.UnixMilli(domain.Millis).UTC().Format("2006-01-02")
+				// 与 ExpirationDate 字符串一致按北京时间取日期，UTC 会在 0–8 点早一天。
+				date = time.UnixMilli(domain.Millis).In(time.FixedZone("CST", 8*3600)).Format("2006-01-02")
 			} else {
 				date, err = dateOnly(domain.Expiration)
 			}

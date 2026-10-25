@@ -248,6 +248,12 @@ func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
 	if err == nil {
 		_, err = plugin.Object(data)
 	}
+	// 插件写入前自行重读发现变化时明确未写，不能当成结果不确定。
+	if e, ok := err.(*plugin.Error); ok && e.Code == "stale" {
+		r.Status = "stale"
+		r.Message = "观测状态已变化，未执行；请重新生成计划"
+		return r, nil
+	}
 	if err != nil {
 		r.Status = "uncertain"
 		r.Message = "控制请求未获确认，远端可能已改变；请先回读后重新计划"

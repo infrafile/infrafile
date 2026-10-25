@@ -244,6 +244,10 @@ func TestAliyunRecordedSync(t *testing.T) {
 	if requests != 3 || !strings.Contains(string(data), `"expires_at":"2030-01-01"`) || !strings.Contains(string(data), `"name":"cdn.example.com"`) || strings.Contains(string(data), "not-retained") || strings.Contains(string(data), "GmtModified") {
 		t.Fatalf("Aliyun result: %s", data)
 	}
+	// example.com 的毫秒时间戳是 UTC 2029-12-31 16:30，即北京时间 2030-01-01 00:30。
+	if strings.Count(string(data), `"expires_at":"2030-01-01"`) != 2 {
+		t.Fatalf("Aliyun expiry not in Beijing time: %s", data)
+	}
 	if strings.Index(string(data), `"name":"example.com"`) > strings.Index(string(data), `"name":"example.net"`) {
 		t.Fatal("unstable domain order")
 	}

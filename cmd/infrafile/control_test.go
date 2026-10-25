@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -128,6 +130,34 @@ func TestApplyStateChangedIsRefused(t *testing.T) {
 	got, _ := os.ReadFile("changed")
 	if string(got) != "external-change" {
 		t.Fatal("stale apply wrote")
+	}
+}
+
+// 状态在 apply 回读之后、插件写入前才变化时，插件拒绝写入，应报 stale 而非 uncertain。
+func TestApplyPluginRefusedStaleIsStale(t *testing.T) {
+	emptyRepo(t)
+	t.Setenv("INFRAFILE_TEST_CF", "synthetic-control-value")
+	if err := os.MkdirAll("inventory/resources", 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeImportFile(t, "infrafile.yaml", "apiVersion: infrafile/v1alpha1\nkind: Config\nplugins:\n  cloudflare:\n    instances:\n      home: {api_token: 'env://INFRAFILE_TEST_CF'}\n")
+	writeImportFile(t, "inventory/resources/edge.yaml", "apiVersion: infrafile/v1alpha1\nkind: Resource\nmetadata: {name: edge}\nspec:\n  provider: cloudflare\n  type: dns-zone\n  control: {plugin: cloudflare, instance: home, zone_id: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}\n")
+	gets, writes := 0, 0
+	old := http.DefaultTransport
+	http.DefaultTransport = cloudReplay(func(r *http.Request) (*http.Response, error) {
+		if r.Method != "GET" {
+			writes++
+		}
+		gets++
+		// 第 1 次给 plan，第 2 次给 apply 回读；之后模拟外部已暂停。
+		data, _ := json.Marshal(map[string]any{"success": true, "result": map[string]any{"id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "name": "example.com", "paused": gets > 2}})
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(bytes.NewReader(data)), Request: r}, nil
+	})
+	t.Cleanup(func() { http.DefaultTransport = old })
+	importCLI(t, 0, "plan", "cdn-pause", "Resource/edge", "-o", "plan.json")
+	out := importCLI(t, 1, "apply", "plan.json", "--json")
+	if !bytes.Contains(out, []byte(`"status": "stale"`)) || gets != 3 || writes != 0 {
+		t.Fatalf("gets=%d writes=%d: %s", gets, writes, out)
 	}
 }
 
