@@ -1,0 +1,1 @@
+{"Response":{"TotalCount":2,"DomainSet":[{"AutoRenew":0,"IsPremium":false,"DomainId":"domain-example002","ExpirationDate":"2030-01-01","DomainName":"example.net","CreationDate":"2026-01-01","BuyStatus":"ok"}],"RequestId":"example-domain-request"}}

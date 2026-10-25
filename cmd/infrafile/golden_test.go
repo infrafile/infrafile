@@ -82,6 +82,8 @@ func TestGolden(t *testing.T) {
 		{"sync-empty-json", []string{"sync", "--json"}, emptyRepo},
 		{"sync-partial", []string{"sync"}, goldenSyncPartial},
 		{"sync-partial-json", []string{"sync", "--json"}, goldenSyncPartial},
+		{"sync-first-party", []string{"sync"}, firstPartyRepo},
+		{"sync-first-party-json", []string{"sync", "--json"}, firstPartyRepo},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

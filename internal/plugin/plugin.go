@@ -72,9 +72,13 @@ func (example) Call(ctx context.Context, method string, params any) (json.RawMes
 func (example) Close() {}
 
 // Open 优先匹配内置插件，否则按启用名在 PATH 上查找可执行文件。
-func Open(ctx context.Context, name string) (Client, error) {
+func Open(ctx context.Context, name, dir string) (Client, error) {
 	if name == "example" {
 		return example{}, nil
+	}
+	switch name {
+	case "cloudflare", "dns", "tls", "whois", "ssh", "aliyun", "tencent", "baidu", "ctyun":
+		return &builtin{name: name, dir: dir}, nil
 	}
 	return openExternal(ctx, name)
 }

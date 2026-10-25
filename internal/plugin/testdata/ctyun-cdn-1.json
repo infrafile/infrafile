@@ -1,0 +1,1 @@
+{"code":100000,"message":"success","total":2,"total_count":2,"page":1,"page_count":2,"page_size":100,"result":[{"area_scope":1,"insert_date":1704067200000,"domain":"www.example.net","cname":"edge.example.net.","record_num":"fixture-record","product_code":"008","product_name":"CDN加速","status":4}]}

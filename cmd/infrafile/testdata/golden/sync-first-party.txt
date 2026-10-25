@@ -1,0 +1,10 @@
+$ infrafile sync
+[退出码 0]
+--- stdout
+aliyun/demo：已更新 → state/aliyun/demo.yaml
+baidu/demo：已更新 → state/baidu/demo.yaml
+cloudflare/demo：已更新 → state/cloudflare/demo.yaml
+ctyun/demo：已更新 → state/ctyun/demo.yaml
+tencent/demo：已更新 → state/tencent/demo.yaml
+同步 5 个实例
+--- stderr

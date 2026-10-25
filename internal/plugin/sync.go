@@ -51,7 +51,7 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 		instances := plugins[name].(map[string]any)["instances"].(map[string]any)
 		for _, instance := range sortedKeys(instances) {
 			r := Result{Plugin: name, Instance: instance, File: "state/" + name + "/" + instance + ".yaml"}
-			data, err := syncInstance(ctx, name, protocol.SyncParams{Instance: instance, Config: instances[instance].(map[string]any)}, timeout)
+			data, err := syncInstance(ctx, name, repo.Dir, protocol.SyncParams{Instance: instance, Config: instances[instance].(map[string]any)}, timeout)
 			if err == nil {
 				r.Changed, err = state.Write(name, instance, data, now)
 			}
@@ -72,10 +72,10 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 	return results, nil
 }
 
-func syncInstance(parent context.Context, name string, params protocol.SyncParams, timeout time.Duration) ([]byte, error) {
+func syncInstance(parent context.Context, name, dir string, params protocol.SyncParams, timeout time.Duration) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
-	client, err := Open(ctx, name)
+	client, err := Open(ctx, name, dir)
 	if err != nil {
 		return nil, err
 	}

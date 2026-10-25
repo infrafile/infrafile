@@ -1,0 +1,1 @@
+{"Response":{"TotalCount":2,"DomainSet":[{"DomainId":"domain-example001","ExpirationDate":"2030-01-01 12:00:00","DomainName":"example.com","BuyStatus":"ok"}],"RequestId":"example-domain-request"}}

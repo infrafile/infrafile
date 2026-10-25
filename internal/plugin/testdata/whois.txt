@@ -1,0 +1,10 @@
+   Domain Name: EXAMPLE.COM
+   Registry Domain ID: 1000001_DOMAIN_COM-VRSN
+   Registrar: Example Registrar
+   Registrar WHOIS Server: whois.example.net
+   Registry Expiry Date: 2030-01-01T00:00:00Z
+   Domain Status: clientTransferProhibited https://icann.org/epp#clientTransferProhibited
+   Name Server: NS2.EXAMPLE.NET
+   Name Server: NS1.EXAMPLE.NET
+   Registrant Email: private-contact@example.com
+>>> Last update of whois database: 2026-10-25T01:00:00Z <<<

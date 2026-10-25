@@ -1,0 +1,51 @@
+apiVersion: infrafile/v1alpha1
+kind: Config
+plugins:
+  cloudflare:
+    instances:
+      home:
+        api_token: env://CLOUDFLARE_API_TOKEN
+  aliyun:
+    instances:
+      home:
+        access_key_id: env://ALIYUN_ACCESS_KEY_ID
+        access_key_secret: env://ALIYUN_ACCESS_KEY_SECRET
+        services: [domains, cdn]
+  tencent:
+    instances:
+      home:
+        access_key_id: env://TENCENT_SECRET_ID
+        access_key_secret: env://TENCENT_SECRET_KEY
+        services: [domains, cdn]
+  baidu:
+    instances:
+      home:
+        access_key_id: env://BAIDU_ACCESS_KEY_ID
+        access_key_secret: env://BAIDU_ACCESS_KEY_SECRET
+        services: [domains, cdn]
+  ctyun:
+    instances:
+      home:
+        access_key_id: env://CTYUN_ACCESS_KEY_ID
+        access_key_secret: env://CTYUN_ACCESS_KEY_SECRET
+        services: [cdn]
+  dns:
+    instances:
+      blog:
+        host: blog.example.com
+  tls:
+    instances:
+      blog:
+        host: blog.example.com
+        port: 443
+  whois:
+    instances:
+      home:
+        domain: example.com
+  ssh:
+    instances:
+      web:
+        host: 192.0.2.10
+        user: observer
+        port: 22
+        known_hosts_file: ssh/known_hosts
