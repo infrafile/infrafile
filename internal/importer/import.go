@@ -60,6 +60,9 @@ func Prepare(repo *ledger.Repo, entries []Entry, notices []Notice) (*Result, err
 		if schemas.Validate(entry.Kind, entry.Record) != nil {
 			return nil, errors.New("导入候选不符合记录 Schema，请检查源数据的名称和字段")
 		}
+		if len(entry.Name+".yaml") > 255 {
+			return nil, errors.New("导入记录名称加 .yaml 后不能超过 255 字节，请缩短源别名或人工处理长域名")
+		}
 		key := entry.Kind + "/" + entry.Name
 		if existing[key] {
 			entry.Status, entry.Record = "exists", nil
@@ -209,6 +212,27 @@ func ReviewPath(repoDir, out string) (string, error) {
 	rel, err := filepath.Rel(inventory, canonical)
 	if err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))) {
 		return "", errors.New("待审目录不能位于 inventory/ 内；写入台账必须使用 --write")
+	}
+	rootInfo, err := os.Stat(repoDir)
+	if err != nil {
+		return "", errors.New("无法检查数据仓目录身份")
+	}
+	inventoryInfo, inventoryErr := os.Stat(inventory)
+	for current := canonical; ; current = filepath.Dir(current) {
+		info, statErr := os.Stat(current)
+		if inventoryErr == nil && statErr == nil && os.SameFile(inventoryInfo, info) {
+			return "", errors.New("待审目录不能通过路径别名指向 inventory/")
+		}
+		// inventory 尚不存在时也保留大小写变体，避免在大小写不敏感卷上创建同一目录。
+		if strings.EqualFold(filepath.Base(current), ledger.InventoryDir) {
+			parent, parentErr := os.Stat(filepath.Dir(current))
+			if parentErr == nil && os.SameFile(rootInfo, parent) {
+				return "", errors.New("待审目录不能使用 inventory/ 的大小写变体")
+			}
+		}
+		if filepath.Dir(current) == current {
+			break
+		}
 	}
 	return canonical, nil
 }

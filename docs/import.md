@@ -15,7 +15,7 @@ infrafile import state --dir /path/to/my-infra --write --json
 
 `--output`（`-o`）与 `--write` 互斥。不带这两个选项时不会创建任何文件，文本模式输出以 `---` 分隔的 YAML 文档，JSON 模式输出结构化草稿。一个 inventory 文件只能有一条记录，不要把整段多文档输出重定向为单条记录文件。
 
-待审目录按 `<kind 复数>/<name>.yaml` 布局，已有文件也跳过。待审目录不能位于 `inventory/` 内，符号链接别名不能绕过这个限制。重新执行 `--write` 会重新读取原始来源，**不会读取手工修改过的 review 草稿**；修改后的单条草稿应由人移入对应 inventory 目录，再运行 `validate`。
+待审目录按 `<kind 复数>/<name>.yaml` 布局，已有文件也跳过。待审目录不能位于 `inventory/` 内，符号链接及大小写别名不能绕过这个限制；台账根目录下的 inventory 大小写变体也保留不用。重新执行 `--write` 会重新读取原始来源，**不会读取手工修改过的 review 草稿**；修改后的单条草稿应由人移入对应 inventory 目录，再运行 `validate`。
 
 ## 只建不覆盖
 
@@ -35,7 +35,7 @@ Include 支持绝对路径、`~/`、相对路径和 glob；相对路径遵循用
 
 支持 HostName 的 `%h` 替换；其他 token、Include 的环境变量展开、Match 条件和需要 DNS 的地址规范化不支持，遇到时明确报错。不会执行 Match exec、ProxyCommand、LocalCommand、RemoteCommand，也不会隐式读取系统级 SSH 配置。IdentityFile、代理、转发及其他未映射的 SSH 配置不会导入；需要连接时仍应保留原 SSH 配置并人工核对。
 
-别名转为小写，记录名不允许的字符转为连字符，去掉首尾点和连字符；空名、超长名或规范化后产生不同草稿的主键冲突会报错。导入只生成资产字段，不承诺完整重建 SSH 客户端配置。
+别名转为小写，记录名不允许的字符转为连字符，去掉首尾点和连字符；空名、超长名或规范化后产生不同草稿的主键冲突会报错。完整文件名（含 `.yaml`）最多 255 字节，因此导入的 SSH / Domain 主键最多 250 字节；自动生成的 Resource 名会为后缀预留空间。导入只生成资产字段，不承诺完整重建 SSH 客户端配置。
 
 ## state 映射
 

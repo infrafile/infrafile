@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -148,7 +148,7 @@ func readSSH(file, home string, aliases, stack map[string]bool) ([]directive, er
 		directives = append(directives, d)
 		if key == "host" {
 			for _, alias := range values {
-				if !strings.ContainsAny(alias, "*?![") {
+				if !strings.ContainsAny(alias, "*?!") {
 					aliases[alias] = true
 				}
 			}
@@ -187,7 +187,9 @@ func matchHost(patterns []string, alias string) bool {
 	match := false
 	for _, pattern := range patterns {
 		negated := strings.HasPrefix(pattern, "!")
-		ok, _ := path.Match(strings.TrimPrefix(pattern, "!"), alias)
+		literal := regexp.QuoteMeta(strings.TrimPrefix(pattern, "!"))
+		expression := strings.NewReplacer(`\*`, ".*", `\?`, ".").Replace(literal)
+		ok, _ := regexp.MatchString("^"+expression+"$", alias)
 		if ok && negated {
 			return false
 		}

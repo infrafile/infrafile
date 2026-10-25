@@ -267,8 +267,8 @@ func resourceName(provider, instance, kind, name string) string {
 	parts := []string{provider, instance, kind, name}
 	digest := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	slug := strings.Trim(unsafeName.ReplaceAllString(strings.Join(parts, "-"), "-"), ".-")
-	if len(slug) > 244 {
-		slug = strings.TrimRight(slug[:244], ".-")
+	if len(slug) > 241 {
+		slug = strings.TrimRight(slug[:241], ".-")
 	}
 	return fmt.Sprintf("%s-%x", slug, digest[:4])
 }

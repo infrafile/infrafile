@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -241,6 +242,83 @@ func TestImportPartialWriteIsReportedAndPreserved(t *testing.T) {
 	}
 	if _, err := os.Stat("review/domains/example.com.yaml"); err != nil {
 		t.Fatal("previously created file lost")
+	}
+}
+
+func TestImportSSHBracketsAreLiteral(t *testing.T) {
+	emptyRepo(t)
+	writeImportFile(t, "ssh.conf", "Host web[12]\n HostName bracket.example.com\n User bracket-user\nHost web1\n HostName 192.0.2.1\n User observer\n")
+	importCLI(t, 0, "import", "ssh-config", "--file", "ssh.conf", "--write")
+	data, _ := os.ReadFile("inventory/servers/web1.yaml")
+	if !bytes.Contains(data, []byte("observer")) || bytes.Contains(data, []byte("bracket-user")) {
+		t.Fatalf("SSH bracket pattern misapplied: %s", data)
+	}
+	if _, err := os.Stat("inventory/servers/web-12.yaml"); err != nil {
+		t.Fatal("literal bracket alias disappeared")
+	}
+}
+
+func TestImportNamesFitFileSystem(t *testing.T) {
+	long := strings.Repeat("a", 63) + "." + strings.Repeat("b", 63) + "." + strings.Repeat("c", 63) + "." + strings.Repeat("d", 61)
+	t.Run("resource", func(t *testing.T) {
+		emptyRepo(t)
+		importSnapshot(t, "aliyun", strings.Repeat("a", 64), "cdn: [{name: "+long+"}]\n")
+		importCLI(t, 0, "import", "state", "--write")
+		files, err := os.ReadDir("inventory/resources")
+		if err != nil || len(files) != 1 || len(files[0].Name()) > 255 {
+			t.Fatalf("long resource filename: %v %v", files, err)
+		}
+		importCLI(t, 0, "validate")
+	})
+	for _, source := range []string{"domain", "ssh"} {
+		t.Run(source, func(t *testing.T) {
+			emptyRepo(t)
+			args := []string{"import", "state", "--write"}
+			if source == "domain" {
+				importSnapshot(t, "aliyun", "home", "domains: [{name: example.com}, {name: "+long+"}]\n")
+			} else {
+				writeImportFile(t, "ssh.conf", "Host "+strings.Repeat("a", 251)+"\n HostName 192.0.2.1\n")
+				args = []string{"import", "ssh-config", "--file", "ssh.conf", "--write"}
+			}
+			importCLI(t, 2, args...)
+			if _, err := os.Stat("inventory"); !os.IsNotExist(err) {
+				t.Fatal("long filename was not rejected before writes")
+			}
+		})
+	}
+}
+
+func TestImportReviewCannotUseInventoryCaseAlias(t *testing.T) {
+	for _, existing := range []bool{true, false} {
+		t.Run(fmt.Sprint(existing), func(t *testing.T) {
+			emptyRepo(t)
+			if err := os.Mkdir("inventory", 0o755); err != nil {
+				t.Fatal(err)
+			}
+			lower, _ := os.Stat("inventory")
+			upper, err := os.Stat("INVENTORY")
+			if err != nil || !os.SameFile(lower, upper) {
+				t.Skip("测试卷区分大小写")
+			}
+			if !existing {
+				if err := os.Remove("inventory"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			importSnapshot(t, "aliyun", "home", "domains: [{name: example.com}]\n")
+			before := importFiles(t)
+			for _, output := range []string{"INVENTORY", "INVENTORY/review"} {
+				importCLI(t, 2, "import", "state", "--output", output)
+			}
+			if !reflect.DeepEqual(before, importFiles(t)) {
+				t.Fatal("case alias bypassed --write")
+			}
+			if !existing {
+				if _, err := os.Stat("inventory"); !os.IsNotExist(err) {
+					t.Fatal("case alias created inventory")
+				}
+			}
+		})
 	}
 }
 
