@@ -79,3 +79,17 @@ ifl version --json
 ```
 
 Homebrew 要求信任时，审阅配方后只信任这一 formula：`brew trust --formula infrafile/tap/infrafile`，见 [Tap Trust](https://docs.brew.sh/Tap-Trust)。升级已有安装使用 `brew update`、`brew upgrade infrafile/tap/infrafile`。最后按[快速上手](quickstart.md)跑完临时 homelab 流程，才能把“签名产物已发布”与“包管理器安装可用”两项都记为完成。
+
+## v0.1.0 发布验收
+
+2026-10-25 完成首次公开发布：
+
+- [Release](https://github.com/infrafile/infrafile/releases/tag/v0.1.0) 为公开正式版本，共 10 个附件：六个归档、校验清单及签名 bundle、formula 及签名 bundle。标签固定在 `d92dd87b0a8bc81e6f0c79db044411a11922f741`。
+- [源码 CI](https://github.com/infrafile/infrafile/actions/runs/40179774245) 与[发布工作流](https://github.com/infrafile/infrafile/actions/runs/40180093985/attempts/2)通过，包括 Go race 测试、配方生成测试和 Linux amd64 正式归档的离线上手检查。
+- 下载正式附件后，按上述固定工作流身份与 issuer 验证两份 Cosign bundle；六个 SHA-256、归档内的二进制、文档和示例均匹配。重新生成的 formula 与签名附件逐字节一致。
+- [tap 配方提交](https://github.com/infrafile/homebrew-tap/commit/20d69fb)使用已验签的附件。macOS arm64 实际运行 `brew install infrafile/tap/infrafile` 和 `brew test infrafile/tap/infrafile` 成功；`infrafile` 与 `ifl` 都报告 `0.1.0 / d92dd87`，并解析到同一二进制。
+- 使用 Homebrew 安装的二进制和共享示例跑完快速上手：空仓校验、13 条初始记录、离线同步、导入后 17 条记录、重复导入不创建、DNSControl、SSH 配置与 Agent 指南安装均通过。
+
+首次工作流因 WHOIS 测试对套接字截止时间与 context 通知先后的假设失败，未产出 Release；第二次通过。main 上的 `d68ae7e` 只修正该测试断言，连续 50 次 race 验证通过，未改运行时代码或移动发布标签。
+
+macOS amd64、Linux arm64 和 Windows 两个架构只验证了构建与归档，未做原生运行；真实云账号、IAM 权限和生产写入仍未验收。归档内文档保留标签时的状态，发布完成记录以此处 main 文档为准。

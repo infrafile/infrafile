@@ -1,6 +1,6 @@
 # infrafile
 
-> ⚠️ **早期开发中，尚不可用。** 接口、数据格式随时会变，请勿用于真实台账。
+> **[v0.1.0 已发布](https://github.com/infrafile/infrafile/releases/tag/v0.1.0)。** 首个公开版本，数据格式为 `v1alpha1`。
 
 infrafile 是面向个人和小团队的基础设施资产台账：**以 git 为后端**，服务器、应用、域名、云账号、云资源、代码仓都写成明文 YAML 存进 git。另外几项能力：
 
@@ -23,7 +23,7 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 
 安装：`brew install infrafile/tap/infrafile`，安装后 `infrafile` 和 `ifl` 等价。首次体验见[快速上手](docs/quickstart.md)；其他平台的压缩包见 [Releases](https://github.com/infrafile/infrafile/releases)，验签见[发布指南](docs/release.md)。
 
-目前已完成 M0–M8：账本、查询、凭据引用、插件与导入、plan / apply 受控写、DNSControl，以及本地 stdio MCP 和内嵌 Agent 指南。MCP 提供六个只读查询／计划工具，目标按台账主键或标签选择；线上变更仍通过 CLI 审阅计划并另行授权执行。可先用[虚构示例](examples/homelab/README.md)体验；发版按 M9 计划推进。
+目前已完成 M0–M9：账本、查询、凭据引用、插件与导入、plan / apply 受控写、DNSControl，以及本地 stdio MCP 和内嵌 Agent 指南；签名发布与 Homebrew 安装已验收。MCP 提供六个只读查询／计划工具，目标按台账主键或标签选择；线上变更仍通过 CLI 审阅计划并另行授权执行。可先用[虚构示例](examples/homelab/README.md)体验。
 
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
