@@ -43,14 +43,31 @@ type Plan struct {
 
 var digest = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
+const maxPlanBytes = 4 << 20
+
+// Encode 在创建文件或输出任何字节前，与读取端使用同一大小上限。
+func (p *Plan) Encode() ([]byte, error) {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(p); err != nil {
+		return nil, err
+	}
+	if buf.Len() > maxPlanBytes {
+		return nil, fmt.Errorf("计划超过 4 MiB，请缩小插件观测范围")
+	}
+	return buf.Bytes(), nil
+}
+
 func Read(path string) (*Plan, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, (4<<20)+1))
-	if err != nil || len(data) > 4<<20 {
+	data, err := io.ReadAll(io.LimitReader(f, maxPlanBytes+1))
+	if err != nil || len(data) > maxPlanBytes {
 		return nil, fmt.Errorf("计划读取失败或超过 4 MiB")
 	}
 	if _, err := plugin.Object(data); err != nil {

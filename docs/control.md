@@ -47,7 +47,7 @@ infrafile plan cdn-origin Resource/edge --dir ./my-infra \
   --host origin.example.net -o origin.json
 ```
 
-每份 v1 计划包含一个动作。省略 `-o` 时输出可保存的 JSON；`-o` 只创建新文件，权限为 0600，不覆盖已有路径。生成计划会实时读取云端，不使用可能过期的 state 快照；不会调用写 API。`--timeout` 默认 30s，是整个命令的插件调用总时限。
+每份 v1 计划包含一个动作，最终 JSON 上限为 4 MiB；超出时在输出或创建文件前拒绝。省略 `-o` 时输出可保存的 JSON；`-o` 只创建新文件，权限为 0600，不覆盖已有路径。生成计划会实时读取云端，不使用可能过期的 state 快照；不会调用写 API。`--timeout` 默认 30s，是整个命令的插件调用总时限。
 
 计划记录格式版本、UTC 生成时间、台账主键、插件绑定、Resource 内容哈希、实例配置哈希、动作参数、变更前状态及 SHA-256、预期变更后状态。不会把实例配置或凭据值写进计划。哈希使用 Go `encoding/json` 的稳定对象键顺序，数字保留 JSON 精度。
 
@@ -67,7 +67,7 @@ zone 动作的观测范围是 zone ID、名称及 paused；Origin Rule 动作还
 ## Cloudflare 权限和边界
 
 - zone 观测使用 Zone Read；暂停／恢复使用 Zone Write，限定目标 zone。[读取 zone](https://developers.cloudflare.com/api/resources/zones/methods/get/)、[编辑 zone](https://developers.cloudflare.com/api/resources/zones/methods/edit/)。
-- Origin Rules 需要 Origin Read / Origin Write，并具有对应功能授权。**回源主机覆盖需要 Enterprise**，且新主机名应属于同一个 Cloudflare 账号；这里只校验主机名形式，服务端负责授权与可用性判断。[可用性](https://developers.cloudflare.com/rules/origin-rules/)、[设置约束](https://developers.cloudflare.com/rules/origin-rules/features/)。
+- Origin Rules 需要 Origin Read / Origin Write，并具有对应功能授权。**回源主机覆盖需要 Enterprise**，且新主机名应属于同一个 Cloudflare 账号；这里只校验主机名形式，服务端负责授权与可用性判断。[权限名称](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)、[可用性](https://developers.cloudflare.com/rules/origin-rules/)、[设置约束](https://developers.cloudflare.com/rules/origin-rules/features/)。
 - 通过单规则 PATCH 保留其他规则，按 API 要求携带目标规则完整定义。[更新规则](https://developers.cloudflare.com/ruleset-engine/rulesets-api/update-rule/)。
 - HTTP 成功和回读一致代表配置已接受，不代表公网流量、源站连通性或 TLS 握手已验收。本阶段仅验证虚构离线响应，未使用真实账号，也未验证真实 IAM 或 Enterprise 授权。
 
@@ -97,6 +97,10 @@ dnscontrol check
 
 `provider` 是 DNSControl 凭据条目名称，不自动读取 Account 或解析 infrafile 凭据。生成器只向 stdout 输出 JS；`--json` 返回配置字符串及域名列表。它不执行 DNSControl、不创建 creds.json、不联网。使用 DNSControl 的 `NewDnsProvider(name)`，提供方 TYPE 由 DNSControl 凭据配置决定；注册商为 `none`。
 
+离线 `dnscontrol check` 也需要知道条目类型。可以在审阅目录提供只含类型、不含凭据的 `creds.json`：`{"none":{"TYPE":"NONE"},"cloudflare-main":{"TYPE":"CLOUDFLAREAPI"}}`。生成的 homelab 配置已用 DNSControl 5.4.0 的 check 验证；preview / push 所需的真实认证由 DNSControl 单独配置。
+
 支持 A、AAAA、CNAME、MX、TXT、NS、CAA。`name` 为相对名称，根为 `@`；目标主机名填写不带结尾点的完整域名，输出自动补点。MX 必须有 priority，CAA 必须有 tag（issue / issuewild / iodef，flags 固定为 0）。可选 ttl 为正整数秒；未填时沿用 DNSControl 默认值。proxied 仅用于 A / AAAA / CNAME，输出 CF_PROXY_ON / CF_PROXY_OFF，仅适用于 Cloudflare，省略时沿用 DNSControl 默认代理行为。
+
+根域 `NS`（name 为 `@`）映射为 `NAMESERVER()`，不接受 TTL；子域委派仍生成 `NS()`。注册商为 NONE，因此不会通过生成配置修改父区委派；提供方自有的 NS 处理仍由 DNSControl 决定。[NS 与 NAMESERVER 的区别](https://docs.dnscontrol.org/language-reference/domain-modifiers/nameserver)。
 
 归档 Domain 和没有 dns 字段的记录跳过；重复记录、CNAME 冲突及非法数据报错，stdout 为空。输出按域名和记录排序，JS 字符串经 JSON 编码，不插入原始代码。各 zone 固定使用 **NO_PURGE**：未列出的远端记录不自动删除，因此从台账删除 DNS 项不会删除远端记录；删除另行交给 DNSControl 审阅处理。[NO_PURGE](https://docs.dnscontrol.org/language-reference/domain-modifiers/no_purge)、[Cloudflare 元数据](https://docs.dnscontrol.org/provider/cloudflareapi)、[TXT 编码](https://docs.dnscontrol.org/language-reference/domain-modifiers/txt)。

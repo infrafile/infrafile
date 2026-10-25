@@ -65,6 +65,18 @@ func controlHelper() {
 				paused = false
 			}
 			state := map[string]any{"paused": paused}
+			if os.Getenv("INFRAFILE_CONTROL_CASE") == "large" {
+				// 小 RPC 经缩进后也可能成为大计划，避免用多 MiB 文本拖慢 race 测试。
+				values := make([]string, 20000)
+				for i := range values {
+					values[i] = "x"
+				}
+				var nested any = values
+				for i := 0; i < 50; i++ {
+					nested = map[string]any{"nested": nested}
+				}
+				state["description"] = nested
+			}
 			if os.Getenv("INFRAFILE_CONTROL_CASE") == "sensitive" {
 				state["password"] = "synthetic-control-secret"
 			}
@@ -83,6 +95,22 @@ func controlHelper() {
 		}
 		data, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": req.ID, "result": result})
 		fmt.Println(string(data))
+	}
+}
+
+func TestPlanRejectsOversizedOutputBeforePublishing(t *testing.T) {
+	controlRepo(t)
+	t.Setenv("INFRAFILE_CONTROL_CASE", "large")
+	for _, flags := range [][]string{{"-o", "large.json"}, {"--json"}} {
+		var stdout, stderr bytes.Buffer
+		args := append([]string{"plan", "cdn-pause", "Resource/edge", "--timeout", "2m"}, flags...)
+		code := run(args, &stdout, &stderr)
+		if code != 2 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "计划超过 4 MiB") {
+			t.Fatalf("oversize result: exit=%d stdout=%d bytes stderr=%s", code, stdout.Len(), &stderr)
+		}
+	}
+	if _, err := os.Stat("large.json"); !os.IsNotExist(err) {
+		t.Fatal("unreadable plan file created")
 	}
 }
 

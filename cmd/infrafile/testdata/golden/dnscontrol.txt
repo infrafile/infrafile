@@ -10,6 +10,7 @@ D("example.com", REG_NONE, DnsProvider(DSP_0), NO_PURGE,
   CAA("@", "issue", "ca.example.net"),
   CNAME("www", "example.com.", CF_PROXY_ON),
   MX("@", 10, "mail.example.net."),
+  NAMESERVER("ns1.example.net."),
   TXT("@", "v=spf1 -all")
 );
 --- stderr

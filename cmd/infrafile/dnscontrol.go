@@ -111,6 +111,10 @@ func renderDNSControl(repo *ledger.Repo) (string, []string, error) {
 				return "", nil, fmt.Errorf("Domain/%s 存在重复 DNS 记录", r.Name)
 			}
 			seen[identity] = true
+			if typ == "NS" && name == "@" {
+				lines = append(lines, "NAMESERVER("+jsString(content)+")")
+				continue
+			}
 			if ttl, ok := record["ttl"]; ok {
 				params = append(params, fmt.Sprintf("TTL(%v)", ttl))
 			}

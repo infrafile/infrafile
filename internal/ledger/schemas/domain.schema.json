@@ -137,39 +137,11 @@
                     "if": {
                       "properties": {
                         "type": {
-                          "const": "CNAME"
-                        }
-                      }
-                    },
-                    "then": {
-                      "properties": {
-                        "content": {
-                          "format": "hostname"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "if": {
-                      "properties": {
-                        "type": {
-                          "const": "MX"
-                        }
-                      }
-                    },
-                    "then": {
-                      "properties": {
-                        "content": {
-                          "format": "hostname"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "if": {
-                      "properties": {
-                        "type": {
-                          "const": "NS"
+                          "enum": [
+                            "CNAME",
+                            "MX",
+                            "NS"
+                          ]
                         }
                       }
                     },
@@ -239,6 +211,25 @@
                       "not": {
                         "required": [
                           "proxied"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "NS"
+                        },
+                        "name": {
+                          "const": "@"
+                        }
+                      }
+                    },
+                    "then": {
+                      "not": {
+                        "required": [
+                          "ttl"
                         ]
                       }
                     }

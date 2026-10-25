@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -34,16 +33,16 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			data, err := p.Encode()
+			if err != nil {
+				return err
+			}
 			if output != "" {
-				var buf bytes.Buffer
-				if err := writeJSON(&buf, p); err != nil {
-					return err
-				}
 				f, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 				if err != nil {
 					return err
 				}
-				_, err = f.Write(buf.Bytes())
+				_, err = f.Write(data)
 				closeErr := f.Close()
 				if err != nil {
 					return err
@@ -56,7 +55,8 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 					return err
 				}
 			}
-			return writeJSON(cmd.OutOrStdout(), p)
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
 		}}
 		cmd.Flags().StringVar(&dir, "dir", ".", "数据仓目录")
 		cmd.Flags().StringVarP(&output, "output", "o", "", "计划文件（不覆盖已有文件；省略时输出 JSON）")
@@ -72,7 +72,12 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 			return err
 		}
 		if opts.json {
-			return writeJSON(cmd.OutOrStdout(), p)
+			data, err := p.Encode()
+			if err != nil {
+				return err
+			}
+			_, err = cmd.OutOrStdout().Write(data)
+			return err
 		}
 		a := p.Actions[0]
 		fmt.Fprintf(cmd.OutOrStdout(), "计划 %s · %s\n目标：%s\n插件：%s/%s\n动作：%s\n观测哈希：%s\n变更前：\n", p.Version, p.GeneratedAt, a.Target, a.Binding.Plugin, a.Binding.Instance, a.Operation, a.BeforeHash)
