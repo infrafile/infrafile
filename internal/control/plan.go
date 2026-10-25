@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -84,10 +85,28 @@ func Read(path string) (*Plan, error) {
 	if d.Decode(&p) != nil {
 		return nil, fmt.Errorf("计划结构不合法")
 	}
+	// 解码器按大小写不敏感匹配字段名，"Parameters" 这类变体会被执行端采用，
+	// jq 等审阅工具却看不到；要求重新编码后与原文逐字段一致。
+	if canonical, err := json.Marshal(&p); err != nil || !sameJSON(data, canonical) {
+		return nil, fmt.Errorf("计划含非规范字段名（如大小写变体）")
+	}
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
 	return &p, nil
+}
+
+func sameJSON(a, b []byte) bool {
+	decode := func(data []byte) (any, error) {
+		var v any
+		d := json.NewDecoder(bytes.NewReader(data))
+		d.UseNumber()
+		err := d.Decode(&v)
+		return v, err
+	}
+	va, errA := decode(a)
+	vb, errB := decode(b)
+	return errA == nil && errB == nil && reflect.DeepEqual(va, vb)
 }
 
 func (p *Plan) Validate() error {

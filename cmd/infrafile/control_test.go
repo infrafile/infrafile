@@ -198,7 +198,7 @@ func TestPlanValidationAndSecretSafety(t *testing.T) {
 	}
 	importCLI(t, 0, "plan", "cdn-pause", "Resource/edge", "-o", "plan.json")
 	original, _ := os.ReadFile("plan.json")
-	for _, tamper := range []string{"version", "extra", "after", "hash", "duplicate", "multiple"} {
+	for _, tamper := range []string{"version", "extra", "after", "hash", "duplicate", "case-duplicate", "case-variant", "multiple"} {
 		t.Run(tamper, func(t *testing.T) {
 			var p map[string]any
 			json.Unmarshal(original, &p)
@@ -216,8 +216,15 @@ func TestPlanValidationAndSecretSafety(t *testing.T) {
 				p["actions"] = []any{a, a}
 			}
 			data, _ := json.Marshal(p)
-			if tamper == "duplicate" {
+			switch tamper {
+			case "duplicate":
 				data = bytes.Replace(data, []byte(`"version":"v1"`), []byte(`"version":"v2","version":"v1"`), 1)
+			case "case-duplicate":
+				// jq 看到 v2，大小写不敏感的解码器却取 v1。
+				data = bytes.Replace(data, []byte(`"version":"v1"`), []byte(`"version":"v2","Version":"v1"`), 1)
+			case "case-variant":
+				// jq 的 .parameters 为空，解码器仍会使用它。
+				data = bytes.Replace(data, []byte(`"parameters":`), []byte(`"Parameters":`), 1)
 			}
 			writeImportFile(t, "bad.json", string(data))
 			importCLI(t, 2, "plan", "show", "bad.json")

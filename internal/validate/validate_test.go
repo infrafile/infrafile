@@ -218,6 +218,36 @@ spec:
 	)
 }
 
+// 引用后面接明文不能因为前缀合法就通过；op 名称本身允许空格。
+func TestSecretRefWithTrailingPlaintext(t *testing.T) {
+	dir := newRepo(t, map[string]string{
+		"inventory/accounts/main.yaml": `apiVersion: infrafile/v1alpha1
+kind: Account
+metadata:
+  name: main
+spec:
+  provider: example-cloud
+  x-admin-token: env://ADMIN_TOKEN hunter2
+  secrets:
+    api_token: env://CLOUDFLARE_API_TOKEN hunter2
+    deploy_key: sops://secrets.enc.yaml#deploy.key ghp_abcdefghijklmnopqrstuvwxyz0123456789
+    console: op://Infra/Cloud Console/password
+    ok_sops: sops://secrets.enc.yaml#accounts.main.api_token
+`,
+	})
+	got := run(t, dir, Options{})
+	want(t, got,
+		"plaintext inventory/accounts/main.yaml:7 spec.x-admin-token",
+		"plaintext inventory/accounts/main.yaml:9 spec.secrets.api_token",
+		"plaintext inventory/accounts/main.yaml:10 spec.secrets.deploy_key",
+	)
+	for _, p := range got {
+		if strings.Contains(p.Message, "hunter2") || strings.Contains(p.Message, "ghp_") {
+			t.Errorf("消息回显了明文：%s", p.Message)
+		}
+	}
+}
+
 func TestPlaintext(t *testing.T) {
 	dir := newRepo(t, map[string]string{
 		"inventory/repos/blog.yaml": `apiVersion: infrafile/v1alpha1

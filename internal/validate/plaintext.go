@@ -9,7 +9,8 @@ import (
 )
 
 // secretRef 是凭据引用的格式，与 common.schema.json 的 secrets 一致。
-var secretRef = regexp.MustCompile(`^(sops|op|env)://.+`)
+// 整串锚定，引用后面不能再接明文；op 名称允许空格，与解析端相同。
+var secretRef = regexp.MustCompile(`^(env://[A-Za-z_][A-Za-z0-9_]*|sops://[^#?\\\x00-\x1f]+#[^#?\x00-\x1f]+|op://[^/?#\x00-\x1f]+/[^/?#\x00-\x1f]+/[^/?#\x00-\x1f]+(/[^/?#\x00-\x1f]+)?)$`)
 
 // tokenPatterns 是常见凭据的特征。宁可漏报也不要误报到让人想关掉检查。
 var tokenPatterns = []struct {
@@ -67,22 +68,34 @@ func SnapshotSafe(v any) bool {
 	return true
 }
 
-// scanPlaintext 在 spec.secrets 以外的地方找疑似明文凭据。
-// spec.secrets 里的值由 schema 要求必须是凭据引用。
+// scanPlaintext 找疑似明文凭据。spec.secrets 里的值由 schema 要求必须是
+// 凭据引用，这里只补查合法引用里夹带的令牌特征。
 func scanPlaintext(doc *ledger.Document) []ledger.Problem {
 	var problems []ledger.Problem
 	report := func(path, msg string) {
 		problems = append(problems, ledger.Problem{Code: ledger.CodePlaintext, File: doc.File,
 			Line: doc.Line(path), Path: path, Message: msg})
 	}
+	token := func(v, path string) bool {
+		for _, p := range tokenPatterns {
+			if p.re.MatchString(v) {
+				report(path, fmt.Sprintf("疑似明文凭据（%s），不要写进台账；凭据放进 spec.secrets，写成 sops://、op:// 或 env:// 引用", p.label))
+				return true
+			}
+		}
+		return false
+	}
 	var walk func(v any, key, path string)
 	walk = func(v any, key, path string) {
 		switch v := v.(type) {
 		case map[string]any:
-			if path == "spec.secrets" {
-				return
-			}
 			for k, child := range v {
+				if path == "spec.secrets" {
+					if s, ok := child.(string); ok && secretRef.MatchString(s) {
+						token(s, ledger.JoinKey(path, k))
+					}
+					continue
+				}
 				walk(child, k, ledger.JoinKey(path, k))
 			}
 		case []any:
@@ -90,11 +103,8 @@ func scanPlaintext(doc *ledger.Document) []ledger.Problem {
 				walk(child, key, ledger.JoinIndex(path, i))
 			}
 		case string:
-			for _, p := range tokenPatterns {
-				if p.re.MatchString(v) {
-					report(path, fmt.Sprintf("疑似明文凭据（%s），不要写进台账；凭据放进 spec.secrets，写成 sops://、op:// 或 env:// 引用", p.label))
-					return
-				}
+			if token(v, path) {
+				return
 			}
 			if v != "" && secretKey(key) && !secretRef.MatchString(v) {
 				report(path, "字段名像凭据，值却不是凭据引用；请放进 spec.secrets，写成 sops://、op:// 或 env:// 引用")

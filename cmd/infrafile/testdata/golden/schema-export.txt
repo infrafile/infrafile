@@ -197,7 +197,7 @@ $ infrafile schema export
           "type": "object",
           "additionalProperties": {
             "type": "string",
-            "pattern": "^(sops|op|env)://.+"
+            "pattern": "^(env://[A-Za-z_][A-Za-z0-9_]*|sops://[^#?\\\\\\x00-\\x1f]+#[^#?\\x00-\\x1f]+|op://[^/?#\\x00-\\x1f]+/[^/?#\\x00-\\x1f]+/[^/?#\\x00-\\x1f]+(/[^/?#\\x00-\\x1f]+)?)$"
           }
         }
       }
