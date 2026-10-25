@@ -75,6 +75,13 @@ func TestGolden(t *testing.T) {
 		{"run", []string{"run", "--secret", "INJECTED=env://INFRAFILE_GOLDEN_VALUE", "--", "infrafile-test-child", "-test.run=^TestRunSecretChild$"}, goldenRun},
 		{"run-json", []string{"run", "--json", "--secret", "INJECTED=env://INFRAFILE_GOLDEN_VALUE", "--", "infrafile-test-child", "-test.run=^TestRunSecretChild$"}, goldenRun},
 		{"run-exit-two-json", []string{"run", "--json", "--secret", "INJECTED=env://INFRAFILE_GOLDEN_VALUE", "--", "infrafile-test-child", "-test.run=^TestRunSecretChild$"}, func(t *testing.T) { goldenRun(t); t.Setenv("INFRAFILE_CHILD_EXIT", "2") }},
+
+		{"sync", []string{"sync"}, goldenSync},
+		{"sync-json", []string{"sync", "--json"}, goldenSync},
+		{"sync-unchanged-json", []string{"sync", "--json"}, goldenSyncUnchanged},
+		{"sync-empty-json", []string{"sync", "--json"}, emptyRepo},
+		{"sync-partial", []string{"sync"}, goldenSyncPartial},
+		{"sync-partial-json", []string{"sync", "--json"}, goldenSyncPartial},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,6 +115,24 @@ func TestGolden(t *testing.T) {
 			}
 		})
 	}
+}
+
+func goldenSync(t *testing.T) {
+	t.Chdir(syncRepo(t, "  example:\n    instances:\n      home: {}\n"))
+}
+
+func goldenSyncUnchanged(t *testing.T) {
+	goldenSync(t)
+	var out, stderr bytes.Buffer
+	if code := run([]string{"sync"}, &out, &stderr); code != 0 {
+		t.Fatalf("seed exit %d: %s %s", code, &out, &stderr)
+	}
+}
+
+func goldenSyncPartial(t *testing.T) {
+	fixturePlugin(t)
+	t.Setenv("INFRAFILE_PLUGIN_MODE", "sensitive")
+	t.Chdir(syncRepo(t, twoPlugins))
 }
 
 func tempDir(t *testing.T) {

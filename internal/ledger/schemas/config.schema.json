@@ -7,6 +7,26 @@
   "additionalProperties": false,
   "properties": {
     "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
-    "kind": {"const": "Config"}
+    "kind": {"const": "Config"},
+    "plugins": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/name"},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["instances"],
+        "additionalProperties": false,
+        "properties": {
+          "instances": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {"$ref": "#/$defs/name"},
+            "additionalProperties": {"type": "object"}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "name": {"type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"}
   }
 }

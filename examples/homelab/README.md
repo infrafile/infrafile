@@ -8,9 +8,14 @@ infrafile show web1 examples/homelab
 infrafile show App/blog examples/homelab --json
 infrafile expiry examples/homelab --within 30d
 infrafile ssh-config examples/homelab
+infrafile sync example --dir examples/homelab
+# 从本项目根目录执行；需要 python3
+PATH="$PWD/examples/plugins:$PATH" infrafile sync --dir examples/homelab --json
 ```
 
 内容：
+
+配置中启用了内置 `example` 和外部 `example-python`，两者只返回虚构域名，不访问网络或凭据。同步生成 `state/example/home.yaml`、`state/example-python/home.yaml` 和集中时间文件 `state/_sync.yaml`；再次运行时，观测不变的快照不重写。未把示例目录加入 PATH 时，指定 `sync example` 仍可运行，运行全部插件则报告外部程序缺失。协议与安全边界见[插件指南](../../docs/plugins.md)。
 
 | 类型 | 记录 |
 | --- | --- |

@@ -1,2 +1,10 @@
 apiVersion: infrafile/v1alpha1
 kind: Config
+plugins:
+  example:
+    instances:
+      home: {}
+  example-python:
+    instances:
+      home:
+        region: example-region

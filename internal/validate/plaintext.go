@@ -49,6 +49,38 @@ func secretKey(key string) bool {
 	return false
 }
 
+// SnapshotSafe 比台账扫描更严格：即使字段为空或值为引用也不保存凭据字段。
+// deny-list 是误写防线，不能识别任意名称下的任意秘密。
+func SnapshotSafe(v any) bool {
+	switch v := v.(type) {
+	case map[string]any:
+		for key, child := range v {
+			compact := strings.NewReplacer("_", "", "-", "", ".", "", " ", "").Replace(strings.ToLower(key))
+			for _, suffix := range []string{"password", "passwd", "pwd", "secret", "secrets", "token", "apikey", "accesskey", "accesskeyid", "secretkey", "privatekey", "secretaccesskey", "authorization", "cookie", "credential", "credentials"} {
+				if strings.HasSuffix(compact, suffix) {
+					return false
+				}
+			}
+			if !SnapshotSafe(key) || !SnapshotSafe(child) {
+				return false
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if !SnapshotSafe(child) {
+				return false
+			}
+		}
+	case string:
+		for _, pattern := range tokenPatterns {
+			if pattern.re.MatchString(v) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // scanPlaintext 在 spec.secrets 以外的地方找疑似明文凭据。
 // spec.secrets 里的值由 schema 要求必须是凭据引用。
 func scanPlaintext(doc *ledger.Document) []ledger.Problem {

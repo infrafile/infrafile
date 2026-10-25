@@ -34,6 +34,7 @@ func Run(dir string, opts Options) (*Result, error) {
 
 	if repo.Config != nil {
 		problems = append(problems, schemaProblems(repo.Config, schemas.Validate(ledger.ConfigKind, repo.Config.Value))...)
+		problems = append(problems, scanPlaintext(repo.Config)...)
 	}
 	for _, r := range repo.Records {
 		problems = append(problems, schemaProblems(r.Document, schemas.Validate(r.Kind, r.Value))...)

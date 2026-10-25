@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["protocol_version", "capabilities"],
+  "additionalProperties": false,
+  "properties": {
+    "protocol_version": {"const": "v1"},
+    "capabilities": {
+      "type": "array", "uniqueItems": true,
+      "items": {"enum": ["sync", "probe", "control", "import"]}
+    }
+  }
+}

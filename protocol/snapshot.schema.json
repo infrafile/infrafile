@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {"const": "infrafile/v1alpha1"},
+    "kind": {"const": "Snapshot"},
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"}
+      }
+    },
+    "spec": {"type": "object"}
+  }
+}

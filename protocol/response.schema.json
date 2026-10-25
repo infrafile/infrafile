@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["jsonrpc", "id"],
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {"const": "2.0"},
+    "id": {"type": "integer", "minimum": 1},
+    "result": {},
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {"type": "integer"},
+        "message": {"type": "string"},
+        "data": {}
+      }
+    }
+  },
+  "oneOf": [{"required": ["result"]}, {"required": ["error"]}]
+}

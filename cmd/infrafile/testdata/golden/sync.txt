@@ -1,0 +1,6 @@
+$ infrafile sync
+[退出码 0]
+--- stdout
+example/home：已更新 → state/example/home.yaml
+同步 1 个实例
+--- stderr

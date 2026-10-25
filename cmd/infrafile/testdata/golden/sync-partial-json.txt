@@ -1,0 +1,26 @@
+$ infrafile sync --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "results": [
+    {
+      "plugin": "aaa",
+      "instance": "home",
+      "file": "state/aaa/home.yaml",
+      "ok": false,
+      "changed": false,
+      "code": "sensitive",
+      "message": "插件快照含敏感字段或疑似凭据，已拒绝写入"
+    },
+    {
+      "plugin": "example",
+      "instance": "home",
+      "file": "state/example/home.yaml",
+      "ok": true,
+      "changed": true
+    }
+  ]
+}
+--- stderr

@@ -1,0 +1,7 @@
+$ infrafile sync
+[退出码 1]
+--- stdout
+aaa/home：失败 [sensitive] 插件快照含敏感字段或疑似凭据，已拒绝写入
+example/home：已更新 → state/example/home.yaml
+同步 2 个实例
+--- stderr

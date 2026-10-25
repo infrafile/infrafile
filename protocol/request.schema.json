@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["jsonrpc", "id", "method", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "jsonrpc": {"const": "2.0"},
+    "id": {"type": "integer", "minimum": 1},
+    "method": {"enum": ["describe", "sync"]},
+    "params": {"type": "object"}
+  },
+  "if": {"properties": {"method": {"const": "describe"}}},
+  "then": {"properties": {"params": {"maxProperties": 0}}},
+  "else": {
+    "properties": {
+      "params": {
+        "required": ["instance", "config"],
+        "additionalProperties": false,
+        "properties": {
+          "instance": {"type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
+          "config": {"type": "object"}
+        }
+      }
+    }
+  }
+}
