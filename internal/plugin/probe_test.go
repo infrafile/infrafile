@@ -209,8 +209,10 @@ func TestWHOISRecordedSyncAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
+	deadline, _ := ctx.Deadline()
 	_, err = plugin.Sync(ctx, client, protocol.SyncParams{Instance: "test", Config: map[string]any{"domain": "hang.example.com", "server": listener.Addr().String()}})
-	if err == nil || ctx.Err() == nil {
+	// 套接字 deadline 可早于 context 定时器通知，按同一个截止时间验证退出。
+	if err == nil || time.Now().Before(deadline) {
 		t.Fatalf("WHOIS timeout: %v", err)
 	}
 }
