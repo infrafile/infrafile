@@ -21,7 +21,9 @@ infrafile ssh-config examples/homelab
 | 云资源 `resources/` | `blog-db`（自建在 db1 上的 PostgreSQL）、`assets-cdn` |
 | 代码仓 `repos/` | `blog`、`wiki` |
 
-凭据只写引用（`sops://`、`env://`），示例里没有 `secrets.enc.yaml`，引用指向的值不存在。
+凭据只写引用（`sops://`、`op://`、`env://`），示例里没有 `secrets.enc.yaml`、真实密钥或 1Password 账号。`wiki` 演示 `op://Example/wiki/api_token`。直接执行 `infrafile secret check examples/homelab` 会报告引用不可访问，这是预期结果；普通 `validate` 仍通过。
+
+需要实际注入时，在自己的数据仓准备密文或外部引用，按[凭据指南](../../docs/secrets.md)运行。自动化测试使用临时生成的 age 密钥、合成凭据和模拟 `op` 验证全链路，示例仓不提供可复用私钥。
 
 `blog` 和 `wiki` 同时存在于 App 与 Repo，查询时用 `App/blog` 或 `Repo/blog` 消除歧义。`old-vps` 可用 `show` 查看历史，但不会进入到期报告或 SSH 配置。`assets-cdn`、`web1` 和两个域名分别演示 Resource、Server、Domain 的到期日；`db1` 没有到期日，会被到期检查忽略。
 

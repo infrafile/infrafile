@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/infrafile/infrafile/internal/testutil"
 )
 
 var update = flag.Bool("update", false, "重写 testdata/golden 下的期望输出")
@@ -63,6 +67,14 @@ func TestGolden(t *testing.T) {
 		{"ssh-config-json", []string{"ssh-config", homelab, "--json"}, nil},
 		{"ssh-config-empty", []string{"ssh-config"}, emptyRepo},
 		{"ssh-config-empty-json", []string{"ssh-config", "--json"}, emptyRepo},
+
+		{"secret-check", []string{"secret", "check"}, secretRepo},
+		{"secret-check-json", []string{"secret", "check", "--json"}, secretRepo},
+		{"secret-check-missing", []string{"secret", "check"}, missingSecretRepo},
+		{"secret-check-missing-json", []string{"secret", "check", "--json"}, missingSecretRepo},
+		{"run", []string{"run", "--secret", "INJECTED=env://INFRAFILE_GOLDEN_VALUE", "--", "infrafile-test-child", "-test.run=^TestRunSecretChild$"}, goldenRun},
+		{"run-json", []string{"run", "--json", "--secret", "INJECTED=env://INFRAFILE_GOLDEN_VALUE", "--", "infrafile-test-child", "-test.run=^TestRunSecretChild$"}, goldenRun},
+		{"run-exit-two-json", []string{"run", "--json", "--secret", "INJECTED=env://INFRAFILE_GOLDEN_VALUE", "--", "infrafile-test-child", "-test.run=^TestRunSecretChild$"}, func(t *testing.T) { goldenRun(t); t.Setenv("INFRAFILE_CHILD_EXIT", "2") }},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -107,6 +119,60 @@ func emptyRepo(t *testing.T) {
 	if err := os.WriteFile("infrafile.yaml", []byte("apiVersion: infrafile/v1alpha1\nkind: Config\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func secretRepo(t *testing.T) {
+	emptyRepo(t)
+	testutil.IsolateKeys(t)
+	testutil.FakeOp(t)
+	testutil.EncryptedFile(t, ".")
+	t.Setenv("INFRAFILE_GOLDEN_VALUE", "synthetic-golden-value")
+	if err := os.MkdirAll("inventory/accounts", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data := `apiVersion: infrafile/v1alpha1
+kind: Account
+metadata:
+  name: example
+spec:
+  provider: example
+  secrets:
+    env: env://INFRAFILE_GOLDEN_VALUE
+    op: op://Test/Item/password
+    sops: sops://secrets.enc.yaml#database.password
+`
+	if err := os.WriteFile("inventory/accounts/example.yaml", []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func missingSecretRepo(t *testing.T) {
+	secretRepo(t)
+	if err := os.Unsetenv("INFRAFILE_GOLDEN_VALUE"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove("secrets.enc.yaml"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func goldenRun(t *testing.T) {
+	dir := t.TempDir()
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(exe, filepath.Join(dir, "infrafile-test-child")); err != nil {
+		t.Skip("系统不支持测试命令符号链接")
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("INFRAFILE_TEST_CHILD", "1")
+	t.Setenv("INFRAFILE_GOLDEN_CHILD", "1")
+	t.Setenv("INFRAFILE_CHILD_EXIT", "0")
+	value := "synthetic-golden-value"
+	t.Setenv("INFRAFILE_GOLDEN_VALUE", value)
+	digest := sha256.Sum256([]byte(value))
+	t.Setenv("INFRAFILE_EXPECT_SHA", hex.EncodeToString(digest[:]))
 }
 
 // deletedRepo 把 homelab 复制进临时 git 仓库并提交，再删掉 repos/wiki.yaml，工作目录切到那里。

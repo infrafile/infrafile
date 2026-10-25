@@ -9,3 +9,5 @@ spec:
       port: 8081
       runtime: systemd
   x-backup: 每天凌晨同步到 db1
+  secrets:
+    api_token: op://Example/wiki/api_token

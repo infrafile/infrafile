@@ -1,6 +1,6 @@
 # infrafile 设计
 
-**状态**：设计已确认（2026-10-24），M0–M2 已完成。实现顺序见 [v0.1 实现计划](plan/v0.1.md)。
+**状态**：设计已确认（2026-10-24），M0–M3 已完成。实现顺序见 [v0.1 实现计划](plan/v0.1.md)。
 
 > 标「建议」的是落实时的默认做法，可以调整；其余是已定的决定。
 
@@ -48,7 +48,7 @@ spec:
   ssh: {user: deploy, port: 22}
   expires_at: 2027-03-01
   secrets:
-    root_password: sops://servers/web1/root_password
+    root_password: sops://secrets.enc.yaml#servers.web1.root_password
 ```
 
 - **kind**：初始有六种：Server / App / Domain / Account / Resource / Repo。
@@ -65,12 +65,14 @@ spec:
 
 | 写法 | 后端 |
 |---|---|
-| `sops://servers/web1/root_password` | 内置 sops + age 加密文件 |
+| `sops://secrets.enc.yaml#servers.web1.root_password` | 内置 sops + age 加密文件；相对文件路径与以点分隔的字段路径 |
 | `op://Vault/Item/field` | 1Password（调用 `op` CLI） |
 | `env://CF_TOKEN` | 环境变量 |
 
-- 校验只检查引用能否解析到，**不解密**。
+- `secret check` 只检查引用能否定位，**不请求凭据值**：SOPS 不加载私钥、不解密，1Password 只请求字段 ID，env 检查变量是否存在。
 - 需要用明文时，用 `infrafile run --secret NAME=<ref> -- <cmd>` 注入到子进程环境变量里，明文不落盘，也不出现在标准输出上。
+
+M3 的具体支持范围、输出遮盖和子进程边界见[凭据指南](secrets.md)。
 
 ## 插件
 

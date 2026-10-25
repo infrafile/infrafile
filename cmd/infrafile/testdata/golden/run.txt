@@ -1,0 +1,5 @@
+$ infrafile run --secret INJECTED=env://INFRAFILE_GOLDEN_VALUE -- infrafile-test-child -test.run=^TestRunSecretChild$
+[退出码 0]
+--- stdout
+child:[REDACTED]
+--- stderr
