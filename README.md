@@ -21,10 +21,14 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 
 ## 文档
 
+安装：`brew install infrafile/tap/infrafile`，安装后 `infrafile` 和 `ifl` 等价。首次体验见[快速上手](docs/quickstart.md)；其他平台的压缩包见 [Releases](https://github.com/infrafile/infrafile/releases)，验签见[发布指南](docs/release.md)。
+
 目前已完成 M0–M8：账本、查询、凭据引用、插件与导入、plan / apply 受控写、DNSControl，以及本地 stdio MCP 和内嵌 Agent 指南。MCP 提供六个只读查询／计划工具，目标按台账主键或标签选择；线上变更仍通过 CLI 审阅计划并另行授权执行。可先用[虚构示例](examples/homelab/README.md)体验；发版按 M9 计划推进。
 
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
+- [快速上手](docs/quickstart.md)
+- [发布与验签](docs/release.md)
 - [凭据引用与运行命令](docs/secrets.md)
 - [插件与观测快照](docs/plugins.md)
 - [第一方插件配置、观测字段与限制](docs/first-party-plugins.md)

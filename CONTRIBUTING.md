@@ -18,10 +18,10 @@ git commit -s
 
 ## 本地开发
 
-需要 Go（版本见 `go.mod`）。
+需要 Go（版本见 `go.mod`）与 Python 3（Homebrew 配方生成器测试）。
 
 ```bash
-make check   # gofmt + go vet + go test -race，与 CI 一致
+make check   # gofmt + go vet + go test -race + 配方生成器测试，与 CI 一致
 make build   # 输出 bin/infrafile
 ```
 
