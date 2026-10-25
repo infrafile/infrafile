@@ -3,12 +3,15 @@ package secret_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/getsops/sops/v3/config"
+	sopsyaml "github.com/getsops/sops/v3/stores/yaml"
 	"github.com/infrafile/infrafile/internal/secret"
 	"github.com/infrafile/infrafile/internal/testutil"
 )
@@ -127,5 +130,31 @@ func TestSOPSRejectsPlaintextAndEscapingSymlinks(t *testing.T) {
 	}
 	if err := r.Check(context.Background(), "sops://escape.yaml#database.password"); err == nil {
 		t.Fatal("读取了仓外符号链接目标")
+	}
+}
+
+func TestSOPSRejectsCaseInsensitiveKMSMetadata(t *testing.T) {
+	dir := t.TempDir()
+	ref, _, _ := testutil.EncryptedFile(t, dir)
+	file := filepath.Join(dir, "secrets.enc.yaml")
+	data, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = bytes.Replace(data, []byte("\nsops:\n"), []byte("\nsops:\n  KMS:\n    - arn: arn:aws:kms:us-east-1:000000000000:key/00000000-0000-0000-0000-000000000000\n      created_at: \"2026-01-01T00:00:00Z\"\n      enc: AAAAAA==\n"), 1)
+	if err := os.WriteFile(file, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sopsyaml.NewStore(&config.YAMLStoreConfig{}).LoadEncryptedFile(data); err != nil {
+		t.Fatalf("合成 KMS 夹具无效：%v", err)
+	}
+	r := secret.Resolver{Dir: dir}
+	err = r.Check(context.Background(), ref)
+	var failure *secret.Error
+	if !errors.As(err, &failure) || failure.Code != "unsupported" {
+		t.Fatalf("未按密钥类型拒绝混合大小写的 KMS 元数据：%v", err)
+	}
+	if _, err := r.Resolve(context.Background(), ref); !errors.As(err, &failure) || failure.Code != "unsupported" {
+		t.Fatal("解析路径未在调用 KMS 前拒绝元数据")
 	}
 }

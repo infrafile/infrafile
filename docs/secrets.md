@@ -8,7 +8,7 @@
 | `op://Vault/Item/password` | 1Password vault、item、field；也支持 `op://Vault/Item/section/field` | 调用 `op read --no-newline <ref>?attribute=id`，只请求字段 ID，不请求凭据值 |
 | `env://DATABASE_PASSWORD` | 当前进程的环境变量 | 变量存在；已设置为空字符串也算存在 |
 
-SOPS 使用项目内嵌的 `github.com/getsops/sops/v3/decrypt`，无须安装 `sops` 可执行程序。当前依赖要求 Go 1.25.8 或更新版本构建。只支持单组 age 加密的 YAML 和字符串字段；不调用 KMS、PGP，不支持 SOPS 分组密钥。字段路径不支持数组下标或含点的键名。文件必须位于数据仓内，`..`、绝对路径和越界符号链接会被拒绝。
+SOPS 使用项目内嵌的 `github.com/getsops/sops/v3/decrypt`，无须安装 `sops` 可执行程序。当前依赖要求 Go 1.25.8 或更新版本构建。只支持单组 age 加密的 YAML 和字符串字段；不调用 KMS、PGP，不支持多组密钥。后端限制以 SOPS 实际解析出的密钥类型为准，不依赖元数据键名大小写。字段路径不支持数组下标或含点的键名。文件必须位于数据仓内，`..`、绝对路径和越界符号链接会被拒绝。
 
 1Password 使用本机已安装并登录的 `op`，每次操作超时为 30 秒。名字可以包含空格，请在 shell 中引用整个 URI。M3 不接受 URI 查询参数或文件附件。检查不会把字段值交给 infrafile；1Password 内部如何处理 vault 加密由其 CLI 实现决定。字段属性和命令用法见 [1Password 官方文档](https://developer.1password.com/docs/cli/secret-references/)。
 
@@ -40,6 +40,6 @@ infrafile 不将明文放入命令参数、普通文件或自身诊断。子进�
 
 遮盖只处理完整原值，不是子进程沙箱，也不保证遮盖编码、拆分到不同输出流或变换后的值。子命令本身仍可写文件或访问网络，应运行受信任的程序。为遮盖输出，子进程输出使用管道，不提供 PTY。
 
-正常退出时保留子进程退出码；被信号终止且无法取得正常退出码时返回 1。解析或启动失败返回 2。`--json` 模式把遮盖后的子进程日志送往 stderr，stdout 只输出执行结果，见 [run JSON 契约](json/run.md)。
+正常退出时保留子进程退出码；被信号终止且无法取得正常退出码时返回 1。infrafile 收到中断或 SIGTERM 时会取消操作，终止并等待其直接启动的子进程，不管理子命令自行脱离的后台进程。解析或启动失败返回 2。`--json` 模式把遮盖后的子进程日志送往 stderr，stdout 只输出执行结果，见 [run JSON 契约](json/run.md)。
 
 测试会临时生成 age 私钥和 SOPS 密文，使用隔离的密钥发现目录；私钥和明文留在内存中，仓库内不保存可复用私钥。1Password 测试用模拟 `op` 验证命令和错误边界，不依赖真实账号。

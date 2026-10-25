@@ -9,8 +9,11 @@ import (
 	"regexp"
 	"strings"
 
+	sopsage "github.com/getsops/sops/v3/age"
+	"github.com/getsops/sops/v3/config"
 	"github.com/getsops/sops/v3/decrypt"
 	"github.com/getsops/sops/v3/logging"
+	sopsyaml "github.com/getsops/sops/v3/stores/yaml"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -48,17 +51,22 @@ func (r Resolver) sops(ref string, resolve bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	meta, _ := doc["sops"].(map[string]any)
-	ages, _ := meta["age"].([]any)
-	mac, _ := meta["mac"].(string)
-	if len(ages) == 0 || !encryptedString.MatchString(mac) {
+	store := sopsyaml.NewStore(&config.YAMLStoreConfig{})
+	tree, err := store.LoadEncryptedFile(data)
+	if err != nil || !encryptedString.MatchString(tree.Metadata.MessageAuthenticationCode) {
 		return "", &Error{"invalid-file", "需要带 age 接收者和加密 MAC 的 SOPS YAML 文件"}
 	}
-	for _, backend := range []string{"kms", "gcp_kms", "azure_kv", "hc_vault", "hckms", "pgp", "key_groups"} {
-		if v := meta[backend]; v != nil {
-			if list, ok := v.([]any); !ok || len(list) != 0 {
-				return "", &Error{"unsupported", "M3 仅支持单组 age 密文，不调用云 KMS 或 PGP"}
-			}
+	if len(tree.Metadata.KeyGroups) != 1 || len(tree.Metadata.KeyGroups[0]) == 0 {
+		return "", &Error{"unsupported", "M3 仅支持单组 age 密文，不调用云 KMS 或 PGP"}
+	}
+	// 使用与解密相同的上游解析结果，避免大小写等不同写法绕过后端限制。
+	for _, masterKey := range tree.Metadata.KeyGroups[0] {
+		key, ok := masterKey.(*sopsage.MasterKey)
+		if !ok {
+			return "", &Error{"unsupported", "M3 仅支持单组 age 密文，不调用云 KMS 或 PGP"}
+		}
+		if key.Recipient == "" || key.EncryptedKey == "" {
+			return "", &Error{"invalid-file", "age 接收者或加密数据密钥为空"}
 		}
 	}
 	value, err := secretField(doc, keys)

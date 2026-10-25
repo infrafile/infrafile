@@ -2,11 +2,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -59,11 +62,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func runAt(args []string, stdout, stderr io.Writer, now time.Time) int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	root := newRoot(now)
 	root.SetArgs(args)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	err := root.Execute()
+	err := root.ExecuteContext(ctx)
 	var code exitCode
 	switch {
 	case err == nil:
