@@ -1,0 +1,5 @@
+$ infrafile plan cdn-pause Resource/edge -o plan.json
+[退出码 0]
+--- stdout
+计划已保存到 plan.json；请先用 infrafile plan show 审阅
+--- stderr

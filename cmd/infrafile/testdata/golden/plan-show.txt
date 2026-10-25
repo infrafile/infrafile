@@ -1,0 +1,17 @@
+$ infrafile plan show plan.json
+[退出码 0]
+--- stdout
+计划 v1 · 2026-12-01T12:00:00Z
+目标：Resource/edge
+插件：aaa/home
+动作：cdn-pause
+观测哈希：dd378757806b9729e36e913f3f919e1101861e9b279672f56a4b924f161b30b3
+变更前：
+{
+  "paused": false
+}
+变更后：
+{
+  "paused": true
+}
+--- stderr

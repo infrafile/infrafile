@@ -1,10 +1,11 @@
-# M5 离线回放夹具
+# 第一方插件离线回放夹具
 
 这些文件**不是实际账号抓包**。云响应根据官方公开示例结构改写为 example.com / example.net 等虚构数据，并添加分页、额外敏感字段和异常边界；测试通过内存 HTTP transport 回放，不连接真实云服务。合成私密字段专门验证白名单投影不会把原始字段写入快照。
 
 | 文件 | 来源与改写范围 |
 |---|---|
 | `cloudflare-*.json` | 官方 [zones](https://developers.cloudflare.com/api/resources/zones/methods/list/) 与 [DNS records](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/list/) 响应结构；zone / record ID、域名和记录全部虚构 |
+| `cloudflare-origin-rules.json`（M7） | 官方 [Origin Rule 示例](https://developers.cloudflare.com/rules/origin-rules/examples/change-http-host-header/) 和[更新规则](https://developers.cloudflare.com/ruleset-engine/rulesets-api/update-rule/)结构；虚构两条规则，覆盖匹配条件、端口、Host header、SNI 及其他规则保留；zone 暂停响应在测试内合成 |
 | `aliyun-*.json` | [QueryDomainList](https://help.aliyun.com/zh/dws/developer-reference/api-domain-2018-01-29-querydomainlist)、[DescribeUserDomains](https://www.alibabacloud.com/help/en/cdn/developer-reference/api-cdn-2018-05-10-describeuserdomains)；合成两页域名及一页 CDN，覆盖两种到期格式与不一致状态类型 |
 | `tencent-*.json` | [DescribeDomainNameList](https://cloud.tencent.com/document/product/242/48941)、[DescribeDomains](https://cloud.tencent.com/document/product/228/41118)；合成 Offset 0 / 1 与额外鉴权字段 |
 | `baidu-*.json` | [BCD 列表](https://cloud.baidu.com/doc/BCD/s/4jwvymhs7)、[CDN 列表](https://cloud.baidu.com/doc/CDN/s/sjwvyewt1)；合成含 `+/=` 的 opaque marker、联系信息及未截断末页 |

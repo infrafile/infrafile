@@ -6,6 +6,14 @@ spec:
   registrar: cloudflare
   account: cloudflare-main
   expires_at: 2027-08-15
+  dns:
+    provider: cloudflare-main
+    records:
+      - {name: "@", type: A, content: 192.0.2.10, ttl: 300, proxied: true}
+      - {name: www, type: CNAME, content: example.com, proxied: true}
+      - {name: "@", type: MX, content: mail.example.net, priority: 10}
+      - {name: "@", type: TXT, content: "v=spf1 -all"}
+      - {name: "@", type: CAA, tag: issue, content: ca.example.net}
   bindings:
     - name: "@"
       app: blog

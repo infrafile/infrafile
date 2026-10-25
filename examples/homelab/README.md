@@ -46,4 +46,13 @@ infrafile import state --dir examples/homelab --output /tmp/infrafile-review
 
 SSH 的 `web1` 和快照里的 `example.com` 已有记录，会跳过；其余会生成待审草稿。DNS 观测只报告跳过，Cloudflare zone 生成 Resource。要体验写入，请先把整个 homelab 复制到临时目录，再对副本执行 `import ... --write` 和 `validate`；第二次导入不会改动已有文件。细节见[导入指南](../../docs/import.md)。
 
+M7 在 example.com 的 `spec.dns` 中提供显式 DNS 期望值，可离线生成配置：
+
+```sh
+infrafile dnscontrol examples/homelab
+infrafile dnscontrol examples/homelab --json
+```
+
+输出固定使用 NO_PURGE，不创建凭据文件、不访问 DNS。`control/edge.yaml` 是带虚构 Cloudflare ID 的控制目标草稿，不在 inventory 中，也不会启用真实插件。实际生成 plan 需要将草稿和实例配置放到自己的数据仓并填写自己的 ID；不要对示例 ID 执行云操作。自动化测试用模拟外部插件和 HTTP 回放验证 plan → apply → 回读，包括过期拒绝和回读不符。详见[受控写指南](../../docs/control.md)。
+
 约定：只用文档保留地址段（`192.0.2.0/24`、`198.51.100.0/24`、`203.0.113.0/24`）、私有地址和 `example.com` 系列域名。

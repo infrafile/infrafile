@@ -23,6 +23,42 @@
         "region": {"type": "string"},
         "endpoint": {"type": "string"},
         "expires_at": {"$ref": "common.schema.json#/$defs/date"},
+        "control": {
+          "type": "object",
+          "required": [
+            "plugin",
+            "instance",
+            "zone_id"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "plugin": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+            },
+            "instance": {
+              "type": "string",
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+            },
+            "zone_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "maxLength": 128
+            },
+            "ruleset_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "maxLength": 128
+            },
+            "rule_id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "maxLength": 128
+            }
+          }
+        },
         "secrets": {"$ref": "common.schema.json#/$defs/secrets"}
       }
     }

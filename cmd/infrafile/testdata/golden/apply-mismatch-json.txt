@@ -1,0 +1,11 @@
+$ infrafile apply plan.json --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "target": "Resource/edge",
+  "status": "mismatch",
+  "message": "执行后回读与计划不符；请检查远端状态"
+}
+--- stderr

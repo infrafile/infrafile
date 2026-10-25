@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "result": {
+    "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "kind": "zone",
+    "phase": "http_request_origin",
+    "version": "7",
+    "rules": [
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "version": "4",
+        "last_updated": "2026-10-24T12:00:00Z",
+        "ref": "assets_origin",
+        "description": "Fictional assets origin",
+        "action": "route",
+        "expression": "http.host eq \"assets.example.com\"",
+        "enabled": true,
+        "action_parameters": {
+          "host_header": "static.example.net",
+          "origin": {"host": "old-origin.example.net", "port": 8443},
+          "sni": {"value": "tls.example.net"}
+        }
+      },
+      {
+        "id": "dddddddddddddddddddddddddddddddd",
+        "version": "1",
+        "ref": "other_origin",
+        "action": "route",
+        "expression": "http.host eq \"other.example.com\"",
+        "enabled": true,
+        "action_parameters": {"origin": {"port": 8080}}
+      }
+    ]
+  }
+}

@@ -25,6 +25,22 @@ type SyncParams struct {
 	Config   map[string]any `json:"config"`
 }
 
+// Target 只包含台账中明确登记的控制标识，不接受任意 API 地址。
+type Target struct {
+	ZoneID    string `json:"zone_id"`
+	RulesetID string `json:"ruleset_id,omitempty"`
+	RuleID    string `json:"rule_id,omitempty"`
+}
+
+type ControlParams struct {
+	Instance     string         `json:"instance"`
+	Config       map[string]any `json:"config"`
+	Target       Target         `json:"target"`
+	Action       string         `json:"action"`
+	Parameters   map[string]any `json:"parameters"`
+	ExpectedHash string         `json:"expected_hash,omitempty"`
+}
+
 var schemas = sync.OnceValues(func() (map[string]*jsonschema.Schema, error) {
 	c := jsonschema.NewCompiler()
 	result := map[string]*jsonschema.Schema{}

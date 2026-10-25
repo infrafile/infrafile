@@ -24,7 +24,24 @@ func (b *builtin) Call(ctx context.Context, method string, params any) (json.Raw
 		return nil, failure("timeout", "插件超时或被取消")
 	}
 	if method == "describe" {
-		return json.Marshal(protocol.Description{ProtocolVersion: protocol.Version, Capabilities: []string{"sync"}})
+		capabilities := []string{"sync"}
+		if b.name == "cloudflare" {
+			capabilities = append(capabilities, "probe", "control")
+		}
+		return json.Marshal(protocol.Description{ProtocolVersion: protocol.Version, Capabilities: capabilities})
+	}
+	if b.name == "cloudflare" && (method == "probe" || method == "control") {
+		p, ok := params.(protocol.ControlParams)
+		if !ok {
+			return nil, failure("config", "控制参数格式错误")
+		}
+		b.values = nil
+		defer b.Close()
+		data, err := b.cloudflareControl(ctx, method, p)
+		if err != nil {
+			return nil, err
+		}
+		return b.encodeResult(data)
 	}
 	if method != "sync" {
 		return nil, failure("capability", "插件不支持该方法")
@@ -63,6 +80,10 @@ func (b *builtin) Call(ctx context.Context, method string, params any) (json.Raw
 	if err != nil {
 		return nil, err
 	}
+	return b.encodeResult(data)
+}
+
+func (b *builtin) encodeResult(data any) (json.RawMessage, error) {
 	result, err := json.Marshal(map[string]any{"data": data})
 	if err != nil {
 		return nil, failure("protocol", "插件结果无法编码")

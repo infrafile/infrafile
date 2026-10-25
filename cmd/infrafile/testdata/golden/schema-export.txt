@@ -328,6 +328,221 @@ $ infrafile schema export
                 }
               }
             },
+            "dns": {
+              "type": "object",
+              "required": [
+                "provider",
+                "records"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "maxLength": 64
+                },
+                "records": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "type",
+                      "content"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 253,
+                        "pattern": "^(?:@|(?:\\*\\.)?(?:[A-Za-z0-9_](?:[A-Za-z0-9_-]*[A-Za-z0-9_])?)(?:\\.[A-Za-z0-9_](?:[A-Za-z0-9_-]*[A-Za-z0-9_])?)*|\\*)$"
+                      },
+                      "type": {
+                        "enum": [
+                          "A",
+                          "AAAA",
+                          "CNAME",
+                          "MX",
+                          "TXT",
+                          "NS",
+                          "CAA"
+                        ]
+                      },
+                      "content": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "ttl": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2147483647
+                      },
+                      "priority": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 65535
+                      },
+                      "tag": {
+                        "enum": [
+                          "issue",
+                          "issuewild",
+                          "iodef"
+                        ]
+                      },
+                      "proxied": {
+                        "type": "boolean"
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "A"
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "content": {
+                              "format": "ipv4"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "AAAA"
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "content": {
+                              "format": "ipv6"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "CNAME"
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "content": {
+                              "format": "hostname"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "MX"
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "content": {
+                              "format": "hostname"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "NS"
+                            }
+                          }
+                        },
+                        "then": {
+                          "properties": {
+                            "content": {
+                              "format": "hostname"
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "MX"
+                            }
+                          }
+                        },
+                        "then": {
+                          "required": [
+                            "priority"
+                          ]
+                        },
+                        "else": {
+                          "not": {
+                            "required": [
+                              "priority"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "const": "CAA"
+                            }
+                          }
+                        },
+                        "then": {
+                          "required": [
+                            "tag"
+                          ]
+                        },
+                        "else": {
+                          "not": {
+                            "required": [
+                              "tag"
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": {
+                            "type": {
+                              "enum": [
+                                "A",
+                                "AAAA",
+                                "CNAME"
+                              ]
+                            }
+                          }
+                        },
+                        "else": {
+                          "not": {
+                            "required": [
+                              "proxied"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
             "secrets": {
               "$ref": "common.schema.json#/$defs/secrets"
             }
@@ -468,6 +683,42 @@ $ infrafile schema export
             },
             "expires_at": {
               "$ref": "common.schema.json#/$defs/date"
+            },
+            "control": {
+              "type": "object",
+              "required": [
+                "plugin",
+                "instance",
+                "zone_id"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "plugin": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+                },
+                "instance": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+                },
+                "zone_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "maxLength": 128
+                },
+                "ruleset_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "maxLength": 128
+                },
+                "rule_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]+$",
+                  "maxLength": 128
+                }
+              }
             },
             "secrets": {
               "$ref": "common.schema.json#/$defs/secrets"

@@ -1,0 +1,5 @@
+$ infrafile apply plan.json
+[退出码 0]
+--- stdout
+Resource/edge：applied 
+--- stderr

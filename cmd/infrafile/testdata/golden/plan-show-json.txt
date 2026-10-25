@@ -1,0 +1,29 @@
+$ infrafile plan show plan.json --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "generated_at": "2026-12-01T12:00:00Z",
+  "actions": [
+    {
+      "target": "Resource/edge",
+      "binding": {
+        "plugin": "aaa",
+        "instance": "home",
+        "zone_id": "example-zone"
+      },
+      "record_hash": "ed9685ebbfa4450bdf556555268d83c6a90518f3b2cd418a83de8b63d73f2926",
+      "config_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "operation": "cdn-pause",
+      "parameters": {},
+      "before": {
+        "paused": false
+      },
+      "before_hash": "dd378757806b9729e36e913f3f919e1101861e9b279672f56a4b924f161b30b3",
+      "after": {
+        "paused": true
+      }
+    }
+  ]
+}
+--- stderr

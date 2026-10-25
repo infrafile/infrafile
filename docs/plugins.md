@@ -46,7 +46,7 @@ PATH="$PWD/examples/plugins:$PATH" bin/infrafile sync --dir examples/homelab --j
 {"jsonrpc":"2.0","id":1,"result":{"protocol_version":"v1","capabilities":["sync"]}}
 ```
 
-能力允许 `sync`、`probe`、`control`、`import`，不能重复；本里程碑只调用 `describe` 和 `sync`。未声明 `sync`、未知协议版本或不合法响应都拒绝执行。握手通过后：
+能力允许 `sync`、`probe`、`control`、`import`，不能重复；M7 增加 `probe` 与 `control` 调用。未声明所调用能力、未知协议版本或不合法响应都拒绝执行。sync 握手通过后：
 
 ```json
 {"jsonrpc":"2.0","id":2,"method":"sync","params":{"instance":"home","config":{"region":"example-region"}}}
@@ -56,6 +56,25 @@ PATH="$PWD/examples/plugins:$PATH" bin/infrafile sync --dir examples/homelab --j
 `config` 原样来自实例配置；`data` 必须是 JSON 对象。数组顺序由插件负责保持稳定，宿主稳定排序对象键。插件不得混入本次采集时间；证书到期日等业务事实可以保留。云资源 ID 建议使用字符串；宿主也保留 JSON 整数的精度。JSON Schema 位于 [`protocol/`](../protocol/)，包括请求、响应、握手、同步结果和快照信封。配置 Schema 继续通过 `infrafile schema export` 导出。
 
 内置实现走同一个 `Client.Call` 接口和同一套握手／同步结果校验，省去进程和 JSON-RPC 信封传输。内置 `example` 返回 `example.com`，外部 [Python 示例](../examples/plugins/infrafile-plugin-example-python)返回 `example.net`，两者均不访问网络。
+
+### probe / control（M7）
+
+受控写插件声明 `probe` 和 `control`。二者使用相同的 `{data: {...}}` 结果信封，参数为：
+
+```json
+{
+  "instance": "main",
+  "config": {"api_token": "env://CF_CONTROL_TOKEN"},
+  "target": {"zone_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "action": "cdn-pause",
+  "parameters": {},
+  "expected_hash": "<control 必须提供的 64 位观测 SHA-256>"
+}
+```
+
+probe 不得产生远端写入，expected_hash 可省略。暂停／恢复的 data 至少含布尔 `paused`；改回源还需有有序 `rules`，通过 target.rule_id 选中启用的 route 规则，修改 action_parameters.origin.host。其他观测字段原样参与哈希和回读比较。暂停／恢复 parameters 为空；改回源为 `{"host":"origin.example.net"}`，target 另带 ruleset_id / rule_id。
+
+control 必须在执行前重新检查 expected_hash，一次只执行该动作，返回 `{data:{}}` 即可。宿主不会将 control 的响应当作最终观测，会单独调用 probe。Cloudflare 内置实现遵守这一规则；外部插件必须自行实现相同语义。结果经过敏感字段检查，配置仍只传引用；不会自动写 state。完整流程见[受控写指南](control.md)。
 
 ## 状态文件
 

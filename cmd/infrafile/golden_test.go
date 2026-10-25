@@ -90,6 +90,17 @@ func TestGolden(t *testing.T) {
 		{"import-state-json", []string{"import", "state", "--json"}, goldenImport},
 		{"import-state-write-json", []string{"import", "state", "--write", "--json"}, goldenImport},
 		{"import-state-repeat-json", []string{"import", "state", "--write", "--json"}, goldenImportWritten},
+		{"plan", []string{"plan", "cdn-pause", "Resource/edge", "-o", "plan.json"}, controlRepo},
+		{"plan-json", []string{"plan", "cdn-pause", "Resource/edge", "--json"}, controlRepo},
+		{"plan-show", []string{"plan", "show", "plan.json"}, goldenPlan},
+		{"plan-show-json", []string{"plan", "show", "plan.json", "--json"}, goldenPlan},
+		{"apply", []string{"apply", "plan.json"}, goldenPlan},
+		{"apply-json", []string{"apply", "plan.json", "--json"}, goldenPlan},
+		{"apply-stale-json", []string{"apply", "plan.json", "--json"}, func(t *testing.T) { goldenPlan(t); writeImportFile(t, "changed", "external-change") }},
+		{"apply-mismatch-json", []string{"apply", "plan.json", "--json"}, func(t *testing.T) { goldenPlan(t); t.Setenv("INFRAFILE_CONTROL_CASE", "mismatch") }},
+		{"dnscontrol", []string{"dnscontrol", homelab}, nil},
+		{"dnscontrol-json", []string{"dnscontrol", homelab, "--json"}, nil},
+		{"dnscontrol-empty-json", []string{"dnscontrol", "--json"}, emptyRepo},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -122,6 +133,14 @@ func TestGolden(t *testing.T) {
 				t.Errorf("输出与 %s 不一致：\n--- 实际\n%s\n--- 期望\n%s", golden, got, want)
 			}
 		})
+	}
+}
+
+func goldenPlan(t *testing.T) {
+	controlRepo(t)
+	var out, errout bytes.Buffer
+	if code := runAt([]string{"plan", "cdn-pause", "Resource/edge", "-o", "plan.json"}, &out, &errout, time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)); code != 0 {
+		t.Fatalf("prepare plan: %d %s", code, &errout)
 	}
 }
 

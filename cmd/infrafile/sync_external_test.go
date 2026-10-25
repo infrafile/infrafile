@@ -26,6 +26,10 @@ func TestMain(m *testing.M) {
 
 func pluginHelper() {
 	mode := os.Getenv("INFRAFILE_PLUGIN_MODE")
+	if mode == "control" {
+		controlHelper()
+		return
+	}
 	fmt.Fprintln(os.Stderr, "synthetic-plugin-private-value")
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {

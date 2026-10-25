@@ -1,0 +1,11 @@
+$ infrafile apply plan.json --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "target": "Resource/edge",
+  "status": "stale",
+  "message": "观测状态已变化，未执行；请重新生成计划"
+}
+--- stderr

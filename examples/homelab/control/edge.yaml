@@ -1,0 +1,14 @@
+# 将本草稿放入 inventory/resources/ 并填写自己的绑定后才能生成在线计划。
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata: {name: edge}
+spec:
+  provider: cloudflare
+  type: cdn
+  endpoint: assets.example.com
+  control:
+    plugin: cloudflare
+    instance: main
+    zone_id: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ruleset_id: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    rule_id: cccccccccccccccccccccccccccccccc

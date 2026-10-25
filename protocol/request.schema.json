@@ -1,26 +1,180 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["jsonrpc", "id", "method", "params"],
+  "required": [
+    "jsonrpc",
+    "id",
+    "method",
+    "params"
+  ],
   "additionalProperties": false,
   "properties": {
-    "jsonrpc": {"const": "2.0"},
-    "id": {"type": "integer", "minimum": 1},
-    "method": {"enum": ["describe", "sync"]},
-    "params": {"type": "object"}
+    "jsonrpc": {
+      "const": "2.0"
+    },
+    "id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "method": {
+      "enum": [
+        "describe",
+        "sync",
+        "probe",
+        "control"
+      ]
+    },
+    "params": {
+      "type": "object"
+    }
   },
-  "if": {"properties": {"method": {"const": "describe"}}},
-  "then": {"properties": {"params": {"maxProperties": 0}}},
-  "else": {
-    "properties": {
-      "params": {
-        "required": ["instance", "config"],
-        "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
         "properties": {
-          "instance": {"type": "string", "maxLength": 64, "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"},
-          "config": {"type": "object"}
+          "method": {
+            "enum": [
+              "describe"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "required": [],
+            "additionalProperties": false,
+            "properties": {}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "method": {
+            "enum": [
+              "sync"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "required": [
+              "instance",
+              "config"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "instance": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+              },
+              "config": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "method": {
+            "enum": [
+              "probe",
+              "control"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "required": [
+              "instance",
+              "config",
+              "target",
+              "action",
+              "parameters"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "instance": {
+                "type": "string",
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+              },
+              "config": {
+                "type": "object"
+              },
+              "target": {
+                "type": "object",
+                "required": [
+                  "zone_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "zone_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                    "maxLength": 128
+                  },
+                  "ruleset_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                    "maxLength": 128
+                  },
+                  "rule_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                    "maxLength": 128
+                  }
+                }
+              },
+              "action": {
+                "enum": [
+                  "cdn-pause",
+                  "cdn-resume",
+                  "cdn-origin"
+                ]
+              },
+              "parameters": {
+                "type": "object"
+              },
+              "expected_hash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "method": {
+            "const": "control"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "required": [
+              "expected_hash"
+            ]
+          }
         }
       }
     }
-  }
+  ]
 }

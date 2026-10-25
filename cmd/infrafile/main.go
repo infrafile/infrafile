@@ -116,6 +116,9 @@ func newRoot(now time.Time) *cobra.Command {
 		newRunCmd(opts),
 		newSyncCmd(opts),
 		newImportCmd(opts),
+		newPlanCmd(opts),
+		newApplyCmd(opts),
+		newDNSControlCmd(opts),
 	)
 	root.SetHelpCommand(&cobra.Command{
 		Use:   "help [命令]",
