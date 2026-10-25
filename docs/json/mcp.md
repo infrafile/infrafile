@@ -28,6 +28,6 @@ expiry 的 within_days 为非负整数，默认 30；沿用 CLI 的有效日期�
 }
 ```
 
-error.code 为 arguments（参数）、request（无法完成，包括不存在 / 不唯一 / 插件失败）、cancelled（超时或取消）、sensitive（动态结果敏感检查失败）、size（编码或结果大小限制）。客户端主动取消可直接收到 SDK 的取消错误；未知工具等路由问题是协议错误，不属于业务信封。错误不回显用户输入或云端原文。
+error.code 为 arguments（参数）、request（无法完成，包括不存在 / 不唯一 / 插件失败）、cancelled（超时或取消）、sensitive（动态结果敏感检查失败）、size（编码或结果大小限制）。客户端主动取消可直接收到 SDK 的取消错误；未知工具、SDK 参数解析失败等是协议错误，不属于业务信封。协议响应出口保留原错误码与请求 ID，替换 message 并省略 data；错误不回显参数或云端原文。
 
 全部工具标记 readOnlyHint=true、idempotentHint=true；仅 plan 的 openWorldHint=true，因为它会访问已配置的插件 / 云端。只读提示不代表不使用凭据；计划可在内部解析引用以做观测，不向客户端返回明文。MCP 不暴露执行和通用 I/O 工具。

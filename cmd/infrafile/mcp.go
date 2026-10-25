@@ -17,6 +17,7 @@ import (
 	"github.com/infrafile/infrafile/internal/ledger"
 	"github.com/infrafile/infrafile/internal/plugin"
 	"github.com/infrafile/infrafile/internal/validate"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/spf13/cobra"
@@ -30,11 +31,14 @@ func newMCPCmd(_ *globalOpts) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		err = s.Run(cmd.Context(), &mcp.IOTransport{Reader: io.NopCloser(cmd.InOrStdin()), Writer: mcpOutput{cmd.OutOrStdout()}, MaxLineLength: 4 << 20})
+		err = s.Run(cmd.Context(), mcpTransport{&mcp.IOTransport{Reader: io.NopCloser(cmd.InOrStdin()), Writer: mcpOutput{cmd.OutOrStdout()}, MaxLineLength: 4 << 20}})
 		if cmd.Context().Err() != nil {
 			return nil
 		}
-		return err
+		if err != nil {
+			return fmt.Errorf("MCP 传输失败")
+		}
+		return nil
 	}}
 	cmd.Flags().StringVar(&dir, "dir", ".", "固定的数据仓目录，工具参数不能改写")
 	cmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "每次工具调用的总时限")
@@ -44,6 +48,31 @@ func newMCPCmd(_ *globalOpts) *cobra.Command {
 type mcpOutput struct{ io.Writer }
 
 func (mcpOutput) Close() error { return nil }
+
+type mcpTransport struct{ mcp.Transport }
+
+func (t mcpTransport) Connect(ctx context.Context) (mcp.Connection, error) {
+	c, err := t.Transport.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return mcpConnection{c}, nil
+}
+
+type mcpConnection struct{ mcp.Connection }
+
+func (c mcpConnection) Write(ctx context.Context, message jsonrpc.Message) error {
+	// SDK 的参数解析错误发生在工具中间件之前，必须在协议响应出口去掉原文。
+	if response, ok := message.(*jsonrpc.Response); ok && response.Error != nil {
+		code := int64(jsonrpc.CodeInternalError)
+		var wireError *jsonrpc.Error
+		if errors.As(response.Error, &wireError) {
+			code = wireError.Code
+		}
+		message = &jsonrpc.Response{ID: response.ID, Error: &jsonrpc.Error{Code: code, Message: "MCP 请求无法处理"}}
+	}
+	return c.Connection.Write(ctx, message)
+}
 
 type mcpArgs struct {
 	Key        string            `json:"key"`
@@ -164,16 +193,6 @@ func newMCPServer(dir string, timeout time.Duration, now func() time.Time) (*mcp
 			return mcpResult(result), nil
 		})
 	}
-	// SDK 的路由错误可能包含调用方原文，统一返回不含输入的错误。
-	s.AddReceivingMiddleware(func(next mcp.MethodHandler) mcp.MethodHandler {
-		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
-			result, err := next(ctx, method, req)
-			if err != nil {
-				return nil, errors.New("MCP 请求无法处理")
-			}
-			return result, nil
-		}
-	})
 	return s, nil
 }
 

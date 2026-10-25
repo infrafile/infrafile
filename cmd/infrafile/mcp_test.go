@@ -32,7 +32,7 @@ func mcpSessionTimeout(t *testing.T, dir string, timeout time.Duration) *mcp.Cli
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	st, ct := mcp.NewInMemoryTransports()
-	ss, err := s.Connect(ctx, st, nil)
+	ss, err := s.Connect(ctx, mcpTransport{st}, nil)
 	if err != nil {
 		cancel()
 		t.Fatal(err)
@@ -97,6 +97,72 @@ func TestMCPStdio(t *testing.T) {
 	}
 }
 
+func TestMCPMalformedProtocolDoesNotEchoInput(t *testing.T) {
+	dir, err := filepath.Abs(homelab)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, exe, "mcp", "--dir", dir)
+	cmd.Env = append(os.Environ(), "INFRAFILE_MCP_HELPER=1")
+	input, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { input.Close(); cmd.Wait() }()
+	encoder, decoder := json.NewEncoder(input), json.NewDecoder(output)
+	for i, tc := range []struct{ method, params string }{
+		{"initialize", `{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"raw-test","version":"1"}}`},
+		{"tools/call", `{"name":123,"arguments":{"value":"synthetic-mcp-private-value"}}`},
+		{"tools/list", `{"cursor":{"value":"synthetic-mcp-private-value"}}`},
+		{"resources/read", `{"uri":123,"value":"synthetic-mcp-private-value"}`},
+		{"synthetic-mcp-private-value", `{}`},
+	} {
+		request := map[string]any{"jsonrpc": "2.0", "id": i + 1, "method": tc.method, "params": json.RawMessage(tc.params)}
+		if err := encoder.Encode(request); err != nil {
+			t.Fatal(err)
+		}
+		var response json.RawMessage
+		if err := decoder.Decode(&response); err != nil {
+			t.Fatal(err)
+		}
+		if bytes.Contains(response, []byte("synthetic-mcp-private-value")) {
+			t.Fatalf("protocol reflected input: %s", response)
+		}
+		var value map[string]any
+		if json.Unmarshal(response, &value) != nil || value["id"] != float64(i+1) {
+			t.Fatalf("bad response: %s", response)
+		}
+		if i > 0 && value["error"] == nil {
+			t.Fatalf("malformed request succeeded: %s", response)
+		}
+		if i == 1 && value["error"].(map[string]any)["code"] != float64(-32602) {
+			t.Fatal("lost invalid-params code")
+		}
+	}
+	input.Close()
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr: %s", &stderr)
+	}
+}
+
 func TestMCPOriginKeysAndUniqueLiveSelection(t *testing.T) {
 	controlRepo(t)
 	data, _ := os.ReadFile("inventory/resources/edge.yaml")
@@ -128,7 +194,7 @@ func TestMCPOriginKeysAndUniqueLiveSelection(t *testing.T) {
 	}
 	writeImportFile(t, "inventory/servers/origin.yaml", "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata: {name: origin, archived: {date: '2026-01-01', reason: retired}}\nspec: {provider: example, address: origin.example.net}\n")
 	callMCP(t, s, "plan", map[string]any{"key": "Resource/edge", "action": "cdn-origin", "origin_key": "Server/origin"}, true)
-	callMCP(t, s, "plan", map[string]any{"key": "Resource/edge", "action": "cdn-origin", "origin_key": "Domain/missing.net"}, true)
+	callMCP(t, s, "plan", map[string]any{"key": "Resource/edge", "action": "cdn-origin", "origin_key": "Domain/missing.example.net"}, true)
 	writeImportFile(t, "inventory/resources/other.yaml", strings.Replace(edge, "name: edge", "name: other", 1))
 	for _, tool := range []string{"show", "plan"} {
 		args := map[string]any{"labels": map[string]string{"env": "test"}}
