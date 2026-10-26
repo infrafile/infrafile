@@ -139,6 +139,10 @@ func (repo *Repo) loadKind(ctx context.Context, k Kind) ([]Problem, error) {
 		case e.IsDir():
 			problems = append(problems, Problem{Code: CodeLayout, File: rel + "/",
 				Message: "kind 目录下不能有子目录"})
+		// 与 SOPS、导入和插件的边界一致：不跟随符号链接，免得读到仓外文件。
+		case e.Type()&fs.ModeSymlink != 0 && isYAML(name):
+			problems = append(problems, Problem{Code: CodeLayout, File: rel,
+				Message: "记录文件不能是符号链接，请放普通文件"})
 		case strings.HasSuffix(name, ".yml"):
 			problems = append(problems, Problem{Code: CodeLayout, File: rel,
 				Message: "扩展名要用 .yaml"})

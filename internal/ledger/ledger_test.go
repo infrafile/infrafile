@@ -138,3 +138,33 @@ spec:
 		t.Errorf("问题数 = %d：%v", len(problems), problems)
 	}
 }
+
+func TestLoadRejectsSymlinkedRecords(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	write(t, dir, "infrafile.yaml", "apiVersion: infrafile/v1alpha1\nkind: Config\n")
+	write(t, outside, "web2.yaml", "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata:\n  name: web2\nspec:\n  address: 192.0.2.20\n")
+	write(t, dir, "inventory/servers/web1.yaml", "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata:\n  name: web1\nspec:\n  address: 192.0.2.10\n")
+	if err := os.Symlink(filepath.Join(outside, "web2.yaml"), filepath.Join(dir, "inventory/servers/web2.yaml")); err != nil {
+		t.Fatal(err)
+	}
+	// 仓内的符号链接同样拒绝，记录文件只能是普通文件。
+	if err := os.Symlink("web1.yaml", filepath.Join(dir, "inventory/servers/alias.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	repo, problems, err := Load(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repo.Records) != 1 || repo.Records[0].Name != "web1" || len(repo.Files) != 1 {
+		t.Fatalf("Records = %v，Files = %v", repo.Records, repo.Files)
+	}
+	codes := map[string]int{}
+	for _, p := range problems {
+		codes[p.Code+" "+p.File]++
+	}
+	if len(problems) != 2 || codes["layout inventory/servers/web2.yaml"] != 1 || codes["layout inventory/servers/alias.yaml"] != 1 {
+		t.Fatalf("问题 = %v", problems)
+	}
+}

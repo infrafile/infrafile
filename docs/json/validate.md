@@ -39,7 +39,7 @@
 | `code` | 含义 |
 | --- | --- |
 | `parse` | YAML 无法解析，或文件内容不是一条记录 |
-| `layout` | 文件或目录放错了位置 |
+| `layout` | 文件或目录放错了位置，或记录文件是符号链接（不跟随，免得读到仓外文件） |
 | `kind` | `kind` 与所在目录不符 |
 | `schema` | 不符合 JSON Schema |
 | `name` | `metadata.name` 与文件名不一致 |
