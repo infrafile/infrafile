@@ -3,6 +3,10 @@ kind: Domain
 metadata:
   name: example.net
   description: 备用域名，暂时只做跳转
+  waivers:
+    - rule: origin_exposure
+      reason: 只做跳转，迁到 CDN 前先直连 web1
+      until: 2027-06-30
 spec:
   registrar: example-registrar
   dns_account: cloudflare-main

@@ -41,6 +41,23 @@
             "date": {"$ref": "#/$defs/date"},
             "reason": {"type": "string", "minLength": 1}
           }
+        },
+        "waivers": {
+          "description": "偏差豁免：让审计不再就这条记录报告某条规则。删除记录时豁免一并消失。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rule", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "rule": {
+                "description": "要豁免的审计规则。",
+                "enum": ["stale_state", "orphan", "zombie", "origin_exposure", "cdn_drift"]
+              },
+              "reason": {"description": "为什么豁免。", "type": "string", "minLength": 1},
+              "until": {"description": "可选的失效日期；过期后审计重新报告。", "$ref": "#/$defs/date"}
+            }
+          }
         }
       }
     },

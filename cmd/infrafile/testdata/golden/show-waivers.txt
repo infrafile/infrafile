@@ -1,0 +1,27 @@
+$ infrafile show example.net ../../examples/homelab
+[退出码 0]
+--- stdout
+文件：inventory/domains/example.net.yaml
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata:
+    description: 备用域名，暂时只做跳转
+    name: example.net
+    waivers:
+        - reason: 只做跳转，迁到 CDN 前先直连 web1
+          rule: origin_exposure
+          until: "2027-06-30"
+spec:
+    bindings:
+        - name: '@'
+          server: web1
+    dns_account: cloudflare-main
+    expires_at: "2026-12-31"
+    registrar: example-registrar
+
+入边（谁引用它）：0
+
+出边（它引用谁）：2
+  Server/web1  spec.bindings[0].server
+  Account/cloudflare-main  spec.dns_account
+--- stderr

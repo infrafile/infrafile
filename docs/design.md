@@ -147,6 +147,8 @@ metadata:
       until: 2027-01-01                     # 可选；过期后失效，重新报警
 ```
 
+`rule` 只能取 `stale_state`、`orphan`、`zombie`、`origin_exposure`、`cdn_drift`。规则未知、`reason` 为空、`until` 不是日期时，`validate` 报 `schema`。豁免过期不算校验错误，由审计处理。
+
 ### `serve` 的既定要求
 
 - **单用户**，可以跨设备登录。第一版不做协作者和多角色。

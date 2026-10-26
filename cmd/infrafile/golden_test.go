@@ -61,6 +61,7 @@ func TestGolden(t *testing.T) {
 		{"show-web1-json", []string{"show", "web1", homelab, "--json"}, nil},
 		{"show-app-json", []string{"show", "App/blog", homelab, "--json"}, nil},
 		{"show-archived", []string{"show", "old-vps", homelab}, nil},
+		{"show-waivers", []string{"show", "example.net", homelab}, nil},
 		{"show-archived-json", []string{"show", "old-vps", homelab, "--json"}, nil},
 		{"show-ambiguous", []string{"show", "blog", homelab}, nil},
 		{"show-not-found-json", []string{"show", "missing", homelab, "--json"}, nil},

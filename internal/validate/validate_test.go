@@ -151,6 +151,73 @@ spec:
 	}
 }
 
+func TestWaivers(t *testing.T) {
+	// 过期的豁免不是校验错误，留给 audit 处理。
+	dir := newRepo(t, map[string]string{
+		"inventory/servers/web2.yaml": `apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+  name: web2
+  waivers:
+    - rule: origin_exposure
+      reason: 内网管理面板，只对办公网放行
+      until: 2027-01-01
+    - rule: zombie
+      reason: 迁移期间保留
+      until: 2020-01-01
+    - rule: stale_state
+      reason: 家里的机器不常同步
+spec:
+  address: 192.0.2.11
+`,
+	})
+	want(t, run(t, dir, Options{}))
+
+	dir = newRepo(t, map[string]string{
+		"inventory/servers/web2.yaml": `apiVersion: infrafile/v1alpha1
+kind: Server
+metadata:
+  name: web2
+  waivers:
+    - rule: origin_exposure
+    - rule: orphan
+      reason: ""
+    - rule: no_such_rule
+      reason: 拼错的规则
+    - rule: cdn_drift
+      reason: 日期写错
+      until: 2027-13-01
+    - rule: zombie
+      reason: 多了字段
+      note: x
+spec:
+  address: 192.0.2.11
+`,
+	})
+	got := run(t, dir, Options{})
+	want(t, got,
+		"schema inventory/servers/web2.yaml:6 metadata.waivers[0].reason",
+		"schema inventory/servers/web2.yaml:8 metadata.waivers[1].reason",
+		"schema inventory/servers/web2.yaml:9 metadata.waivers[2].rule",
+		"schema inventory/servers/web2.yaml:13 metadata.waivers[3].until",
+		"schema inventory/servers/web2.yaml:16 metadata.waivers[4].note",
+	)
+	msgs := map[string]string{}
+	for _, p := range got {
+		msgs[p.Path] = p.Message
+	}
+	for path, msg := range map[string]string{
+		"metadata.waivers[0].reason": "缺少必填字段",
+		"metadata.waivers[1].reason": "不能为空",
+		"metadata.waivers[2].rule":   `应为以下之一："stale_state"、"orphan"、"zombie"、"origin_exposure"、"cdn_drift"`,
+		"metadata.waivers[3].until":  "应为日期（YYYY-MM-DD）",
+	} {
+		if msgs[path] != msg {
+			t.Errorf("%s 的消息 = %q，想要 %q", path, msgs[path], msg)
+		}
+	}
+}
+
 func TestName(t *testing.T) {
 	dir := newRepo(t, map[string]string{
 		"inventory/servers/web2.yaml": `apiVersion: infrafile/v1alpha1

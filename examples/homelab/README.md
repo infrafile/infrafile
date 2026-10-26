@@ -23,7 +23,7 @@ PATH="$PWD/examples/plugins:$PATH" infrafile sync --dir examples/homelab --json
 | --- | --- |
 | 账号 `accounts/` | `example-cloud-main`（云主机、CDN）、`cloudflare-main`（域名和 DNS） |
 | 服务器 `servers/` | `web1`（云主机）、`db1`（家里的 NAS）、`old-vps`（已归档，演示 `metadata.archived`） |
-| 域名 `domains/` | `example.com`、`example.net` |
+| 域名 `domains/` | `example.com`、`example.net`（直连源站，演示带 `until` 的 `metadata.waivers`） |
 | 应用 `apps/` | `blog`、`wiki` |
 | 云资源 `resources/` | `blog-db`（自建在 db1 上的 PostgreSQL）、`assets-cdn` |
 | 代码仓 `repos/` | `blog`、`wiki` |
