@@ -279,6 +279,27 @@ spec:
 	}
 }
 
+func TestPlaintextMapKey(t *testing.T) {
+	dir := newRepo(t, map[string]string{
+		"inventory/repos/blog.yaml": `apiVersion: infrafile/v1alpha1
+kind: Repo
+metadata:
+  name: blog
+spec:
+  remote: https://git.example.com/blog.git
+  x-notes:
+    AKIAIOSFODNN7EXAMPLE: backup
+`,
+	})
+	got := run(t, dir, Options{})
+	want(t, got, "plaintext inventory/repos/blog.yaml:8 spec.x-notes")
+	for _, p := range got {
+		if strings.Contains(p.Message+p.Path, "AKIA") {
+			t.Errorf("问题回显了明文：%+v", p)
+		}
+	}
+}
+
 func TestTokenPatterns(t *testing.T) {
 	// 都是按格式拼出来的假值。
 	for _, s := range []string{

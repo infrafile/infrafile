@@ -90,6 +90,15 @@ func scanPlaintext(doc *ledger.Document) []ledger.Problem {
 		switch v := v.(type) {
 		case map[string]any:
 			for k, child := range v {
+				// 键本身也可能是凭据。报在上一级路径、键所在行，免得输出里回显明文。
+				for _, p := range tokenPatterns {
+					if p.re.MatchString(k) {
+						problems = append(problems, ledger.Problem{Code: ledger.CodePlaintext, File: doc.File,
+							Line: doc.Line(ledger.JoinKey(path, k)), Path: path,
+							Message: fmt.Sprintf("字段名疑似明文凭据（%s），不要写进台账", p.label)})
+						break
+					}
+				}
 				if path == "spec.secrets" {
 					if s, ok := child.(string); ok && secretRef.MatchString(s) {
 						token(s, ledger.JoinKey(path, k))
