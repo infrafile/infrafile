@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/getsops/sops/v3/aes"
 	sopsage "github.com/getsops/sops/v3/age"
@@ -29,9 +30,13 @@ func init() {
 var encryptedString = regexp.MustCompile(`^ENC\[AES256_GCM,data:[A-Za-z0-9+/=]*,iv:[A-Za-z0-9+/=]+,tag:[A-Za-z0-9+/=]+,type:str\]$`)
 
 func (r Resolver) sops(ctx context.Context, ref string, resolve bool) (string, error) {
+	// 与台账 schema 一致：原文不含控制字符或空白，文件名里的空格写成 %20。
+	if strings.ContainsFunc(ref, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }) {
+		return "", &Error{"invalid-ref", "sops 引用不能含空白或控制字符；文件名里的空格写成 %20"}
+	}
 	file, key, ok := strings.Cut(strings.TrimPrefix(ref, "sops://"), "#")
 	file, err := url.PathUnescape(file)
-	if !ok || err != nil || !filepath.IsLocal(file) || strings.ContainsAny(file, "?\\\x00") || key == "" || strings.ContainsAny(key, "#?\x00") {
+	if !ok || err != nil || !filepath.IsLocal(file) || strings.ContainsAny(file, "?\\") || strings.ContainsFunc(file, unicode.IsControl) || key == "" || strings.ContainsAny(key, "#?") {
 		return "", &Error{"invalid-ref", "sops 引用必须是 sops://仓内相对文件#以点分隔的字段路径"}
 	}
 	keys := strings.Split(key, ".")

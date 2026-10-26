@@ -9,8 +9,9 @@ import (
 )
 
 // secretRef 是凭据引用的格式，与 common.schema.json 的 secrets 一致。
-// 整串锚定，引用后面不能再接明文；op 名称允许空格，与解析端相同。
-var secretRef = regexp.MustCompile(`^(env://[A-Za-z_][A-Za-z0-9_]*|sops://[^#?\\\x00-\x1f]+#[^#?\x00-\x1f]+|op://[^/?#\x00-\x1f]+/[^/?#\x00-\x1f]+/[^/?#\x00-\x1f]+(/[^/?#\x00-\x1f]+)?)$`)
+// 整串锚定；控制字符与解析端的 unicode.IsControl 一致。sops 路径不含空白，
+// 后面接不了明文；op 名称允许空格，与解析端相同，末段后接明文只能靠令牌特征兜底。
+var secretRef = regexp.MustCompile(`^(env://[A-Za-z_][A-Za-z0-9_]*|sops://[^#?\\\p{Cc}\p{Z}]+#[^#?\p{Cc}\p{Z}]+|op://[^/?#\p{Cc}]+/[^/?#\p{Cc}]+/[^/?#\p{Cc}]+(/[^/?#\p{Cc}]+)?)$`)
 
 // tokenPatterns 是常见凭据的特征。宁可漏报也不要误报到让人想关掉检查。
 var tokenPatterns = []struct {

@@ -92,6 +92,16 @@ func TestSOPS(t *testing.T) {
 			t.Errorf("接受了无效引用 %q", bad)
 		}
 	}
+	// 台账 schema 拒绝的空白和控制字符，解析端也按格式错误拒绝，不去读文件。
+	for _, bad := range []string{
+		"sops://secrets.enc.yaml#database.password hunter2", "sops://secrets.enc.yaml#database\u0085password",
+		"sops://secrets%7f.enc.yaml#database.password", "sops://secrets.enc.yaml#database.password\x7f",
+	} {
+		var failure *secret.Error
+		if err := r.Check(ctx, bad); !errors.As(err, &failure) || failure.Code != "invalid-ref" {
+			t.Errorf("%q 应报 invalid-ref，得到 %v", bad, err)
+		}
+	}
 	data, err := os.ReadFile(filepath.Join(dir, "secrets.enc.yaml"))
 	if err != nil {
 		t.Fatal(err)

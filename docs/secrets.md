@@ -8,7 +8,7 @@
 | `op://Vault/Item/password` | 1Password vault、item、field；也支持 `op://Vault/Item/section/field` | 调用 `op read --no-newline <ref>?attribute=id`，只请求字段 ID，不请求凭据值 |
 | `env://DATABASE_PASSWORD` | 当前进程的环境变量 | 变量存在；已设置为空字符串也算存在 |
 
-SOPS 使用项目内嵌的 SOPS / age 库，无须安装 `sops` 可执行程序。当前依赖要求 Go 1.26.0 或更新版本构建。只支持单组 age 加密的 YAML 和字符串字段；不调用 KMS、PGP，不支持多组密钥。后端限制以 SOPS 实际解析出的密钥类型为准，不依赖元数据键名大小写。字段路径不支持数组下标或含点的键名。文件必须位于数据仓内，`..`、绝对路径和越界符号链接会被拒绝。
+SOPS 使用项目内嵌的 SOPS / age 库，无须安装 `sops` 可执行程序。当前依赖要求 Go 1.26.0 或更新版本构建。只支持单组 age 加密的 YAML 和字符串字段；不调用 KMS、PGP，不支持多组密钥。后端限制以 SOPS 实际解析出的密钥类型为准，不依赖元数据键名大小写。字段路径不支持数组下标或含点的键名。文件必须位于数据仓内，`..`、绝对路径和越界符号链接会被拒绝。引用里不能有空白或控制字符，文件名中的空格写成 `%20`。
 
 1Password 使用本机已安装并登录的 `op`，每次操作超时为 30 秒。名字可以包含空格，请在 shell 中引用整个 URI。M3 不接受 URI 查询参数或文件附件。检查不会把字段值交给 infrafile；1Password 内部如何处理 vault 加密由其 CLI 实现决定。字段属性和命令用法见 [1Password 官方文档](https://developer.1password.com/docs/cli/secret-references/)。
 

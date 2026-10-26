@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -114,7 +115,22 @@ func sameJSON(a, b []byte) bool {
 	}
 	va, errA := decode(a)
 	vb, errB := decode(b)
-	return errA == nil && errB == nil && reflect.DeepEqual(va, vb)
+	if errA != nil || errB != nil {
+		return false
+	}
+	// 可选的 ruleset_id / rule_id 带 omitempty，显式空串与省略等价。
+	plan, _ := va.(map[string]any)
+	actions, _ := plan["actions"].([]any)
+	for _, item := range actions {
+		action, _ := item.(map[string]any)
+		binding, _ := action["binding"].(map[string]any)
+		for _, key := range []string{"ruleset_id", "rule_id"} {
+			if binding[key] == "" {
+				delete(binding, key)
+			}
+		}
+	}
+	return reflect.DeepEqual(va, vb)
 }
 
 func (p *Plan) Validate() error {
@@ -195,6 +211,12 @@ func Generate(ctx context.Context, repo *ledger.Repo, key, operation string, par
 	return p, p.Validate()
 }
 
+// isStale 认出插件写入前自行重读发现的变化，错误可能被包装过。
+func isStale(err error) bool {
+	var e *plugin.Error
+	return errors.As(err, &e) && e.Code == "stale"
+}
+
 func observe(ctx context.Context, client plugin.Client, p protocol.ControlParams) (map[string]any, error) {
 	data, err := plugin.Invoke(ctx, client, "probe", p)
 	if err != nil {
@@ -257,7 +279,7 @@ func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
 		_, err = plugin.Object(data)
 	}
 	// 插件写入前自行重读发现变化时明确未写，不能当成结果不确定。
-	if e, ok := err.(*plugin.Error); ok && e.Code == "stale" {
+	if isStale(err) {
 		r.Status = "stale"
 		r.Message = "观测状态已变化，未执行；请重新生成计划"
 		return r, nil

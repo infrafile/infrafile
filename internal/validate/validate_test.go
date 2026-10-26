@@ -249,6 +249,33 @@ spec:
 	}
 }
 
+func TestSecretRefRejectsSpacesAndControls(t *testing.T) {
+	dir := newRepo(t, map[string]string{
+		"inventory/accounts/main.yaml": `apiVersion: infrafile/v1alpha1
+kind: Account
+metadata:
+  name: main
+spec:
+  provider: example-cloud
+  secrets:
+    sops_space: sops://secrets.enc.yaml#deploy.key hunter2
+    sops_file_space: sops://my secrets.enc.yaml#deploy.key
+    op_del: "op://Infra/Item\x7f/password"
+    op_c1: "op://Infra/Item\u0085/password"
+    sops_c1: "sops://secrets.enc.yaml#deploy\u0085key"
+    console: op://Infra/Cloud Console/password
+    escaped: sops://my%20secrets.enc.yaml#deploy.key
+`,
+	})
+	want(t, run(t, dir, Options{}),
+		"plaintext inventory/accounts/main.yaml:8 spec.secrets.sops_space",
+		"plaintext inventory/accounts/main.yaml:9 spec.secrets.sops_file_space",
+		"plaintext inventory/accounts/main.yaml:10 spec.secrets.op_del",
+		"plaintext inventory/accounts/main.yaml:11 spec.secrets.op_c1",
+		"plaintext inventory/accounts/main.yaml:12 spec.secrets.sops_c1",
+	)
+}
+
 func TestPlaintext(t *testing.T) {
 	dir := newRepo(t, map[string]string{
 		"inventory/repos/blog.yaml": `apiVersion: infrafile/v1alpha1

@@ -49,7 +49,7 @@
       "type": "object",
       "additionalProperties": {
         "type": "string",
-        "pattern": "^(env://[A-Za-z_][A-Za-z0-9_]*|sops://[^#?\\\\\\x00-\\x1f]+#[^#?\\x00-\\x1f]+|op://[^/?#\\x00-\\x1f]+/[^/?#\\x00-\\x1f]+/[^/?#\\x00-\\x1f]+(/[^/?#\\x00-\\x1f]+)?)$"
+        "pattern": "^(env://[A-Za-z_][A-Za-z0-9_]*|sops://[^#?\\\\\\p{Cc}\\p{Z}]+#[^#?\\p{Cc}\\p{Z}]+|op://[^/?#\\p{Cc}]+/[^/?#\\p{Cc}]+/[^/?#\\p{Cc}]+(/[^/?#\\p{Cc}]+)?)$"
       }
     }
   }
