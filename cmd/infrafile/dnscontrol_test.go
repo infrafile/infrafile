@@ -49,6 +49,9 @@ func TestDNSControlRejectsInvalidRecords(t *testing.T) {
 		`[{name: "@", type: A, content: 192.0.2.1, ttl: 0}]`,
 		`[{name: www, type: A, content: 192.0.2.1}, {name: WWW, type: CNAME, content: example.net}]`,
 		`[{name: www, type: A, content: 192.0.2.1}, {name: WWW, type: A, content: 192.0.2.1}]`,
+		`[{name: www, type: CNAME, content: web}]`,
+		`[{name: "@", type: MX, content: mail, priority: 10}]`,
+		`[{name: sub, type: NS, content: "ns1."}]`,
 	} {
 		t.Run(records, func(t *testing.T) {
 			emptyRepo(t)

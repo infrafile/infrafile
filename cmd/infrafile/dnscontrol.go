@@ -97,7 +97,12 @@ func renderDNSControl(repo *ledger.Repo) (string, []string, error) {
 			params := []string{jsString(name)}
 			switch typ {
 			case "CNAME", "MX", "NS":
-				content = strings.TrimSuffix(strings.ToLower(content), ".") + "."
+				host := strings.TrimSuffix(strings.ToLower(content), ".")
+				// 目标要写完整域名；单标签会被当成根下的名字，如 "web."。
+				if !strings.Contains(host, ".") {
+					return "", nil, fmt.Errorf("Domain/%s 的 %s %s 目标必须是完整域名", r.Name, name, typ)
+				}
+				content = host + "."
 			}
 			if typ == "MX" {
 				params = append(params, fmt.Sprint(record["priority"]))

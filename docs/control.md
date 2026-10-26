@@ -99,7 +99,7 @@ dnscontrol check
 
 离线 `dnscontrol check` 也需要知道条目类型。可以在审阅目录提供只含类型、不含凭据的 `creds.json`：`{"none":{"TYPE":"NONE"},"cloudflare-main":{"TYPE":"CLOUDFLAREAPI"}}`。生成的 homelab 配置已用 DNSControl 5.4.0 的 check 验证；preview / push 所需的真实认证由 DNSControl 单独配置。
 
-支持 A、AAAA、CNAME、MX、TXT、NS、CAA。`name` 为相对名称，根为 `@`；目标主机名填写不带结尾点的完整域名，输出自动补点。MX 必须有 priority，CAA 必须有 tag（issue / issuewild / iodef，flags 固定为 0）。可选 ttl 为正整数秒；未填时沿用 DNSControl 默认值。proxied 仅用于 A / AAAA / CNAME，输出 CF_PROXY_ON / CF_PROXY_OFF，仅适用于 Cloudflare，省略时沿用 DNSControl 默认代理行为。
+支持 A、AAAA、CNAME、MX、TXT、NS、CAA。`name` 为相对名称，根为 `@`；目标主机名填写不带结尾点的完整域名（至少两个标签，单标签报错），输出自动补点。MX 必须有 priority，CAA 必须有 tag（issue / issuewild / iodef，flags 固定为 0）。可选 ttl 为正整数秒；未填时沿用 DNSControl 默认值。proxied 仅用于 A / AAAA / CNAME，输出 CF_PROXY_ON / CF_PROXY_OFF，仅适用于 Cloudflare，省略时沿用 DNSControl 默认代理行为。
 
 根域 `NS`（name 为 `@`）映射为 `NAMESERVER()`，不接受 TTL；子域委派仍生成 `NS()`。注册商为 NONE，因此不会通过生成配置修改父区委派；提供方自有的 NS 处理仍由 DNSControl 决定。[NS 与 NAMESERVER 的区别](https://docs.dnscontrol.org/language-reference/domain-modifiers/nameserver)。
 
