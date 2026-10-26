@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -37,6 +38,9 @@ func TestRunTreeChild(t *testing.T) {
 	if err := child.Start(); err != nil {
 		os.Exit(11)
 	}
+	if mode == "pipe-exit" {
+		os.Exit(3)
+	}
 	if mode != "running" {
 		os.Exit(0)
 	}
@@ -45,7 +49,7 @@ func TestRunTreeChild(t *testing.T) {
 }
 
 func TestRunCleansDescendants(t *testing.T) {
-	for _, mode := range []string{"running", "exited", "pipe-timeout"} {
+	for _, mode := range []string{"running", "exited", "pipe-timeout", "pipe-exit"} {
 		t.Run(mode, func(t *testing.T) {
 			t.Setenv("INFRAFILE_TREE_TEST", "1")
 			t.Setenv("INFRAFILE_TREE_VALUE", "synthetic-tree-value")
@@ -88,7 +92,8 @@ func TestRunCleansDescendants(t *testing.T) {
 				}
 				time.Sleep(10 * time.Millisecond)
 			}
-			if mode != "pipe-timeout" {
+			pipeBlocked := strings.HasPrefix(mode, "pipe-")
+			if !pipeBlocked {
 				cancel()
 			}
 			select {
@@ -96,6 +101,11 @@ func TestRunCleansDescendants(t *testing.T) {
 				finished = true
 				if err == nil {
 					t.Fatal("cancelled or pipe-blocked run succeeded")
+				}
+				// 输出没收完要报「通信失败」（退出码 2），不能当成子进程自己的退出码。
+				var code exitCode
+				if pipeBlocked && errors.As(err, &code) {
+					t.Fatalf("pipe-blocked run reported child exit code %d", code)
 				}
 			case <-time.After(3 * time.Second):
 				t.Fatal("run hung on descendant output pipes")
