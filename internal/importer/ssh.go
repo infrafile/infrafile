@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/shlex"
 )
@@ -24,7 +24,7 @@ type directive struct {
 const (
 	maxSSHFiles       = 1024
 	maxSSHBytes       = 8 << 20
-	maxSSHEvaluations = 1_000_000
+	maxSSHEvaluations = 64_000_000
 )
 
 type sshBudget struct {
@@ -202,7 +202,7 @@ func (b *sshBudget) evaluateSSH(directives []directive, alias string, values map
 		}
 		b.evaluations += 1 + len(d.values) + len(d.includes)
 		if b.evaluations > maxSSHEvaluations {
-			return false, errors.New("SSH config 累计求值工作量超过 1000000")
+			return false, errors.New("SSH config 累计求值工作量超过 64000000")
 		}
 		if d.key == "host" {
 			active = matchHost(d.values, alias)
@@ -232,13 +232,39 @@ func matchHost(patterns []string, alias string) bool {
 	match := false
 	for _, pattern := range patterns {
 		negated := strings.HasPrefix(pattern, "!")
-		literal := regexp.QuoteMeta(strings.TrimPrefix(pattern, "!"))
-		expression := strings.NewReplacer(`\*`, ".*", `\?`, ".").Replace(literal)
-		ok, _ := regexp.MatchString("^"+expression+"$", alias)
+		ok := matchWildcard(strings.TrimPrefix(pattern, "!"), alias)
 		if ok && negated {
 			return false
 		}
 		match = match || ok
 	}
 	return match
+}
+
+// matchWildcard 匹配 ssh_config 的 * 与 ?（? 对应一个字符）。
+// 每个别名都要逐条求值全部 Host 模式，不能每次编译正则。
+func matchWildcard(pattern, s string) bool {
+	p, i, star, mark := 0, 0, -1, 0
+	for i < len(s) {
+		switch {
+		case p < len(pattern) && pattern[p] == '*':
+			star, mark = p, i
+			p++
+		case p < len(pattern) && pattern[p] == '?':
+			_, n := utf8.DecodeRuneInString(s[i:])
+			p, i = p+1, i+n
+		case p < len(pattern) && pattern[p] == s[i]:
+			p, i = p+1, i+1
+		case star >= 0:
+			_, n := utf8.DecodeRuneInString(s[mark:])
+			mark += n
+			p, i = star+1, mark
+		default:
+			return false
+		}
+	}
+	for p < len(pattern) && pattern[p] == '*' {
+		p++
+	}
+	return p == len(pattern)
 }

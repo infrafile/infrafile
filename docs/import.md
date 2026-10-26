@@ -31,7 +31,7 @@ infrafile import state --dir /path/to/my-infra --write --json
 
 ## SSH config 支持范围
 
-单次 SSH 导入最多累计读取 1,024 次文件、8 MiB 配置文本，重复 Include 也计入；所有 Host 共享 100 万次求值工作量上限（指令、参数及子配置引用均计数）。超限会报错，不写入草稿。解析和求值支持通过 Ctrl+C 或 SIGTERM 取消。
+单次 SSH 导入最多累计读取 1,024 次文件、8 MiB 配置文本，重复 Include 也计入；所有 Host 共享 6,400 万次求值工作量上限（指令、参数及子配置引用均计数）。超限会报错，不写入草稿。解析和求值支持通过 Ctrl+C 或 SIGTERM 取消。
 
 从显式 `Host` 中发现字面别名；支持一个 Host 的多个别名、`*` / `?` 默认匹配、`!` 排除、首个匹配值优先、引号、注释、等号分隔。只导入 `HostName`、`User`、`Port`，未指定 HostName 时保留原别名作为 address；未指定 user / port 时不补造本机用户名或默认端口。
 

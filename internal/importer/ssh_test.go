@@ -46,15 +46,58 @@ func TestSSHRepeatedIncludesCountBytes(t *testing.T) {
 	}
 }
 
-func TestSSHEvaluationBudgetIsShared(t *testing.T) {
-	b := &sshBudget{ctx: context.Background()}
-	ds := []directive{{key: "user", values: []string{"observer"}}}
-	for i := 0; i < maxSSHEvaluations/2; i++ {
-		if _, err := b.evaluateSSH(ds, "sample", map[string]string{}); err != nil {
-			t.Fatalf("budget exhausted early: %v", err)
+func TestSSHManyHosts(t *testing.T) {
+	var body strings.Builder
+	body.WriteString("Host *.internal\n User fallback\n")
+	for i := 0; i < 1000; i++ {
+		fmt.Fprintf(&body, "Host host-%d\n HostName 192.0.2.%d\n User ops\n Port 22\n\n", i, i%250+1)
+	}
+	file := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(file, []byte(body.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := SSHConfig(context.Background(), file)
+	if err != nil || len(entries) != 1000 {
+		t.Fatalf("many hosts: entries=%d err=%v", len(entries), err)
+	}
+}
+
+func TestSSHWildcard(t *testing.T) {
+	for _, c := range []struct {
+		pattern, alias string
+		want           bool
+	}{
+		{"sample", "sample", true},
+		{"sample", "samples", false},
+		{"*", "", true},
+		{"*", "sample", true},
+		{"*.internal", "web.internal", true},
+		{"*.internal", "web.internal.example", false},
+		{"web-?", "web-1", true},
+		{"web-?", "web-12", false},
+		{"web-?", "web-é", true},
+		{"a*b*c", "aXbYbZc", true},
+		{"a*b*c", "aXbYcZ", false},
+		{"*a", "aaa", true},
+		{"a.b", "aXb", false},
+	} {
+		if got := matchWildcard(c.pattern, c.alias); got != c.want {
+			t.Errorf("matchWildcard(%q, %q) = %v, want %v", c.pattern, c.alias, got, c.want)
 		}
 	}
-	if _, err := b.evaluateSSH(ds, "another", map[string]string{}); err == nil || !strings.Contains(err.Error(), "1000000") {
+	if matchHost([]string{"web-*", "!web-2"}, "web-2") || !matchHost([]string{"web-*", "!web-2"}, "web-1") {
+		t.Fatal("negated pattern not applied")
+	}
+}
+
+func TestSSHEvaluationBudgetIsShared(t *testing.T) {
+	// Each call costs 2; start just below the cap so the second alias crosses it.
+	b := &sshBudget{ctx: context.Background(), evaluations: maxSSHEvaluations - 3}
+	ds := []directive{{key: "user", values: []string{"observer"}}}
+	if _, err := b.evaluateSSH(ds, "sample", map[string]string{}); err != nil {
+		t.Fatalf("budget exhausted early: %v", err)
+	}
+	if _, err := b.evaluateSSH(ds, "another", map[string]string{}); err == nil || !strings.Contains(err.Error(), "64000000") {
 		t.Fatalf("evaluation budget was reset: %v", err)
 	}
 }
