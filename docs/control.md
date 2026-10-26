@@ -103,4 +103,4 @@ dnscontrol check
 
 根域 `NS`（name 为 `@`）映射为 `NAMESERVER()`，不接受 TTL；子域委派仍生成 `NS()`。注册商为 NONE，因此不会通过生成配置修改父区委派；提供方自有的 NS 处理仍由 DNSControl 决定。[NS 与 NAMESERVER 的区别](https://docs.dnscontrol.org/language-reference/domain-modifiers/nameserver)。
 
-归档 Domain 和没有 dns 字段的记录跳过；重复记录、CNAME 冲突及非法数据报错，stdout 为空。输出按域名和记录排序，JS 字符串经 JSON 编码，不插入原始代码。各 zone 固定使用 **NO_PURGE**：未列出的远端记录不自动删除，因此从台账删除 DNS 项不会删除远端记录；删除另行交给 DNSControl 审阅处理。[NO_PURGE](https://docs.dnscontrol.org/language-reference/domain-modifiers/no_purge)、[Cloudflare 元数据](https://docs.dnscontrol.org/provider/cloudflareapi)、[TXT 编码](https://docs.dnscontrol.org/language-reference/domain-modifiers/txt)。
+归档 Domain 和没有 dns 字段的记录跳过；重复记录（A / AAAA 按规范化后的地址比较）、CNAME 冲突及非法数据报错，stdout 为空。输出按域名和记录排序，JS 字符串经 JSON 编码，不插入原始代码。各 zone 固定使用 **NO_PURGE**：未列出的远端记录不自动删除，因此从台账删除 DNS 项不会删除远端记录；删除另行交给 DNSControl 审阅处理。[NO_PURGE](https://docs.dnscontrol.org/language-reference/domain-modifiers/no_purge)、[Cloudflare 元数据](https://docs.dnscontrol.org/provider/cloudflareapi)、[TXT 编码](https://docs.dnscontrol.org/language-reference/domain-modifiers/txt)。

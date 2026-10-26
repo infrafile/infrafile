@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/netip"
 	"sort"
 	"strings"
 
@@ -103,6 +104,11 @@ func renderDNSControl(repo *ledger.Repo) (string, []string, error) {
 					return "", nil, fmt.Errorf("Domain/%s 的 %s %s 目标必须是完整域名", r.Name, name, typ)
 				}
 				content = host + "."
+			case "A", "AAAA":
+				// 同一地址的不同写法（大小写、零压缩）按同一条记录判重。
+				if addr, err := netip.ParseAddr(content); err == nil {
+					content = addr.String()
+				}
 			}
 			if typ == "MX" {
 				params = append(params, fmt.Sprint(record["priority"]))
