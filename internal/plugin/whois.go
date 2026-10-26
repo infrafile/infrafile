@@ -53,11 +53,9 @@ func probeWHOIS(ctx context.Context, config map[string]any) (any, error) {
 		return nil, err
 	}
 	result := map[string]any{"domain": domain, "server": server, "found": true}
-	for _, marker := range []string{"no match for", "not found", "no entries found", "no data found"} {
-		if strings.Contains(strings.ToLower(text), marker) {
-			result["found"] = false
-			return result, nil
-		}
+	if whoisNotFound(text, domain) {
+		result["found"] = false
+		return result, nil
 	}
 	name := ""
 	nameservers, statuses := []string{}, []string{}
@@ -100,6 +98,29 @@ func probeWHOIS(ctx context.Context, config map[string]any) (any, error) {
 	slices.Sort(statuses)
 	result["nameservers"], result["statuses"] = slices.Compact(nameservers), slices.Compact(statuses)
 	return result, nil
+}
+
+// whoisNotFound 只认行首的无匹配标记；响应里有匹配查询域名的 Domain Name 行时以它为准，
+// 避免注册人名称等字段里的 "Not Found" 字样造成误判。
+func whoisNotFound(text, domain string) bool {
+	notFound := false
+	for _, line := range strings.Split(text, "\n") {
+		if key, value, ok := strings.Cut(line, ":"); ok {
+			switch strings.ToLower(strings.TrimSpace(key)) {
+			case "domain name", "domain":
+				if strings.TrimSuffix(strings.ToLower(strings.TrimSpace(value)), ".") == domain {
+					return false
+				}
+			}
+		}
+		line = strings.ToLower(strings.TrimLeft(line, " \t%#>"))
+		for _, marker := range []string{"no match for", "not found", "no entries found", "no data found", "domain not found"} {
+			if strings.HasPrefix(line, marker) {
+				notFound = true
+			}
+		}
+	}
+	return notFound
 }
 
 func whoisQuery(ctx context.Context, address, query string) (string, error) {

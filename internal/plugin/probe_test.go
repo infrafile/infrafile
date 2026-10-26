@@ -217,6 +217,39 @@ func TestWHOISRecordedSyncAndCancellation(t *testing.T) {
 	}
 }
 
+func TestWHOISNotFoundMarkers(t *testing.T) {
+	responses := map[string]string{
+		// 注册人字段里的 "Not Found" 不是无匹配标记。
+		"example.com": "Domain Name: EXAMPLE.COM\nRegistrar: Example Registrar\nRegistrant Organization: Not Found Ltd\nRegistry Expiry Date: 2030-01-01T00:00:00Z\n",
+		"example.net": "No match for \"EXAMPLE.NET\".\n>>> Last update of whois database: 2026-10-25T01:00:00Z <<<\n",
+		"example.org": "%% NOT FOUND\n",
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer conn.Close()
+				line, _ := bufio.NewReader(conn).ReadString('\n')
+				conn.Write([]byte(responses[strings.TrimSpace(line)]))
+			}()
+		}
+	}()
+	for domain, want := range map[string]string{"example.com": `"found":true`, "example.net": `"found":false`, "example.org": `"found":false`} {
+		data := syncBuiltin(t, "whois", map[string]any{"domain": domain, "server": listener.Addr().String()})
+		if !strings.Contains(string(data), want) {
+			t.Errorf("%s: want %s, got %s", domain, want, data)
+		}
+	}
+}
+
 func TestTLSObservesCertificateWithoutTrustingIt(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { t.Error("TLS probe must not send HTTP") }))
 	defer server.Close()
