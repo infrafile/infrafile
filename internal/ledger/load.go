@@ -100,6 +100,12 @@ func Load(ctx context.Context, dir string) (*Repo, []Problem, error) {
 		if strings.HasPrefix(name, ".") {
 			continue
 		}
+		// kind 目录同样不跟随符号链接，否则会整目录读到仓外的记录。
+		if _, ok := KindByDir(name); ok && e.Type()&fs.ModeSymlink != 0 {
+			problems = append(problems, Problem{Code: CodeLayout, File: rel + "/",
+				Message: "kind 目录不能是符号链接，请放普通目录"})
+			continue
+		}
 		if !e.IsDir() {
 			if isYAML(name) {
 				problems = append(problems, Problem{Code: CodeLayout, File: rel,

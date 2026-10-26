@@ -168,3 +168,27 @@ func TestLoadRejectsSymlinkedRecords(t *testing.T) {
 		t.Fatalf("问题 = %v", problems)
 	}
 }
+
+func TestLoadRejectsSymlinkedKindDir(t *testing.T) {
+	dir := t.TempDir()
+	outside := t.TempDir()
+	write(t, dir, "infrafile.yaml", "apiVersion: infrafile/v1alpha1\nkind: Config\n")
+	write(t, outside, "web2.yaml", "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata:\n  name: web2\nspec:\n  address: 192.0.2.20\n")
+	if err := os.MkdirAll(filepath.Join(dir, "inventory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "inventory/servers")); err != nil {
+		t.Fatal(err)
+	}
+
+	repo, problems, err := Load(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repo.Records) != 0 || len(repo.Files) != 0 {
+		t.Fatalf("Records = %v，Files = %v", repo.Records, repo.Files)
+	}
+	if len(problems) != 1 || problems[0].Code != CodeLayout || problems[0].File != "inventory/servers/" {
+		t.Fatalf("问题 = %v", problems)
+	}
+}
