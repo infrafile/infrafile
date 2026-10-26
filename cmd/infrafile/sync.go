@@ -19,17 +19,20 @@ func newSyncCmd(opts *globalOpts) *cobra.Command {
 			if timeout <= 0 {
 				return usageError(cmd, "--timeout 必须大于 0")
 			}
-			repo, err := loadQueryRepo(dir)
-			if err != nil {
+			repo, err := loadQueryRepo(cmd.Context(), dir)
+			if err != nil && cmd.Context().Err() == nil {
 				return err
 			}
-			selected := ""
-			if len(args) == 1 {
-				selected = args[0]
-			}
-			results, err := plugin.Run(cmd.Context(), repo, selected, timeout, opts.now)
-			if err != nil {
-				return err
+			results := []plugin.Result{}
+			if cmd.Context().Err() == nil {
+				selected := ""
+				if len(args) == 1 {
+					selected = args[0]
+				}
+				results, err = plugin.Run(cmd.Context(), repo, selected, timeout, opts.now)
+				if err != nil {
+					return err
+				}
 			}
 			cancelled := cmd.Context().Err() != nil
 			ok := !cancelled

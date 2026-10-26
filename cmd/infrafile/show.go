@@ -27,7 +27,7 @@ func newShowCmd(opts *globalOpts) *cobra.Command {
 			return maxArgs(2)(cmd, args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo, err := loadQueryRepo(dirArg(args[1:]))
+			repo, err := loadQueryRepo(cmd.Context(), dirArg(args[1:]))
 			if err != nil {
 				return err
 			}

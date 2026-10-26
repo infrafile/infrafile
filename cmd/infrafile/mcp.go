@@ -27,7 +27,7 @@ func newMCPCmd(_ *globalOpts) *cobra.Command {
 	var dir string
 	var timeout time.Duration
 	cmd := &cobra.Command{Use: "mcp", Short: "启动本地 stdio MCP（只读查询与计划生成）", Args: maxArgs(0), RunE: func(cmd *cobra.Command, _ []string) error {
-		s, err := newMCPServer(dir, timeout, time.Now)
+		s, err := newMCPServer(cmd.Context(), dir, timeout, time.Now)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ type mcpArgs struct {
 	OriginKey  string            `json:"origin_key"`
 }
 
-func newMCPServer(dir string, timeout time.Duration, now func() time.Time) (*mcp.Server, error) {
+func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now func() time.Time) (*mcp.Server, error) {
 	if timeout <= 0 {
 		return nil, fmt.Errorf("--timeout 必须大于 0")
 	}
@@ -91,7 +91,7 @@ func newMCPServer(dir string, timeout time.Duration, now func() time.Time) (*mcp
 	if err != nil {
 		return nil, err
 	}
-	if _, _, err = ledger.Load(dir); err != nil {
+	if _, _, err = ledger.Load(ctx, dir); err != nil {
 		return nil, err
 	}
 	files, _ := ledger.SchemaFiles()
@@ -168,7 +168,7 @@ func newMCPServer(dir string, timeout time.Duration, now func() time.Time) (*mcp
 			if err != nil || compiled.Validate(value) != nil {
 				return mcpFailure("arguments", "参数不合法；目标必须是已登记主键或标签"), nil
 			}
-			if _, problems := ledger.ParseDocument("arguments", raw); len(problems) != 0 {
+			if _, problems, err := ledger.ParseDocument(ctx, "arguments", raw); err != nil || len(problems) != 0 {
 				return mcpFailure("arguments", "参数包含重复键或非法结构"), nil
 			}
 			var args mcpArgs
@@ -205,7 +205,7 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 		return map[string]any{"version": jsonVersion, "schemas": bundle}, nil
 	}
 	if tool == "validate" {
-		res, err := validate.Run(dir, validate.Options{})
+		res, err := validate.Run(ctx, dir, validate.Options{})
 		if err != nil {
 			return nil, err
 		}
@@ -215,7 +215,7 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 		}
 		return map[string]any{"version": jsonVersion, "ok": len(res.Problems) == 0, "records": res.Records, "problem_count": len(res.Problems), "codes": codes}, nil
 	}
-	repo, err := loadQueryRepo(dir)
+	repo, err := loadQueryRepo(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 		if err != nil {
 			return nil, err
 		}
-		data, err := p.Encode()
+		data, err := p.Encode(ctx)
 		if err != nil {
 			return nil, err
 		}

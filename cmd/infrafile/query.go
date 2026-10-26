@@ -1,14 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/infrafile/infrafile/internal/ledger"
 	"github.com/infrafile/infrafile/internal/validate"
 )
 
-func loadQueryRepo(dir string) (*ledger.Repo, error) {
-	res, err := validate.Run(dir, validate.Options{})
+func loadQueryRepo(ctx context.Context, dir string) (*ledger.Repo, error) {
+	res, err := validate.Run(ctx, dir, validate.Options{})
 	if err != nil {
 		return nil, err
 	}

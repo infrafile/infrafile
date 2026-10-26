@@ -26,7 +26,7 @@ func mcpSession(t *testing.T, dir string) *mcp.ClientSession {
 
 func mcpSessionTimeout(t *testing.T, dir string, timeout time.Duration) *mcp.ClientSession {
 	t.Helper()
-	s, err := newMCPServer(dir, timeout, func() time.Time { return time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC) })
+	s, err := newMCPServer(context.Background(), dir, timeout, func() time.Time { return time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC) })
 	if err != nil {
 		t.Fatal(err)
 	}

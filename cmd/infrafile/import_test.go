@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,7 +32,7 @@ func TestImportSSHConfigDraftAndCreateOnly(t *testing.T) {
 		t.Fatal("dry run changed inventory")
 	}
 	importCLI(t, 0, "import", "ssh-config", "--file", "ssh.conf", "--write")
-	repo, problems, err := ledger.Load(".")
+	repo, problems, err := ledger.Load(context.Background(), ".")
 	if err != nil || len(problems) != 0 || len(repo.Records) != 2 {
 		t.Fatalf("created records: %v %v", problems, err)
 	}
@@ -146,7 +147,7 @@ func TestImportFirstPartyReplayAndRepeat(t *testing.T) {
 			importCLI(t, 0, "sync", provider, "--json")
 			importCLI(t, 0, "import", "state", "--write", "--json")
 			importCLI(t, 0, "validate")
-			repo, _, err := ledger.Load(".")
+			repo, _, err := ledger.Load(context.Background(), ".")
 			if err != nil || len(repo.Records) == 0 {
 				t.Fatal("provider produced no records")
 			}

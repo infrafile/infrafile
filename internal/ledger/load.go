@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -65,7 +66,10 @@ func (e *NotRepoError) Error() string {
 
 // Load 加载数据仓。数据本身的问题以 Problem 返回；
 // 不是数据仓、目录读不了等无法继续的情况才返回 error。
-func Load(dir string) (*Repo, []Problem, error) {
+func Load(ctx context.Context, dir string) (*Repo, []Problem, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
 	if _, err := os.Stat(filepath.Join(dir, ConfigFile)); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil, &NotRepoError{Dir: dir}
@@ -74,7 +78,10 @@ func Load(dir string) (*Repo, []Problem, error) {
 	}
 
 	repo := &Repo{Dir: dir}
-	cfg, problems := parseFile(dir, ConfigFile)
+	cfg, problems, err := parseFile(ctx, dir, ConfigFile)
+	if err != nil {
+		return nil, nil, err
+	}
 	repo.Config = cfg
 
 	entries, err := os.ReadDir(filepath.Join(dir, InventoryDir))
@@ -85,6 +92,9 @@ func Load(dir string) (*Repo, []Problem, error) {
 		return nil, nil, err
 	}
 	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
 		name := e.Name()
 		rel := InventoryDir + "/" + name
 		if strings.HasPrefix(name, ".") {
@@ -103,7 +113,7 @@ func Load(dir string) (*Repo, []Problem, error) {
 				Message: "未知目录，inventory/ 下只能有 " + kindDirs()})
 			continue
 		}
-		ps, err := repo.loadKind(k)
+		ps, err := repo.loadKind(ctx, k)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -112,13 +122,16 @@ func Load(dir string) (*Repo, []Problem, error) {
 	return repo, problems, nil
 }
 
-func (repo *Repo) loadKind(k Kind) ([]Problem, error) {
+func (repo *Repo) loadKind(ctx context.Context, k Kind) ([]Problem, error) {
 	entries, err := os.ReadDir(filepath.Join(repo.Dir, InventoryDir, k.Dir))
 	if err != nil {
 		return nil, err
 	}
 	var problems []Problem
 	for _, e := range entries {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		name := e.Name()
 		rel := InventoryDir + "/" + k.Dir + "/" + name
 		switch {
@@ -131,7 +144,10 @@ func (repo *Repo) loadKind(k Kind) ([]Problem, error) {
 				Message: "扩展名要用 .yaml"})
 		case strings.HasSuffix(name, ".yaml"):
 			repo.Files = append(repo.Files, rel)
-			doc, ps := parseFile(repo.Dir, rel)
+			doc, ps, err := parseFile(ctx, repo.Dir, rel)
+			if err != nil {
+				return nil, err
+			}
 			problems = append(problems, ps...)
 			if doc == nil {
 				continue
@@ -169,63 +185,113 @@ func field(v any, key string) any {
 var yamlErrLine = regexp.MustCompile(`^yaml: line (\d+): (.*)$`)
 
 // parseFile 解析一个文件。返回的 Document 为 nil 表示文件无法作为一条记录使用。
-func parseFile(dir, rel string) (*Document, []Problem) {
+func parseFile(ctx context.Context, dir, rel string) (*Document, []Problem, error) {
 	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
 	if err != nil {
-		return nil, []Problem{{Code: CodeParse, File: rel, Message: "读取失败：" + err.Error()}}
+		return nil, []Problem{{Code: CodeParse, File: rel, Message: "读取失败：" + err.Error()}}, nil
 	}
-	return ParseDocument(rel, data)
+	return ParseDocument(ctx, rel, data)
 }
 
 // ParseDocument 复用台账的 YAML 语义：拒绝重复键、多文档，并保留日期字符串。
-func ParseDocument(rel string, data []byte) (*Document, []Problem) {
-	dec := yaml.NewDecoder(bytes.NewReader(data))
+func ParseDocument(ctx context.Context, rel string, data []byte) (*Document, []Problem, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	dec := yaml.NewDecoder(contextReader{ctx, bytes.NewReader(data)})
 	var root yaml.Node
 	if err := dec.Decode(&root); err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
 		if errors.Is(err, io.EOF) {
-			return nil, []Problem{{Code: CodeParse, File: rel, Message: "文件是空的"}}
+			return nil, []Problem{{Code: CodeParse, File: rel, Message: "文件是空的"}}, nil
 		}
 		p := Problem{Code: CodeParse, File: rel, Message: "YAML 语法错误：" + err.Error()}
 		if m := yamlErrLine.FindStringSubmatch(err.Error()); m != nil {
 			p.Line, _ = strconv.Atoi(m[1])
 			p.Message = "YAML 语法错误：" + m[2]
 		}
-		return nil, []Problem{p}
+		return nil, []Problem{p}, nil
 	}
 	var extra yaml.Node
 	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
 		return nil, []Problem{{Code: CodeParse, File: rel, Line: extra.Line,
-			Message: "一个文件只能放一条记录，这里有多个 YAML 文档"}}
+			Message: "一个文件只能放一条记录，这里有多个 YAML 文档"}}, nil
 	}
 
-	c := &converter{file: rel, lines: map[string]int{"": 1}}
-	v := c.value(&root, "", 0)
-	return &Document{File: rel, Value: v, lines: c.lines}, c.problems
+	c := &converter{ctx: ctx, file: rel, lines: map[string]int{"": 1}, active: map[*yaml.Node]bool{}}
+	v, err := c.value(&root, "", 0)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
+		return nil, []Problem{{Code: CodeParse, File: rel, Message: err.Error()}}, nil
+	}
+	return &Document{File: rel, Value: v, lines: c.lines}, c.problems, nil
+}
+
+type contextReader struct {
+	ctx context.Context
+	io.Reader
+}
+
+func (r contextReader) Read(p []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.Reader.Read(p)
 }
 
 // converter 把 yaml.Node 转成普通的 Go 值，同时记录每个字段路径的行号。
 // 不直接 Unmarshal 到 any，是为了拿到行号、拦下重复键，并让日期保持字符串原样交给 schema 校验。
 type converter struct {
+	ctx      context.Context
+	nodes    int
+	bytes    int
+	active   map[*yaml.Node]bool
 	file     string
 	lines    map[string]int
 	problems []Problem
 }
 
-const maxDepth = 100
+const (
+	maxDepth         = 100
+	maxExpandedNodes = 100_000
+	maxExpandedBytes = 16 << 20
+)
 
 func (c *converter) problem(line int, path, msg string) {
 	c.problems = append(c.problems, Problem{Code: CodeParse, File: c.file, Line: line, Path: path, Message: msg})
 }
 
-func (c *converter) value(n *yaml.Node, path string, depth int) any {
-	if depth > maxDepth {
-		c.problem(n.Line, path, "嵌套太深，可能是别名引用了自身")
-		return nil
+func (c *converter) value(n *yaml.Node, path string, depth int) (any, error) {
+	if err := c.ctx.Err(); err != nil {
+		return nil, err
 	}
+	c.nodes++
+	if c.nodes > maxExpandedNodes {
+		return nil, errors.New("YAML 累计展开超过 100000 个节点")
+	}
+	c.bytes += len(path) + len(n.Value)
+	if c.bytes > maxExpandedBytes {
+		return nil, errors.New("YAML 累计展开的字段路径和标量超过 16 MiB")
+	}
+	if depth > maxDepth {
+		return nil, errors.New("YAML 嵌套超过 100 层")
+	}
+	if c.active[n] {
+		return nil, errors.New("YAML 别名存在循环引用")
+	}
+	c.active[n] = true
+	defer delete(c.active, n)
 	switch n.Kind {
 	case yaml.DocumentNode:
 		if len(n.Content) == 0 {
-			return nil
+			return nil, nil
 		}
 		return c.value(n.Content[0], path, depth+1)
 	case yaml.AliasNode:
@@ -251,27 +317,35 @@ func (c *converter) value(n *yaml.Node, path string, depth int) any {
 				continue
 			}
 			c.lines[p] = k.Line
-			m[k.Value] = c.value(v, p, depth+1)
+			value, err := c.value(v, p, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			m[k.Value] = value
 		}
-		return m
+		return m, nil
 	case yaml.SequenceNode:
 		s := make([]any, 0, len(n.Content))
 		for i, item := range n.Content {
 			p := JoinIndex(path, i)
 			c.lines[p] = item.Line
-			s = append(s, c.value(item, p, depth+1))
+			value, err := c.value(item, p, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			s = append(s, value)
 		}
-		return s
+		return s, nil
 	case yaml.ScalarNode:
 		switch n.ShortTag() {
 		case "!!int", "!!float", "!!bool", "!!null":
 			var v any
 			if err := n.Decode(&v); err == nil {
-				return v
+				return v, nil
 			}
 		}
 		// 字符串、日期（!!timestamp）和自定义标签都保留原文。
-		return n.Value
+		return n.Value, nil
 	}
-	return nil
+	return nil, nil
 }

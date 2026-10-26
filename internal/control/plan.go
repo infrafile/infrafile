@@ -47,7 +47,7 @@ var digest = regexp.MustCompile(`^[a-f0-9]{64}$`)
 const maxPlanBytes = 4 << 20
 
 // Encode 在创建文件或输出任何字节前，与读取端使用同一大小上限。
-func (p *Plan) Encode() ([]byte, error) {
+func (p *Plan) Encode(ctx context.Context) ([]byte, error) {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	encoder.SetEscapeHTML(false)
@@ -58,10 +58,16 @@ func (p *Plan) Encode() ([]byte, error) {
 	if buf.Len() > maxPlanBytes {
 		return nil, fmt.Errorf("计划超过 4 MiB，请缩小插件观测范围")
 	}
+	// A generated plan must also fit the shared parser used by Read.
+	if _, problems, err := ledger.ParseDocument(ctx, "plan.json", buf.Bytes()); err != nil {
+		return nil, err
+	} else if len(problems) > 0 {
+		return nil, fmt.Errorf("计划超过解析限制，请缩小插件观测范围")
+	}
 	return buf.Bytes(), nil
 }
 
-func Read(path string) (*Plan, error) {
+func Read(ctx context.Context, path string) (*Plan, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -75,7 +81,9 @@ func Read(path string) (*Plan, error) {
 		return nil, err
 	}
 	// YAML 的 JSON 子集解析同时拦截重复键，避免审阅工具理解出不同的计划。
-	if _, problems := ledger.ParseDocument("plan.json", data); len(problems) > 0 {
+	if _, problems, err := ledger.ParseDocument(ctx, "plan.json", data); err != nil {
+		return nil, err
+	} else if len(problems) > 0 {
 		return nil, fmt.Errorf("计划含重复键或无效结构")
 	}
 	var p Plan

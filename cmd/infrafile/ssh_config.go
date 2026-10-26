@@ -29,7 +29,7 @@ func newSSHConfigCmd(opts *globalOpts) *cobra.Command {
 未填写的 user、port 不输出，由 SSH 自身配置决定。`,
 		Args: maxArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo, err := loadQueryRepo(dirArg(args))
+			repo, err := loadQueryRepo(cmd.Context(), dirArg(args))
 			if err != nil {
 				return err
 			}

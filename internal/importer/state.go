@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -18,7 +19,7 @@ import (
 var pluginName = regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`)
 var unsafeName = regexp.MustCompile(`[^a-z0-9.-]+`)
 
-func State(dir string) ([]Entry, []Notice, error) {
+func State(ctx context.Context, dir string) ([]Entry, []Notice, error) {
 	repo, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, nil, errors.New("无法打开数据仓")
@@ -72,7 +73,10 @@ func State(dir string) ([]Entry, []Notice, error) {
 				return nil, nil, errors.New("无法读取快照")
 			}
 			source := "state/" + rel
-			doc, problems := ledger.ParseDocument(source, data)
+			doc, problems, err := ledger.ParseDocument(ctx, source, data)
+			if err != nil {
+				return nil, nil, err
+			}
 			if doc == nil || len(problems) != 0 {
 				return nil, nil, fmt.Errorf("%s: 快照 YAML 格式错误", source)
 			}

@@ -18,7 +18,7 @@ func newSecretCmd(opts *globalOpts) *cobra.Command {
 		Args:  maxArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := dirArg(args)
-			repo, err := loadQueryRepo(dir)
+			repo, err := loadQueryRepo(cmd.Context(), dir)
 			if err != nil {
 				return err
 			}

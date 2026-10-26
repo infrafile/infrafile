@@ -23,7 +23,7 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 			if operation == "cdn-origin" {
 				parameters["host"] = host
 			}
-			repo, err := loadQueryRepo(dir)
+			repo, err := loadQueryRepo(cmd.Context(), dir)
 			if err != nil {
 				return err
 			}
@@ -33,7 +33,7 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			data, err := p.Encode()
+			data, err := p.Encode(ctx)
 			if err != nil {
 				return err
 			}
@@ -67,12 +67,12 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 		root.AddCommand(cmd)
 	}
 	root.AddCommand(&cobra.Command{Use: "show <计划文件>", Short: "校验并渲染计划内容", Args: exactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := control.Read(args[0])
+		p, err := control.Read(cmd.Context(), args[0])
 		if err != nil {
 			return err
 		}
 		if opts.json {
-			data, err := p.Encode()
+			data, err := p.Encode(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -97,11 +97,11 @@ func newApplyCmd(opts *globalOpts) *cobra.Command {
 		if timeout <= 0 {
 			return usageError(cmd, "--timeout 必须大于 0")
 		}
-		p, err := control.Read(args[0])
+		p, err := control.Read(cmd.Context(), args[0])
 		if err != nil {
 			return err
 		}
-		repo, err := loadQueryRepo(dir)
+		repo, err := loadQueryRepo(cmd.Context(), dir)
 		if err != nil {
 			return err
 		}

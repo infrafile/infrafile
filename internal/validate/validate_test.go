@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,7 +43,7 @@ spec:
 
 func run(t *testing.T, dir string, opts Options) []ledger.Problem {
 	t.Helper()
-	res, err := Run(dir, opts)
+	res, err := Run(context.Background(), dir, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +93,7 @@ spec:
       server: web1
 `,
 	})
-	res, err := Run(dir, Options{})
+	res, err := Run(context.Background(), dir, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,11 +343,11 @@ func TestDeleted(t *testing.T) {
 	}
 
 	for _, ref := range []string{"nope", "--all"} {
-		if _, err := Run(dir, Options{Base: ref}); err == nil {
+		if _, err := Run(context.Background(), dir, Options{Base: ref}); err == nil {
 			t.Errorf("--base %s 应报错", ref)
 		}
 	}
-	if _, err := Run(newRepo(t, nil), Options{Base: "HEAD"}); err == nil {
+	if _, err := Run(context.Background(), newRepo(t, nil), Options{Base: "HEAD"}); err == nil {
 		t.Error("不在 git 仓库里时 --base 应报错")
 	}
 }

@@ -12,7 +12,7 @@ import (
 
 func newDNSControlCmd(opts *globalOpts) *cobra.Command {
 	return &cobra.Command{Use: "dnscontrol [目录]", Short: "从 Domain 的显式 DNS 记录生成 DNSControl 配置", Args: maxArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
-		repo, err := loadQueryRepo(dirArg(args))
+		repo, err := loadQueryRepo(cmd.Context(), dirArg(args))
 		if err != nil {
 			return err
 		}

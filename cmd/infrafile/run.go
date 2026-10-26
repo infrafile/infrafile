@@ -56,7 +56,7 @@ func newRunCmd(opts *globalOpts) *cobra.Command {
 				env = append(env, b.name+"="+value)
 				values = append(values, value)
 			}
-			child := exec.CommandContext(cmd.Context(), args[0], args[1:]...)
+			child := exec.Command(args[0], args[1:]...)
 			child.Env = env
 			child.Stdin = cmd.InOrStdin()
 			stdout, stderr := cmd.OutOrStdout(), cmd.ErrOrStderr()
@@ -66,7 +66,7 @@ func newRunCmd(opts *globalOpts) *cobra.Command {
 			}
 			maskedOut, maskedErr := secret.NewRedactor(stdout, values), secret.NewRedactor(stderr, values)
 			child.Stdout, child.Stderr = maskedOut, maskedErr
-			err := child.Run()
+			err := runChild(cmd.Context(), child)
 			outErr, errErr := maskedOut.Close(), maskedErr.Close()
 			if outErr != nil || errErr != nil {
 				return fmt.Errorf("无法写入子进程输出")
@@ -74,12 +74,15 @@ func newRunCmd(opts *globalOpts) *cobra.Command {
 			code := 0
 			if err != nil {
 				var failed *exec.ExitError
-				if !errors.As(err, &failed) {
-					return fmt.Errorf("子进程无法启动或通信失败")
-				}
-				code = failed.ExitCode()
-				if code < 0 {
+				if cmd.Context().Err() != nil {
 					code = 1
+				} else if !errors.As(err, &failed) {
+					return fmt.Errorf("子进程无法启动或通信失败")
+				} else {
+					code = failed.ExitCode()
+					if code < 0 {
+						code = 1
+					}
 				}
 			}
 			if opts.json {

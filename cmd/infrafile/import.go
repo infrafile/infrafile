@@ -28,14 +28,14 @@ func newImportSourceCmd(opts *globalOpts, source string) *cobra.Command {
 		if write && output != "" {
 			return usageError(cmd, "--write 与 --output 不能同时使用")
 		}
-		repo, err := loadQueryRepo(dir)
+		repo, err := loadQueryRepo(cmd.Context(), dir)
 		if err != nil {
 			return err
 		}
 		var entries []importer.Entry
 		var notices []importer.Notice
 		if source == "state" {
-			entries, notices, err = importer.State(repo.Dir)
+			entries, notices, err = importer.State(cmd.Context(), repo.Dir)
 		} else {
 			input := file
 			if input == "" {

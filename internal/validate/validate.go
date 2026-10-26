@@ -2,6 +2,7 @@
 package validate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/infrafile/infrafile/internal/ledger"
@@ -22,8 +23,8 @@ type Result struct {
 
 // Run 校验 dir 下的数据仓。数据的问题放在 Result.Problems 里；
 // 不是数据仓、读不到基线等命令无法执行的情况返回 error。
-func Run(dir string, opts Options) (*Result, error) {
-	repo, problems, err := ledger.Load(dir)
+func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
+	repo, problems, err := ledger.Load(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -37,6 +38,9 @@ func Run(dir string, opts Options) (*Result, error) {
 		problems = append(problems, scanPlaintext(repo.Config)...)
 	}
 	for _, r := range repo.Records {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		problems = append(problems, schemaProblems(r.Document, schemas.Validate(r.Kind, r.Value))...)
 		if r.Name != "" && r.Name != r.Stem() {
 			problems = append(problems, ledger.Problem{Code: ledger.CodeName, File: r.File,

@@ -36,7 +36,7 @@ func newExpiryCmd(opts *globalOpts) *cobra.Command {
 			if !dayWindow.MatchString(within) || err != nil {
 				return usageError(cmd, "--within 必须是非负整数天数，如 30d")
 			}
-			repo, err := loadQueryRepo(dirArg(args))
+			repo, err := loadQueryRepo(cmd.Context(), dirArg(args))
 			if err != nil {
 				return err
 			}

@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,7 +61,7 @@ func write(t *testing.T, dir, rel, content string) {
 }
 
 func TestLoadNotRepo(t *testing.T) {
-	_, _, err := Load(t.TempDir())
+	_, _, err := Load(context.Background(), t.TempDir())
 	if _, ok := err.(*NotRepoError); !ok {
 		t.Fatalf("err = %v，想要 *NotRepoError", err)
 	}
@@ -87,7 +88,7 @@ spec:
 	write(t, dir, "inventory/loose.yaml", "")
 	write(t, dir, "inventory/servers/.gitkeep", "")
 
-	repo, problems, err := Load(dir)
+	repo, problems, err := Load(context.Background(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
