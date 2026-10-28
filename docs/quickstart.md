@@ -59,9 +59,9 @@ infrafile import state --dir "$demo" --write --json
 
 `example` 是内置的离线插件。第一次 import 仅展示草稿；加 `--write` 才创建不存在的资产，本示例校验将变成 17 条记录。重复导入不会覆盖已有记录。未指定插件的 `sync` 会尝试配置中的其他插件，因此这里显式选择 example。
 
-## 同步、审计与豁免（v0.2 开发版）
+## 同步、审计与豁免
 
-本节需要从开发分支构建的二进制；公开的 v0.1.0 尚无 audit / gatus。维护者在源码目录运行 `make build`，并将 `bin/` 加入当前 PATH 后，用上面的示例副本继续：
+本节需要 v0.2.0 或更新版本。v0.1.0 用户先运行 `brew update`、`brew upgrade infrafile/tap/infrafile`，再用 `infrafile version` 确认版本；源码构建使用 `make build` 后的二进制。用上面的示例副本继续：
 
 ```sh
 infrafile audit "$demo" --json
@@ -95,7 +95,7 @@ infrafile agent install codex --dir "$work"
 
 DNSControl 输出包含 `NO_PURGE`，不会实际修改 DNS。指南安装在临时项目的 `.agents/skills/infrafile/SKILL.md`；Claude Code 将 codex 换为 claude。重复安装相同内容不重写，已有不同内容会保留并报错。
 
-v0.2 开发版还可执行 `infrafile gatus "$demo"`：示例只为 example.com 的根绑定显式配置 monitor，因此只生成一个 HTTPS 端点。将输出保存到自己的 Gatus 配置目录，与告警和存储配置合并；本命令不启动服务或执行探测。默认路径 `/`、间隔 `1m`、状态码 `200`，同时要求证书剩余有效期超过 240 小时，字段见 [Gatus 契约](json/gatus.md)。
+还可执行 `infrafile gatus "$demo"`：示例只为 example.com 的根绑定显式配置 monitor，因此只生成一个 HTTPS 端点。将输出保存到自己的 Gatus 配置目录，与告警和存储配置合并；本命令不启动服务或执行探测。默认路径 `/`、间隔 `1m`、状态码 `200`，同时要求证书剩余有效期超过 240 小时，字段见 [Gatus 契约](json/gatus.md)。
 
 需要 MCP 时，让客户端启动 `infrafile mcp --dir <demo 的绝对路径>`，再调用 `infrafile_show`，参数为 `{"key":"Server/web1"}`。它是等待客户端输入的协议服务，不是一次性查询命令；配置方式见 [Agent 指南](agent.md)。
 

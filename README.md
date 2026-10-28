@@ -1,6 +1,6 @@
 # infrafile
 
-> **[v0.1.0 已发布](https://github.com/infrafile/infrafile/releases/tag/v0.1.0)。** 首个公开版本，数据格式为 `v1alpha1`。
+> **[v0.2.0](https://github.com/infrafile/infrafile/releases/tag/v0.2.0)**：离线审计、偏差豁免和 Gatus 配置生成，数据格式保持 `v1alpha1`。
 
 infrafile 是面向个人和小团队的基础设施资产台账：**以 git 为后端**，服务器、应用、域名、云账号、云资源、代码仓都写成明文 YAML 存进 git。另外几项能力：
 
@@ -25,7 +25,7 @@ Go 单二进制，sops 和 age 以库的方式内置，不用另装。
 
 v0.1 已完成 M0–M9：账本、查询、凭据引用、插件与导入、plan / apply 受控写、DNSControl，以及本地 stdio MCP 和内嵌 Agent 指南；签名发布与 Homebrew 安装已验收。该版本的 MCP 提供六个只读查询／计划工具，目标按台账主键或标签选择；线上变更仍通过 CLI 审阅计划并另行授权执行。可先用[虚构示例](examples/homelab/README.md)体验。
 
-v0.2 开发版新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN 停用漂移，支持带理由与有效期的偏差豁免；MCP 增加第七个只读审计工具。`gatus` 从显式 `monitor` 绑定生成 HTTPS 监控配置，不启动探测。详见 [v0.2 计划](docs/plan/v0.2.md)和[快速上手](docs/quickstart.md)。这些能力尚未发布，Homebrew v0.1.0 不包含它们；开发版可执行 `make build` 后使用 `bin/infrafile`。
+v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN 停用漂移，支持带理由与有效期的偏差豁免；MCP 增加第七个只读审计工具。`gatus` 从显式 `monitor` 绑定生成 HTTPS 监控配置，不启动探测。详见 [v0.2 计划](docs/plan/v0.2.md)和[快速上手](docs/quickstart.md)。从 v0.1 升级时运行 `brew update` 和 `brew upgrade infrafile/tap/infrafile`；源码构建使用 `make build` 后的 `bin/infrafile`。
 
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)

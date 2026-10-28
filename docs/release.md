@@ -1,6 +1,6 @@
 # 发版
 
-v0.1 的发布入口是 `.github/workflows/release.yml`。`v*` 标签触发测试、离线快速上手、GoReleaser 六个平台构建，以及基于 GitHub OIDC 的 Cosign keyless 签名。工作流先创建草稿 Release，验收后公开并更新 Homebrew tap。
+发布入口是 `.github/workflows/release.yml`。`v*` 标签触发测试、离线快速上手、GoReleaser 六个平台构建，以及基于 GitHub OIDC 的 Cosign keyless 签名。工作流先创建草稿 Release，验收后公开并更新 Homebrew tap。以下以 v0.2.0 为例。
 
 ## 构建与发布约定
 
@@ -26,8 +26,8 @@ snapshot 只检验打包，不代表正式签名或发布成功；再次生成�
 确认目标 tag 尚不存在，再创建不可移动的发布标签：
 
 ```sh
-git tag -a v0.1.0 -m 'infrafile v0.1.0'
-git push origin v0.1.0
+git tag -a v0.2.0 -m 'infrafile v0.2.0'
+git push origin v0.2.0
 ```
 
 不要移动已发布标签。下载草稿需要有仓库权限的 gh 登录；工作流失败时先检查已存在的草稿资产，再修复原因。不要用本地 snapshot 替换正式构建产物。
@@ -39,7 +39,7 @@ git push origin v0.1.0
 ```sh
 (
 set -eu
-tag=v0.1.0
+tag=v0.2.0
 gh release download "$tag" --repo infrafile/infrafile
 identity="https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/$tag"
 cosign verify-blob --certificate-identity "$identity" \
@@ -66,7 +66,7 @@ PY
 验签、版本和离线流程通过后：
 
 ```sh
-gh release edit v0.1.0 --repo infrafile/infrafile --draft=false --latest
+gh release edit v0.2.0 --repo infrafile/infrafile --draft=false --latest
 ```
 
 第一次创建公开的 `infrafile/homebrew-tap`；后续更新使用该仓当前 main。审阅下载的 `infrafile.rb`，确认四个平台 URL 和 SHA 与本次已验签的校验和一致，将其保存为 tap 的 `Formula/infrafile.rb`，带 DCO 提交后推送。tap 不存储任何凭据。
