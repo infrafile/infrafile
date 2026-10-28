@@ -51,7 +51,7 @@ SOPS age 密钥命令受实例取消信号控制；仅支持非交互身份，�
 | 百度云 | BCD `GET /v2/domain`，pageNo / totalCount；CDN `GET /v2/domain`，marker / isTruncated | `domains[]`；CDN 列表仅提供域名，因此 `cdn[]` 只有 name |
 | 天翼云 | EOP `GET /domain/query-domain-list`，page / page_size；分别查询 area_scope 1、2、3 并去重 | `cdn[]` 的 name、cname、status、type、area；另有 `unsupported: [registered-domains]` |
 
-公共域名字段为 `name`、可选 `id` / `status` / `expires_at`；公共 CDN 字段为 `name`、可选 `id` / `cname` / `status` / `type` / `area`。供应商未提供的字段省略，状态和产品类型保留供应商语义，不跨厂商强行归一。到期日为 `YYYY-MM-DD`；阿里云优先使用毫秒时间戳并取 UTC 日期。ID 输出字符串。列表稳定排序；采集时间只写 `_sync.yaml`。
+公共域名字段为 `name`、可选 `id` / `status` / `expires_at`；公共 CDN 字段为 `name`、可选 `id` / `cname` / `status` / `type` / `area`。供应商未提供的字段省略，状态和产品类型保留供应商语义，不跨厂商强行归一。到期日为 `YYYY-MM-DD`；阿里云优先使用毫秒时间戳并按北京时间取日期，与供应商的到期日字符串保持一致。ID 输出字符串。列表稳定排序；采集时间只写 `_sync.yaml`。
 
 Cloudflare 显式请求 full、partial、secondary、internal zone 类型；DNS 内容和代理状态属于观测数据。阿里云使用中国站 domain / CDN 地址。天翼的 `area` 映射为 domestic / overseas / global；数值 status 转成字符串，type 保留 product_code。不把 DNS zone 或 CDN 域名冒充已注册域名。注册域名查询只列当前云账号的注册清单，不查询全网注册信息。
 
