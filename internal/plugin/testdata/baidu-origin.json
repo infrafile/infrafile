@@ -1,0 +1,6 @@
+{
+  "originConfig": [
+    {"addr": "ORIGIN.EXAMPLE.COM.", "type": "DOMAIN", "upstreamProtocol": "https", "httpsPort": 8443, "httpPort": 8080, "backup": false, "thirdBucketAuth": {"ak": "synthetic-do-not-retain", "sk": "synthetic-do-not-retain"}},
+    {"addr": "192.0.2.1", "type": "IP", "upstreamProtocol": "https", "httpsPort": 8443, "backup": true, "host": "host-header.example.net", "probeUrl": "https://example.net/synthetic-do-not-retain"}
+  ]
+}

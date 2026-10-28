@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+
+	"github.com/infrafile/infrafile/internal/observation"
 )
 
 type cfDNS struct {
@@ -20,18 +22,22 @@ type cfDNS struct {
 }
 
 type cfZone struct {
-	ID      string  `json:"id"`
-	Name    string  `json:"name"`
-	Status  string  `json:"status"`
-	Paused  bool    `json:"paused"`
-	Records []cfDNS `json:"dns_records"`
+	ID      string              `json:"id"`
+	Name    string              `json:"name"`
+	Status  string              `json:"status"`
+	Paused  bool                `json:"paused"`
+	Records []cfDNS             `json:"dns_records"`
+	Origin  *observation.Origin `json:"origin,omitempty"`
+}
+
+type cfConfig struct {
+	APIToken      string `json:"api_token"`
+	AccountID     string `json:"account_id"`
+	CollectOrigin bool   `json:"collect_origin"`
 }
 
 func (b *builtin) cloudflare(ctx context.Context, config map[string]any) (any, error) {
-	var cfg struct {
-		APIToken  string `json:"api_token"`
-		AccountID string `json:"account_id"`
-	}
+	var cfg cfConfig
 	if err := decodeConfig(config, &cfg); err != nil {
 		return nil, err
 	}
@@ -48,7 +54,11 @@ func (b *builtin) cloudflare(ctx context.Context, config map[string]any) (any, e
 	if err != nil {
 		return nil, err
 	}
+	if cfg.CollectOrigin && len(zones) > maxOriginDomains {
+		return nil, failure("config", "回源采集超过 200 个域名上限")
+	}
 	for i := range zones {
+		zones[i].Origin = nil
 		if zones[i].ID == "" || zones[i].Name == "" {
 			return nil, failure("protocol", "Cloudflare zone 缺少标识")
 		}
@@ -68,6 +78,12 @@ func (b *builtin) cloudflare(ctx context.Context, config map[string]any) (any, e
 			return records[i].ID < records[j].ID
 		})
 		zones[i].Records = records
+		if cfg.CollectOrigin {
+			zones[i].Origin, err = cloudflareOrigin(ctx, zones[i].ID, headers)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	sort.Slice(zones, func(i, j int) bool { return zones[i].Name < zones[j].Name })
 	return map[string]any{"zones": zones}, nil

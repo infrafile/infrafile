@@ -5,7 +5,7 @@ $ infrafile audit --rule cdn_drift
 快照 2 份
   aliyun/home  2026-10-24T03:00:00Z 观测，38 天前
   cloudflare/home  2026-09-01T03:00:00Z 观测，91 天前
-cdn_drift：在用 CDN 资源的观测状态已停用或删除
+cdn_drift：在用 CDN 的停用状态或显式期望回源与观测不一致
   Resource/audit-edge  inventory/resources/audit-edge.yaml  台账 CDN 在用，但快照状态为 offline（已停用或已删除）
 提示：
   dns/blog  state/dns/blog.yaml  插件实例未在 infrafile.yaml 启用，已忽略此快照

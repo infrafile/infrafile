@@ -1,0 +1,10 @@
+{
+  "DomainConfigs": {"DomainConfig": [
+    {"Status": "success", "FunctionName": "ali_origin_port_scheme", "FunctionArgs": {"FunctionArg": [
+      {"ArgName": "scheme", "ArgValue": "https"}, {"ArgName": "port", "ArgValue": "8443"}
+    ]}},
+    {"Status": "success", "FunctionName": "aliauth", "FunctionArgs": {"FunctionArg": [
+      {"ArgName": "auth_key", "ArgValue": "synthetic-do-not-retain"}
+    ]}}
+  ]}
+}

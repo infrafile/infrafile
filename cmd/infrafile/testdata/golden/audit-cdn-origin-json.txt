@@ -1,0 +1,64 @@
+$ infrafile audit --rule cdn_drift --max-age 7d --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": 7,
+  "rules": [
+    "cdn_drift"
+  ],
+  "snapshots": [
+    {
+      "plugin": "cloudflare",
+      "instance": "home",
+      "file": "state/cloudflare/home.yaml",
+      "observed_at": "2026-12-01T11:00:00Z",
+      "age_days": 0
+    }
+  ],
+  "findings": [
+    {
+      "rule": "cdn_drift",
+      "target": "Resource/edge",
+      "file": "inventory/resources/edge.yaml",
+      "message": "观测回源与台账期望不一致：hosts",
+      "evidence": {
+        "aspect": "origin",
+        "differences": [
+          "hosts"
+        ],
+        "expected": {
+          "hosts": [
+            "origin.example.com"
+          ],
+          "port": 8443
+        },
+        "identity": {
+          "kind": "Resource",
+          "provider": "cloudflare",
+          "resource_id": "zone"
+        },
+        "instance": "home",
+        "max_age_days": 7,
+        "observed": {
+          "scope": "global",
+          "sources": [
+            {
+              "host": "changed.example.net",
+              "port": 8443
+            }
+          ]
+        },
+        "observed_at": "2026-12-01T11:00:00Z",
+        "plugin": "cloudflare",
+        "service": "zones",
+        "snapshot_file": "state/cloudflare/home.yaml"
+      },
+      "waiver": null
+    }
+  ],
+  "notices": []
+}
+--- stderr

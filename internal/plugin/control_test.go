@@ -40,7 +40,7 @@ func TestCloudflareControlPause(t *testing.T) {
 	t.Cleanup(func() { http.DefaultTransport = old })
 	c, _ := plugin.Open(context.Background(), "cloudflare", t.TempDir())
 	defer c.Close()
-	p := protocol.ControlParams{Instance: "home", Config: map[string]any{"api_token": "env://CF_CONTROL_TEST"}, Target: protocol.Target{ZoneID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, Action: "cdn-pause", Parameters: map[string]any{}}
+	p := protocol.ControlParams{Instance: "home", Config: map[string]any{"api_token": "env://CF_CONTROL_TEST", "collect_origin": true}, Target: protocol.Target{ZoneID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, Action: "cdn-pause", Parameters: map[string]any{}}
 	data, err := plugin.Invoke(context.Background(), c, "probe", p)
 	if err != nil {
 		t.Fatal(err)

@@ -14,6 +14,13 @@
       "required": ["provider", "type"],
       "additionalProperties": false,
       "patternProperties": {"^x-": true},
+      "allOf": [{
+        "if": {"required": ["origin"]},
+        "then": {"anyOf": [
+          {"properties": {"type": {"const": "cdn"}}},
+          {"properties": {"type": {"const": "dns-zone"}, "provider": {"const": "cloudflare"}}}
+        ]}
+      }],
       "properties": {
         "provider": {"type": "string", "minLength": 1},
         "type": {"description": "资源类型，如 mysql、redis、cdn、bucket。", "type": "string", "minLength": 1},
@@ -23,6 +30,17 @@
         "region": {"type": "string"},
         "endpoint": {"type": "string"},
         "expires_at": {"$ref": "common.schema.json#/$defs/date"},
+        "origin": {
+          "description": "期望回源集合；不从观测自动导入。端口、协议只在显式声明时比较。",
+          "type": "object",
+          "required": ["hosts"],
+          "additionalProperties": false,
+          "properties": {
+            "hosts": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 253}},
+            "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+            "protocol": {"enum": ["http", "https", "follow"]}
+          }
+        },
         "control": {
           "type": "object",
           "required": [

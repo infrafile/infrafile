@@ -4,7 +4,7 @@ $ infrafile audit ../../examples/homelab/lifecycle
 截至 2026-12-01T12:00:00Z（未设观测上限）
 快照 1 份
   aliyun/home  2026-10-26T03:00:00Z 观测，36 天前
-cdn_drift：在用 CDN 资源的观测状态已停用或删除
+cdn_drift：在用 CDN 的停用状态或显式期望回源与观测不一致
   无偏差
 origin_exposure：绑定 Server 的域名地址直连源站
   无偏差
