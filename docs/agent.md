@@ -53,7 +53,7 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 {"rules": ["stale_state"], "max_age_days": 7}
 ```
 
-`rules` 是已实现规则 ID 的数组：`cdn_drift`、`origin_exposure`、`orphan`、`zombie`、`stale_state`，重复 ID 只运行一次；`max_age_days` 是非负整数天数。省略 rules 或传空数组时运行全部就绪规则。默认运行前四条；`stale_state` 需要 max_age_days，显式选择它而未设阈值会失败。`ok: true` 只表示本次没有未豁免发现。未知规则，以及路径、命令、额外字段、重复 JSON 键均被拒绝。
+`rules` 是已实现规则 ID 的数组：`cdn_drift`、`origin_exposure`、`orphan`、`zombie`、`stale_state`、`missing`，重复 ID 只运行一次；`max_age_days` 是非负整数天数。省略 rules 或传空数组时运行全部就绪规则。默认运行前四条；`stale_state` 和 `missing` 需要 max_age_days，显式选择它而未设阈值会失败。`ok: true` 只表示本次没有未豁免发现。未知规则，以及路径、命令、额外字段、重复 JSON 键均被拒绝。
 
 发现未豁免偏差时返回 `ok: false`，工具调用仍成功；全部豁免时返回 `ok: true`，发现仍保留。生命周期复用导入的观测映射，按自然身份找未登记资产和仅匹配归档的资产；DNS/TLS 不参与，Cloudflare 同名 Domain 可覆盖 zone。未同步的实例没有快照时不报告缺失。orphan / zombie 的 audit.ignore 必须提供完整 match，可复制发现的 evidence.identity，并限定 plugin / instance；不得用整实例忽略压住其他资产。完整字段、豁免与缺失输入语义见[审计 JSON 契约](json/audit.md)。
 

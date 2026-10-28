@@ -25,7 +25,8 @@ func newAuditCmd(opts *globalOpts) *cobra.Command {
 		Use:   "audit [目录]",
 		Short: "对照台账和插件快照做只读审计",
 		Long: `对照台账和 state/ 下已启用插件实例的快照做只读审计，不访问网络，不写文件。
-不加 --rule 时运行全部已就绪的规则；stale_state 需要 --max-age。
+不加 --rule 时运行全部已就绪的规则；stale_state 和 missing 需要 --max-age。
+missing 检查 audit.watch 声明的范围，需要同一绑定的正向基线和新鲜成功观测；不表示资产已删除。
 orphan 检查未登记资产，zombie 检查仅匹配归档记录的资产；按自然身份匹配，DNS/TLS 不参与。
 origin_exposure 对照台账 DNS、Cloudflare 和 DNS 快照，检查显式绑定 Server 的主机名是否直连源站。
 cdn_drift 检查阿里云、腾讯云、天翼云 CDN 的明确停用状态；未知值只提示，不推断漂移。
@@ -151,7 +152,7 @@ metadata.waivers 和 infrafile.yaml 的 audit.ignore 可以豁免偏差，过期
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&maxAge, "max-age", "", "快照观测时间上限，如 7d；设置后运行 stale_state")
+	cmd.Flags().StringVar(&maxAge, "max-age", "", "快照观测时间上限，如 7d；设置后运行 stale_state 和 missing")
 	cmd.Flags().StringArrayVar(&ruleIDs, "rule", nil, "只运行指定规则，可重复")
 	return cmd
 }

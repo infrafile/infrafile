@@ -22,6 +22,7 @@ type Snapshot struct {
 	File       string
 	ObservedAt *time.Time
 	Spec       map[string]any
+	verified   bool
 }
 
 // AgeDays 返回观测距 now 的整天数；没有同步记录时返回 nil。
@@ -35,14 +36,16 @@ func (s Snapshot) AgeDays(now time.Time) *int {
 
 // Input 是规则求值所需的全部输入。MaxAge 为观测时间上限（天），未设置时为 nil。
 type Input struct {
-	Repo        *ledger.Repo
-	Snapshots   []Snapshot
-	Now         time.Time
-	MaxAge      *int
-	lifecycle   *lifecycleInput
-	origins     map[string][]originEvidence
-	cdnFindings []Finding
-	cdnNotices  []Notice
+	Repo            *ledger.Repo
+	Snapshots       []Snapshot
+	Now             time.Time
+	MaxAge          *int
+	lifecycle       *lifecycleInput
+	origins         map[string][]originEvidence
+	cdnFindings     []Finding
+	cdnNotices      []Notice
+	missingFindings []Finding
+	missingNotices  []Notice
 }
 
 // Rule 是一条审计规则。Ready 检查所需观测和参数是否齐备，Eval 只读地求值。
@@ -84,7 +87,7 @@ type Notice struct {
 
 // Rules 返回已实现的规则，按 ID 排序。
 func Rules() []Rule {
-	return []Rule{cdnDrift, originExposure, orphan, staleState, zombie}
+	return []Rule{cdnDrift, missing, originExposure, orphan, staleState, zombie}
 }
 
 // Select 按 ID 选出要运行的规则；ids 为空时选出全部已就绪的规则。
@@ -133,7 +136,7 @@ func ReadSnapshots(ctx context.Context, repo *ledger.Repo) ([]Snapshot, []Notice
 	if err != nil {
 		return nil, nil, err
 	}
-	execution, err := syncNotices(ctx, repo, enabled, all, stamps)
+	execution, verified, err := syncNotices(ctx, repo, enabled, all, stamps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -144,7 +147,7 @@ func ReadSnapshots(ctx context.Context, repo *ledger.Repo) ([]Snapshot, []Notice
 				Message: "插件实例未在 infrafile.yaml 启用，已忽略此快照"})
 			continue
 		}
-		snap := Snapshot{Plugin: s.Plugin, Instance: s.Instance, File: s.File, Spec: s.Spec}
+		snap := Snapshot{Plugin: s.Plugin, Instance: s.Instance, File: s.File, Spec: s.Spec, verified: verified[s.Plugin+"/"+s.Instance]}
 		if at, ok := stamps[s.Plugin][s.Instance]; ok {
 			snap.ObservedAt = &at
 		}
@@ -217,6 +220,9 @@ func Run(in *Input, rules []Rule) ([]Finding, []Notice) {
 	notices := []Notice{}
 	if ran["cdn_drift"] {
 		notices = append(notices, in.cdnNotices...)
+	}
+	if ran["missing"] {
+		notices = append(notices, in.missingNotices...)
 	}
 	for _, w := range waivers(in.Repo) {
 		if !ran[w.rule] {

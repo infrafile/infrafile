@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/infrafile/infrafile/internal/ledger"
+	"github.com/infrafile/infrafile/internal/observation"
 	"github.com/infrafile/infrafile/internal/snapshot"
 	"github.com/infrafile/infrafile/internal/validate"
 	"github.com/infrafile/infrafile/protocol"
@@ -42,13 +43,28 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 	}
 	results := []Result{}
 	if len(names) == 0 {
-		return results, nil
+		presence, err := snapshot.ReadPresence(ctx, repo.Dir)
+		if err != nil || presence == nil || len(presence.Spec) == 0 {
+			return results, err
+		}
 	}
 	state, err := openState(ctx, repo.Dir)
 	if err != nil {
 		return nil, err
 	}
 	defer state.Close()
+	watches, problems := observation.Watches(repo)
+	if len(problems) != 0 {
+		return nil, failure("config", "audit.watch 检查范围无效，请先校验台账")
+	}
+	// 在网络调用前清除失效绑定，即使后续采集失败也不能恢复旧资格。
+	pruned, err := state.nextPresence(watches, "", "", nil, now)
+	if err != nil {
+		return nil, err
+	}
+	if err := state.WritePresence(pruned); err != nil {
+		return nil, err
+	}
 	for _, name := range names {
 		instances := plugins[name].(map[string]any)["instances"].(map[string]any)
 		for _, instance := range sortedKeys(instances) {
@@ -61,9 +77,16 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 			if err := state.WriteStatus(name, instance, attempt); err != nil {
 				return nil, err
 			}
-			data, err := syncInstance(ctx, name, repo.Dir, protocol.SyncParams{Instance: instance, Config: config}, timeout)
+			data, spec, err := syncInstance(ctx, name, repo.Dir, protocol.SyncParams{Instance: instance, Config: config}, timeout)
+			var presence snapshot.Presence
+			if err == nil {
+				presence, err = state.nextPresence(watches, name, instance, spec, now)
+			}
 			if err == nil {
 				r.Changed, err = state.Write(name, instance, data, now)
+			}
+			if err == nil {
+				err = state.WritePresence(presence)
 			}
 			r.OK = err == nil
 			if err != nil {
@@ -91,29 +114,29 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 	return results, nil
 }
 
-func syncInstance(parent context.Context, name, dir string, params protocol.SyncParams, timeout time.Duration) ([]byte, error) {
+func syncInstance(parent context.Context, name, dir string, params protocol.SyncParams, timeout time.Duration) ([]byte, map[string]any, error) {
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	client, err := Open(ctx, name, dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer client.Close()
 	data, err := Sync(ctx, client, params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if ctx.Err() != nil {
-		return nil, failure("timeout", "插件超时或被取消")
+		return nil, nil, failure("timeout", "插件超时或被取消")
 	}
 	var value map[string]any
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	if decoder.Decode(&value) != nil {
-		return nil, failure("protocol", "插件数据无法编码为 YAML")
+		return nil, nil, failure("protocol", "插件数据无法编码为 YAML")
 	}
 	if !validate.SnapshotSafe(value) {
-		return nil, failure("sensitive", "插件快照含敏感字段或疑似凭据，已拒绝写入")
+		return nil, nil, failure("sensitive", "插件快照含敏感字段或疑似凭据，已拒绝写入")
 	}
 	yamlNumbers(value)
 	snapshot := struct {
@@ -124,9 +147,9 @@ func syncInstance(parent context.Context, name, dir string, params protocol.Sync
 	}{ledger.APIVersion, "Snapshot", map[string]string{"name": params.Instance}, value}
 	encoded, err := yaml.Marshal(snapshot)
 	if err != nil {
-		return nil, failure("protocol", "插件数据无法编码为 YAML")
+		return nil, nil, failure("protocol", "插件数据无法编码为 YAML")
 	}
-	return encoded, nil
+	return encoded, value, nil
 }
 
 // 用原数字文本构建 YAML 标量，避免大整数或小数经过 float64 后丢失精度。

@@ -38,24 +38,11 @@ var syncCodes = []string{"not-found", "start", "timeout", "protocol", "capabilit
 // ParseStatus 不回显输入；错误原文和任意插件字段不允许进入执行回执。
 func ParseStatus(ctx context.Context, data []byte) (*Status, error) {
 	broken := errors.New("无法读取 state/" + StatusFile + "，请检查格式")
-	if len(data) > 4<<20 {
-		return nil, broken
-	}
-	doc, problems, err := ledger.ParseDocument(ctx, "state/"+StatusFile, data)
-	if err != nil {
+	var status Status
+	if err := decodeState(ctx, StatusFile, data, &status); err != nil {
 		return nil, err
 	}
-	if doc == nil || len(problems) != 0 {
-		return nil, broken
-	}
-	raw, err := json.Marshal(doc.Value)
-	if err != nil {
-		return nil, broken
-	}
-	var status Status
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	if d.Decode(&status) != nil || status.APIVersion != ledger.APIVersion || status.Kind != "SyncStatus" || status.Spec == nil {
+	if status.APIVersion != ledger.APIVersion || status.Kind != "SyncStatus" || status.Spec == nil {
 		return nil, broken
 	}
 	for plugin, instances := range status.Spec {
@@ -90,15 +77,47 @@ func ParseStatus(ctx context.Context, data []byte) (*Status, error) {
 
 // ReadStatusFile 供持有同步锁的写入器复用；不存在返回 nil，不把未知状态当成功。
 func ReadStatusFile(ctx context.Context, root *os.Root) (*Status, error) {
-	info, err := root.Lstat(StatusFile)
+	data, err := readStateFile(root, StatusFile)
+	if err != nil || data == nil {
+		return nil, err
+	}
+	return ParseStatus(ctx, data)
+}
+
+func decodeState(ctx context.Context, file string, data []byte, value any) error {
+	broken := errors.New("无法读取 state/" + file + "，请检查格式")
+	if len(data) > 4<<20 {
+		return broken
+	}
+	doc, problems, err := ledger.ParseDocument(ctx, "state/"+file, data)
+	if err != nil {
+		return err
+	}
+	if doc == nil || len(problems) != 0 {
+		return broken
+	}
+	raw, err := json.Marshal(doc.Value)
+	if err != nil {
+		return broken
+	}
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.DisallowUnknownFields()
+	if d.Decode(value) != nil {
+		return broken
+	}
+	return nil
+}
+
+func readStateFile(root *os.Root, file string) ([]byte, error) {
+	info, err := root.Lstat(file)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
-	broken := errors.New("无法读取 state/" + StatusFile + "，必须是可读的普通文件")
+	broken := errors.New("无法读取 state/" + file + "，必须是可读的普通文件")
 	if err != nil || !info.Mode().IsRegular() {
 		return nil, broken
 	}
-	f, err := root.Open(StatusFile)
+	f, err := root.Open(file)
 	if err != nil {
 		return nil, broken
 	}
@@ -107,7 +126,7 @@ func ReadStatusFile(ctx context.Context, root *os.Root) (*Status, error) {
 	if err != nil {
 		return nil, broken
 	}
-	return ParseStatus(ctx, data)
+	return data, nil
 }
 
 func ReadStatus(ctx context.Context, dir string) (*Status, error) {

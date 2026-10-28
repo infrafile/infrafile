@@ -1,0 +1,46 @@
+$ infrafile audit --rule missing --max-age 7d --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": 7,
+  "rules": [
+    "missing"
+  ],
+  "snapshots": [
+    {
+      "plugin": "cloudflare",
+      "instance": "home",
+      "file": "state/cloudflare/home.yaml",
+      "observed_at": "2026-12-01T11:00:00Z",
+      "age_days": 0
+    }
+  ],
+  "findings": [
+    {
+      "rule": "missing",
+      "target": "Resource/edge",
+      "file": "inventory/resources/edge.yaml",
+      "message": "曾观测到此资产，本次在指定凭据的查询范围内未找到；请核对权限和范围，不能据此断言已删除",
+      "evidence": {
+        "identity": {
+          "kind": "Resource",
+          "provider": "cloudflare",
+          "resource_id": "zone"
+        },
+        "instance": "home",
+        "last_seen": "2026-12-01T10:00:00Z",
+        "max_age_days": 7,
+        "observed_at": "2026-12-01T11:00:00Z",
+        "plugin": "cloudflare",
+        "service": "zones",
+        "snapshot_file": "state/cloudflare/home.yaml"
+      },
+      "waiver": null
+    }
+  ],
+  "notices": []
+}
+--- stderr

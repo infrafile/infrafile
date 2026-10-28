@@ -52,7 +52,7 @@
             "properties": {
               "rule": {
                 "description": "要豁免的审计规则。",
-                "enum": ["stale_state", "orphan", "zombie", "origin_exposure", "cdn_drift"]
+                "enum": ["stale_state", "orphan", "zombie", "origin_exposure", "cdn_drift", "missing"]
               },
               "reason": {"description": "为什么豁免。", "type": "string", "minLength": 1},
               "until": {"description": "可选的失效日期；过期后审计重新报告。", "$ref": "#/$defs/date"}

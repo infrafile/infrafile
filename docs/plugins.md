@@ -108,7 +108,24 @@ v0.3 开发版另写 `state/.sync-status.yaml`，每个实例只保留最近一�
 
 把回执与快照一并提交，例如 `git add state/`，不要用遗漏点文件的通配符。旧数据仓没有回执仍可读；v0.2 会忽略这个点文件，因此仍能读取原快照和 `_sync.yaml`，但不能解释执行状态。旧版 sync、手改快照或改变实例配置后，v0.3 的审计会提示回执不对应，需重新 sync。
 
-`state/.sync.lock` 防止多个宿主同时覆盖状态文件，正常结束会删除；强制杀死或断电可能留下锁。确认没有其他 sync 运行后，才手动删除该锁；遗留 running 回执仍是未完成证据。损坏的 `_sync.yaml` 或 `.sync-status.yaml` 会阻止同步并保留原文。
+配置 `audit.watch` 后，v0.3 开发版还保存 `state/.presence.yaml`：
+
+```yaml
+apiVersion: infrafile/v1alpha1
+kind: Presence
+spec:
+  Domain/example.com:
+    binding_hash: <64 位小写十六进制 SHA-256>
+    last_seen: "2026-12-01T12:00:00Z"
+```
+
+binding_hash 覆盖 target、plugin、instance、service、规范化自然身份及 endpoint 后备身份、实例配置（仅引用，不解析凭据）；只落盘指纹和最后实际出现的同步开始时间。它不是可手填的资产清单，也不是签名证明。每次 sync 在调用插件前清除不再声明或不匹配的绑定；本轮完整成功采集确实包含目标时才更新 last_seen，空清单和失败不会推进。更改配置后恢复旧配置也不能恢复已被 sync 清除的基线。
+
+写入顺序为快照、成功时间、正向基线、结束回执。基线保存失败时返回 write 并记录 failed，不能凭已替换的快照判断缺失；跨文件中断仍由 running/failed、哈希和时间核对发现。基线同样限 4 MiB、拒绝符号链接和损坏输入，只通过原子替换保存。audit 只读，缺少基线只产生 missing_unknown。用 `git add state/` 同时保存隐藏文件。
+
+v0.2 会忽略 `.presence.yaml`，但不能校验新配置 `audit.watch` 或新的 missing waiver；需要回到 v0.2 时先移除这些新增配置，不能把点文件兼容误认为整个新配置兼容。
+
+`state/.sync.lock` 防止多个宿主同时覆盖状态文件，正常结束会删除；强制杀死或断电可能留下锁。确认没有其他 sync 运行后，才手动删除该锁；遗留 running 回执仍是未完成证据。损坏的 `_sync.yaml`、`.sync-status.yaml` 或 `.presence.yaml` 会阻止同步并保留原文。
 
 ## 凭据与信任边界
 

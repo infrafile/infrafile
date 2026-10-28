@@ -99,7 +99,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 需要 max_age_days。",
+      "description": "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 和 missing 需要 max_age_days。",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -111,6 +111,7 @@
             "items": {
               "enum": [
                 "cdn_drift",
+                "missing",
                 "origin_exposure",
                 "orphan",
                 "stale_state",

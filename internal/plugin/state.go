@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/infrafile/infrafile/internal/ledger"
+	"github.com/infrafile/infrafile/internal/observation"
 	"github.com/infrafile/infrafile/internal/snapshot"
 	"go.yaml.in/yaml/v3"
 )
@@ -22,9 +23,10 @@ type syncLog struct {
 }
 
 type state struct {
-	root   *os.Root
-	log    syncLog
-	status snapshot.Status
+	root     *os.Root
+	log      syncLog
+	status   snapshot.Status
+	presence snapshot.Presence
 }
 
 func openState(ctx context.Context, dir string) (*state, error) {
@@ -55,6 +57,15 @@ func openState(ctx context.Context, dir string) (*state, error) {
 	s.status = snapshot.Status{APIVersion: ledger.APIVersion, Kind: "SyncStatus", Spec: map[string]map[string]snapshot.Attempt{}}
 	if status != nil {
 		s.status = *status
+	}
+	presence, err := snapshot.ReadPresenceFile(ctx, root)
+	if err != nil {
+		s.Close()
+		return nil, failure("write", "无法读取 state/"+snapshot.PresenceFile+"；保留原文件，请检查格式")
+	}
+	s.presence = snapshot.Presence{APIVersion: ledger.APIVersion, Kind: "Presence", Spec: map[string]snapshot.PresenceEntry{}}
+	if presence != nil {
+		s.presence = *presence
 	}
 	info, err := root.Lstat("_sync.yaml")
 	if errors.Is(err, os.ErrNotExist) {
@@ -94,6 +105,56 @@ func openState(ctx context.Context, dir string) (*state, error) {
 }
 
 func (s *state) Close() { s.root.Remove(".sync.lock"); s.root.Close() }
+
+func (s *state) nextPresence(watches []observation.Watch, name, instance string, spec map[string]any, now time.Time) (snapshot.Presence, error) {
+	updated := s.presence
+	updated.Spec = map[string]snapshot.PresenceEntry{}
+	records := map[string]map[observation.Identity]bool{}
+	for _, w := range watches {
+		binding := Hash(w)
+		old := s.presence.Spec[w.Target]
+		if old.BindingHash == binding {
+			updated.Spec[w.Target] = old
+		}
+		if w.Plugin != name || w.Instance != instance {
+			continue
+		}
+		if _, ok := records[w.Service]; !ok {
+			mapped, _, err := observation.WatchRecords(name, instance, w.Service, spec)
+			if err != nil {
+				return updated, failure("protocol", "检查范围内的观测字段无效，无法更新正向基线")
+			}
+			records[w.Service] = mapped
+		}
+		if w.Seen(records[w.Service]) {
+			updated.Spec[w.Target] = snapshot.PresenceEntry{BindingHash: binding, LastSeen: now.UTC().Format(time.RFC3339)}
+		}
+	}
+	return updated, nil
+}
+
+func (s *state) WritePresence(updated snapshot.Presence) error {
+	if maps.Equal(s.presence.Spec, updated.Spec) {
+		return nil
+	}
+	if info, err := s.root.Lstat(snapshot.PresenceFile); err == nil && !info.Mode().IsRegular() {
+		return failure("write", "正向基线路径必须是普通文件")
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return failure("write", "无法检查正向基线")
+	}
+	data, err := yaml.Marshal(updated)
+	if err == nil {
+		_, err = snapshot.ParsePresence(context.Background(), data)
+	}
+	if err != nil {
+		return failure("write", "无法编码正向基线或基线超过上限")
+	}
+	if err := atomicWrite(s.root, snapshot.PresenceFile, data); err != nil {
+		return failure("write", "无法保存正向基线")
+	}
+	s.presence = updated
+	return nil
+}
 
 func (s *state) WriteStatus(plugin, instance string, attempt snapshot.Attempt) error {
 	if info, err := s.root.Lstat(snapshot.StatusFile); err == nil && !info.Mode().IsRegular() {
