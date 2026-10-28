@@ -12,3 +12,4 @@ spec:
     - name: static.example.com
       id: fictional-cdn-id
       cname: edge.example.net
+      status: online

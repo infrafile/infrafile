@@ -1,0 +1,11 @@
+$ infrafile gatus ../../examples/homelab --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "config": "endpoints:\n    - name: example.com\n      group: example.com\n      url: https://example.com/\n      interval: 1m\n      conditions:\n        - '[STATUS] == 200'\n        - '[CERTIFICATE_EXPIRATION] > 240h'\n",
+  "endpoints": [
+    "example.com"
+  ]
+}
+--- stderr

@@ -4,5 +4,5 @@ metadata:
   name: blog
 spec:
   host: blog.example.com
-  addresses: [192.0.2.10]
+  addresses: [203.0.113.10]
   canonical_name: blog.example.com

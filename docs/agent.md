@@ -23,13 +23,14 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 
 这是进程配置示意；外层配置格式由客户端决定。`agent install` 只安装指南，不注册 MCP 服务或注入凭据。
 
-## 六个工具
+## 七个工具
 
 | 工具 | 输入 | 输出 |
 | --- | --- | --- |
 | `infrafile_list` | 可选 key / kind / labels | 主键、类型、名称、归档状态、标签，按主键排序 |
 | `infrafile_show` | key 或非空 labels，任选其一；可选 kind | 唯一记录与引用关系，省略所有 secrets 字段 |
 | `infrafile_expiry` | 可选 key / kind / labels / within_days | 在用资产到期报告，默认 30 天 |
+| `infrafile_audit` | 可选 rules / max_age_days | 离线快照审计，与 CLI audit JSON 相同 |
 | `infrafile_validate` | `{}` | 记录数、问题数、按代码统计的校验结果 |
 | `infrafile_schema` | `{}` | 与 `schema export` 相同的内嵌 Schema bundle |
 | `infrafile_plan` | action、key 或非空 labels；可选 kind；改回源另需 origin_key | `dry_run: true` 与单动作计划对象 |
@@ -43,6 +44,20 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 ```json
 {"labels": {"role": "web"}, "kind": "Server"}
 ```
+
+## 离线审计
+
+`infrafile_audit` 只读台账、已启用实例的快照和同步时间，不调用插件、不访问网络、不解析凭据。先按用户授权范围运行 `sync` 才能更新观测；audit 本身不刷新数据。
+
+```json
+{"rules": ["stale_state"], "max_age_days": 7}
+```
+
+`rules` 是已实现规则 ID 的数组：`cdn_drift`、`origin_exposure`、`orphan`、`zombie`、`stale_state`，重复 ID 只运行一次；`max_age_days` 是非负整数天数。省略 rules 或传空数组时运行全部就绪规则。默认运行前四条；`stale_state` 需要 max_age_days，显式选择它而未设阈值会失败。`ok: true` 只表示本次没有未豁免发现。未知规则，以及路径、命令、额外字段、重复 JSON 键均被拒绝。
+
+发现未豁免偏差时返回 `ok: false`，工具调用仍成功；全部豁免时返回 `ok: true`，发现仍保留。生命周期复用导入的观测映射，按自然身份找未登记资产和仅匹配归档的资产；DNS/TLS 不参与，Cloudflare 同名 Domain 可覆盖 zone。未同步的实例没有快照时不报告缺失。orphan / zombie 的 audit.ignore 必须提供完整 match，可复制发现的 evidence.identity，并限定 plugin / instance；不得用整实例忽略压住其他资产。完整字段、豁免与缺失输入语义见[审计 JSON 契约](json/audit.md)。
+
+origin_exposure 检查显式 Server 绑定的台账与观测地址；cdn_drift 只报告阿里云、腾讯云和天翼云明确停用的 CDN 状态，未知值只提示。两条规则均支持记录上的 metadata.waivers，不接受实例级 audit.ignore。源站检测不扫描端口，CDN 检测不比较回源配置。
 
 ## 只读计划
 

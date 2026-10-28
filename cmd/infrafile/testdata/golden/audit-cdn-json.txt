@@ -1,0 +1,64 @@
+$ infrafile audit --rule cdn_drift --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": null,
+  "rules": [
+    "cdn_drift"
+  ],
+  "snapshots": [
+    {
+      "plugin": "aliyun",
+      "instance": "home",
+      "file": "state/aliyun/home.yaml",
+      "observed_at": "2026-10-24T03:00:00Z",
+      "age_days": 38
+    },
+    {
+      "plugin": "cloudflare",
+      "instance": "home",
+      "file": "state/cloudflare/home.yaml",
+      "observed_at": "2026-09-01T03:00:00Z",
+      "age_days": 91
+    }
+  ],
+  "findings": [
+    {
+      "rule": "cdn_drift",
+      "target": "Resource/audit-edge",
+      "file": "inventory/resources/audit-edge.yaml",
+      "message": "台账 CDN 在用，但快照状态为 offline（已停用或已删除）",
+      "evidence": {
+        "identity": {
+          "kind": "Resource",
+          "provider": "aliyun",
+          "resource_id": "fictional-cdn-id"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-24T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml",
+        "status": "offline"
+      },
+      "waiver": null
+    }
+  ],
+  "notices": [
+    {
+      "code": "instance_disabled",
+      "file": "state/dns/blog.yaml",
+      "target": "dns/blog",
+      "message": "插件实例未在 infrafile.yaml 启用，已忽略此快照"
+    },
+    {
+      "code": "instance_disabled",
+      "file": "state/ssh/observed-web.yaml",
+      "target": "ssh/observed-web",
+      "message": "插件实例未在 infrafile.yaml 启用，已忽略此快照"
+    }
+  ]
+}
+--- stderr

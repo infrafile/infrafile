@@ -1,0 +1,5 @@
+$ infrafile audit --json
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: state 正在同步或锁仍存在，请在同步结束后重试

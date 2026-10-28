@@ -1,0 +1,17 @@
+apiVersion: infrafile/v1alpha1
+kind: Config
+plugins:
+  aliyun:
+    instances:
+      home:
+        access_key_id: env://INFRAFILE_EXAMPLE_ALIYUN_AK
+        access_key_secret: env://INFRAFILE_EXAMPLE_ALIYUN_SK
+        services: [domains]
+audit:
+  ignore:
+    - rule: orphan
+      plugin: aliyun
+      instance: home
+      match: {kind: Domain, name: ignored.example.net}
+      reason: 独立团队维护的演示域名
+      until: 2026-12-31

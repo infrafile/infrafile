@@ -1,0 +1,131 @@
+$ infrafile audit --max-age 45d --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": 45,
+  "rules": [
+    "cdn_drift",
+    "origin_exposure",
+    "orphan",
+    "stale_state",
+    "zombie"
+  ],
+  "snapshots": [
+    {
+      "plugin": "aliyun",
+      "instance": "home",
+      "file": "state/aliyun/home.yaml",
+      "observed_at": null,
+      "age_days": null
+    },
+    {
+      "plugin": "cloudflare",
+      "instance": "home",
+      "file": "state/cloudflare/home.yaml",
+      "observed_at": null,
+      "age_days": null
+    }
+  ],
+  "findings": [
+    {
+      "rule": "origin_exposure",
+      "target": "Domain/example.net",
+      "file": "inventory/domains/example.net.yaml",
+      "message": "example.net 的 A 地址 203.0.113.10 直连 Server/web1（cloudflare 证据）",
+      "evidence": {
+        "address": "203.0.113.10",
+        "hostname": "example.net",
+        "instance": "home",
+        "observed_at": null,
+        "plugin": "cloudflare",
+        "proxied": false,
+        "record_type": "A",
+        "server": "Server/web1",
+        "source": "cloudflare",
+        "source_file": "state/cloudflare/home.yaml"
+      },
+      "waiver": {
+        "reason": "只做跳转，迁到 CDN 前先直连 web1",
+        "until": "2027-06-30",
+        "source": "inventory/domains/example.net.yaml"
+      }
+    },
+    {
+      "rule": "orphan",
+      "target": "aliyun/home/Domain/example.org",
+      "file": "state/aliyun/home.yaml",
+      "message": "快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "example.org"
+        },
+        "instance": "home",
+        "observed_at": null,
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": null
+    },
+    {
+      "rule": "orphan",
+      "target": "aliyun/home/Resource/aliyun/id/fictional-cdn-id",
+      "file": "state/aliyun/home.yaml",
+      "message": "快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿",
+      "evidence": {
+        "identity": {
+          "kind": "Resource",
+          "provider": "aliyun",
+          "resource_id": "fictional-cdn-id"
+        },
+        "instance": "home",
+        "observed_at": null,
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": null
+    },
+    {
+      "rule": "stale_state",
+      "target": "aliyun/home",
+      "file": "state/aliyun/home.yaml",
+      "message": "没有同步记录，无法确认观测时间",
+      "evidence": {
+        "age_days": null,
+        "max_age_days": 45,
+        "observed_at": null
+      },
+      "waiver": null
+    },
+    {
+      "rule": "stale_state",
+      "target": "cloudflare/home",
+      "file": "state/cloudflare/home.yaml",
+      "message": "没有同步记录，无法确认观测时间",
+      "evidence": {
+        "age_days": null,
+        "max_age_days": 45,
+        "observed_at": null
+      },
+      "waiver": null
+    }
+  ],
+  "notices": [
+    {
+      "code": "instance_disabled",
+      "file": "state/dns/blog.yaml",
+      "target": "dns/blog",
+      "message": "插件实例未在 infrafile.yaml 启用，已忽略此快照"
+    },
+    {
+      "code": "instance_disabled",
+      "file": "state/ssh/observed-web.yaml",
+      "target": "ssh/observed-web",
+      "message": "插件实例未在 infrafile.yaml 启用，已忽略此快照"
+    }
+  ]
+}
+--- stderr

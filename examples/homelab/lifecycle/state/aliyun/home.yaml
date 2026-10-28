@@ -1,0 +1,10 @@
+apiVersion: infrafile/v1alpha1
+kind: Snapshot
+metadata: {name: home}
+spec:
+  domains:
+    - {name: example.com}
+    - {name: old.example.com}
+    - {name: waived.example.com}
+    - {name: orphan.example.net}
+    - {name: ignored.example.net}

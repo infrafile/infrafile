@@ -1,0 +1,22 @@
+$ infrafile audit ../../examples/homelab
+[退出码 1]
+--- stdout
+截至 2026-12-01T12:00:00Z（未设观测上限）
+快照 2 份
+  aliyun/home  2026-10-24T03:00:00Z 观测，38 天前
+  cloudflare/home  2026-09-01T03:00:00Z 观测，91 天前
+cdn_drift：在用 CDN 资源的观测状态已停用或删除
+  无偏差
+origin_exposure：绑定 Server 的域名地址直连源站
+  Domain/example.net  inventory/domains/example.net.yaml  example.net 的 A 地址 203.0.113.10 直连 Server/web1（cloudflare 证据）
+    [已豁免] 只做跳转，迁到 CDN 前先直连 web1（至 2027-06-30，来源 inventory/domains/example.net.yaml）
+orphan：快照中存在但台账未登记的资产
+  aliyun/home/Domain/example.org  state/aliyun/home.yaml  快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿
+  aliyun/home/Resource/aliyun/id/fictional-cdn-id  state/aliyun/home.yaml  快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿
+zombie：已归档但快照中仍存在的资产
+  无偏差
+提示：
+  dns/blog  state/dns/blog.yaml  插件实例未在 infrafile.yaml 启用，已忽略此快照
+  ssh/observed-web  state/ssh/observed-web.yaml  插件实例未在 infrafile.yaml 启用，已忽略此快照
+发现 2 条偏差，1 条已豁免
+--- stderr

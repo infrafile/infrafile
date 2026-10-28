@@ -1,0 +1,16 @@
+$ infrafile audit ../../examples/homelab --max-age 7
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: --max-age 必须是非负整数天数，如 7d
+
+用法:
+  infrafile audit [目录] [选项]
+
+选项:
+      --max-age string     快照观测时间上限，如 7d；设置后运行 stale_state
+      --rule stringArray   只运行指定规则，可重复
+
+全局选项:
+  -h, --help   打印帮助
+      --json   以 JSON 输出，结构见 docs/json/

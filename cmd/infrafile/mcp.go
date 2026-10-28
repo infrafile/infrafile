@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/infrafile/infrafile/internal/audit"
 	"github.com/infrafile/infrafile/internal/control"
 	"github.com/infrafile/infrafile/internal/ledger"
 	"github.com/infrafile/infrafile/internal/plugin"
@@ -81,6 +82,8 @@ type mcpArgs struct {
 	WithinDays *int              `json:"within_days"`
 	Action     string            `json:"action"`
 	OriginKey  string            `json:"origin_key"`
+	Rules      []string          `json:"rules"`
+	MaxAgeDays *int              `json:"max_age_days"`
 }
 
 func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now func() time.Time) (*mcp.Server, error) {
@@ -124,6 +127,14 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 	listSchema := selector(false)
 	expirySchema := selector(false)
 	expirySchema["properties"].(map[string]any)["within_days"] = map[string]any{"type": "integer", "minimum": 0}
+	ruleIDs := []string{}
+	for _, rule := range audit.Rules() {
+		ruleIDs = append(ruleIDs, rule.ID)
+	}
+	auditSchema := map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
+		"rules":        map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": ruleIDs}},
+		"max_age_days": map[string]any{"type": "integer", "minimum": 0},
+	}}
 	planSchema := selector(true)
 	props := planSchema["properties"].(map[string]any)
 	props["action"] = map[string]any{"enum": []string{"cdn-pause", "cdn-resume", "cdn-origin"}}
@@ -140,6 +151,7 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 		{"list", "按主键、类型或标签筛选台账（含归档）；标签精确匹配且全部满足。", listSchema},
 		{"show", "读取唯一记录和引用关系，省略凭据字段。" + strings.Join(descriptions, "；"), selector(true)},
 		{"expiry", "检查在用资产到期日，默认30天，含已过期及边界当天。", expirySchema},
+		{"audit", "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 需要 max_age_days。", auditSchema},
 		{"validate", "只读校验当前数据仓，返回问题代码与数量；详细诊断用 CLI validate。", empty},
 		{"schema", "返回与 CLI 校验相同的内嵌 JSON Schema。", empty},
 		{"plan", "只读生成单动作计划，不保存、不执行。标签必须唯一匹配在用 Resource；改回源必须提供已登记的 origin_key。", planSchema},
@@ -214,6 +226,16 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 			codes[p.Code]++
 		}
 		return map[string]any{"version": jsonVersion, "ok": len(res.Problems) == 0, "records": res.Records, "problem_count": len(res.Problems), "codes": codes}, nil
+	}
+	if tool == "audit" {
+		command := []string{"audit", dir, "--json"}
+		for _, rule := range args.Rules {
+			command = append(command, "--rule", rule)
+		}
+		if args.MaxAgeDays != nil {
+			command = append(command, "--max-age", fmt.Sprintf("%dd", *args.MaxAgeDays))
+		}
+		return mcpCLI(ctx, now, command...)
 	}
 	repo, err := loadQueryRepo(ctx, dir)
 	if err != nil {

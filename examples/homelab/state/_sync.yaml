@@ -1,0 +1,7 @@
+apiVersion: infrafile/v1alpha1
+kind: Sync
+spec:
+  aliyun:
+    home: 2026-10-24T03:00:00Z
+  cloudflare:
+    home: 2026-09-01T03:00:00Z

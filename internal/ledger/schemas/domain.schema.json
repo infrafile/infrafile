@@ -29,7 +29,17 @@
               "name": {"description": "子域名，根域名写 @。", "type": "string", "minLength": 1},
               "server": {"type": "string", "x-ref": "Server"},
               "app": {"type": "string", "x-ref": "App"},
-              "resource": {"type": "string", "x-ref": "Resource"}
+              "resource": {"type": "string", "x-ref": "Resource"},
+              "monitor": {
+                "description": "显式生成 Gatus HTTPS 端点；默认路径 /、间隔 1m、状态码 200。",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "path": {"type": "string", "pattern": "^/"},
+                  "interval": {"type": "string", "minLength": 1},
+                  "status": {"type": "integer", "minimum": 100, "maximum": 599}
+                }
+              }
             }
           }
         },

@@ -59,6 +59,32 @@ infrafile import state --dir "$demo" --write --json
 
 `example` 是内置的离线插件。第一次 import 仅展示草稿；加 `--write` 才创建不存在的资产，本示例校验将变成 17 条记录。重复导入不会覆盖已有记录。未指定插件的 `sync` 会尝试配置中的其他插件，因此这里显式选择 example。
 
+## 同步、审计与豁免（v0.2 开发版）
+
+本节需要从开发分支构建的二进制；公开的 v0.1.0 尚无 audit / gatus。维护者在源码目录运行 `make build`，并将 `bin/` 加入当前 PATH 后，用上面的示例副本继续：
+
+```sh
+infrafile audit "$demo" --json
+infrafile audit "$demo" --max-age 7d --json
+infrafile audit "$demo" --rule origin_exposure --json
+```
+
+audit 离线读取台账、已启用实例的现有快照和观测时间，不解析凭据、不访问云端。默认运行孤儿、僵尸、源站暴露、CDN 停用检查；加 max-age 后再检查快照时效。退出 0 表示没有未豁免发现，1 表示有偏差，2 表示无法审计；`ok: true` 不代表实时健康、数据完整或本次同步成功。示例的云快照是历史虚构输入，时效检查可能退出 1。
+
+`example.net` 的 Cloudflare 快照直接指向 web1，源站暴露发现会保留在 findings 中；Domain 自带的 metadata.waivers 在 2027-06-30 当天及之前将其豁免。可在临时副本中删除这段 waiver，再运行同一命令，观察退出码变为 1；恢复有理由、有限期的 waiver 后重新校验并审计。过期或未命中的豁免会给出提示。真正修复应按事实改台账或线上配置，然后重新 sync，不能只为消除告警写豁免。
+
+自己的数据仓使用 **定时 sync → 提交 state 快照 → CI 跑 audit → 修正或豁免** 的流程。定时同步要使用自己配置的插件与权限；CI 只读快照，不需要凭据。例如在数据仓根目录，使用已配置的 aliyun 插件（按需替换插件名）：
+
+```sh
+infrafile sync aliyun --dir .
+# 审阅 state/ 的变化后提交；发现同步失败时先处理失败，不能用旧快照代替本次观测。
+git add state/
+git commit -m '更新观测快照'
+infrafile audit . --max-age 7d --json
+```
+
+orphan / zombie 的配置级豁免必须精确指定 plugin、instance 和完整自然身份；字段见[审计契约](json/audit.md)。审计不自动修台账或执行线上写入。
+
 ## 生成配置与 Agent 指南
 
 ```sh
@@ -68,6 +94,8 @@ infrafile agent install codex --dir "$work"
 ```
 
 DNSControl 输出包含 `NO_PURGE`，不会实际修改 DNS。指南安装在临时项目的 `.agents/skills/infrafile/SKILL.md`；Claude Code 将 codex 换为 claude。重复安装相同内容不重写，已有不同内容会保留并报错。
+
+v0.2 开发版还可执行 `infrafile gatus "$demo"`：示例只为 example.com 的根绑定显式配置 monitor，因此只生成一个 HTTPS 端点。将输出保存到自己的 Gatus 配置目录，与告警和存储配置合并；本命令不启动服务或执行探测。默认路径 `/`、间隔 `1m`、状态码 `200`，同时要求证书剩余有效期超过 240 小时，字段见 [Gatus 契约](json/gatus.md)。
 
 需要 MCP 时，让客户端启动 `infrafile mcp --dir <demo 的绝对路径>`，再调用 `infrafile_show`，参数为 `{"key":"Server/web1"}`。它是等待客户端输入的协议服务，不是一次性查询命令；配置方式见 [Agent 指南](agent.md)。
 

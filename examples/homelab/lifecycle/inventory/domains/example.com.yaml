@@ -1,0 +1,4 @@
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata: {name: example.com}
+spec: {}

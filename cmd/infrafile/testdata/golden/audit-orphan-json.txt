@@ -1,0 +1,63 @@
+$ infrafile audit ../../examples/homelab/lifecycle --rule orphan --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": null,
+  "rules": [
+    "orphan"
+  ],
+  "snapshots": [
+    {
+      "plugin": "aliyun",
+      "instance": "home",
+      "file": "state/aliyun/home.yaml",
+      "observed_at": "2026-10-26T03:00:00Z",
+      "age_days": 36
+    }
+  ],
+  "findings": [
+    {
+      "rule": "orphan",
+      "target": "aliyun/home/Domain/ignored.example.net",
+      "file": "state/aliyun/home.yaml",
+      "message": "快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "ignored.example.net"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": {
+        "reason": "独立团队维护的演示域名",
+        "until": "2026-12-31",
+        "source": "infrafile.yaml"
+      }
+    },
+    {
+      "rule": "orphan",
+      "target": "aliyun/home/Domain/orphan.example.net",
+      "file": "state/aliyun/home.yaml",
+      "message": "快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "orphan.example.net"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": null
+    }
+  ],
+  "notices": []
+}
+--- stderr

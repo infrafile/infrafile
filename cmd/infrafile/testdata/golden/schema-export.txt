@@ -276,9 +276,165 @@ $ infrafile schema export
               }
             }
           }
+        },
+        "audit": {
+          "description": "审计设置。",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignore": {
+              "description": "stale_state 按实例豁免；orphan/zombie 必须用 match 精确指定单个观测身份。",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "rule",
+                  "plugin",
+                  "instance",
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "if": {
+                  "properties": {
+                    "rule": {
+                      "const": "stale_state"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": [
+                      "match"
+                    ]
+                  }
+                },
+                "else": {
+                  "required": [
+                    "match"
+                  ]
+                },
+                "properties": {
+                  "rule": {
+                    "description": "要豁免的审计规则。",
+                    "enum": [
+                      "stale_state",
+                      "orphan",
+                      "zombie"
+                    ]
+                  },
+                  "plugin": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "instance": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "match": {
+                    "$ref": "#/$defs/identity"
+                  },
+                  "reason": {
+                    "description": "为什么豁免。",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "until": {
+                    "description": "可选的失效日期；过期后审计重新报告。",
+                    "$ref": "common.schema.json#/$defs/date"
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "$defs": {
+        "identity": {
+          "description": "观测条目的精确自然身份；不支持通配符或部分匹配。",
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "name"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "Domain"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "address"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "Server"
+                },
+                "address": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "provider",
+                "resource_id"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "Resource"
+                },
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "resource_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "provider",
+                "type",
+                "endpoint"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "Resource"
+                },
+                "provider": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "endpoint": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        },
         "name": {
           "type": "string",
           "maxLength": 64,
@@ -357,6 +513,26 @@ $ infrafile schema export
                   "resource": {
                     "type": "string",
                     "x-ref": "Resource"
+                  },
+                  "monitor": {
+                    "description": "显式生成 Gatus HTTPS 端点；默认路径 /、间隔 1m、状态码 200。",
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "path": {
+                        "type": "string",
+                        "pattern": "^/"
+                      },
+                      "interval": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "status": {
+                        "type": "integer",
+                        "minimum": 100,
+                        "maximum": 599
+                      }
+                    }
                   }
                 }
               }

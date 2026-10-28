@@ -1,0 +1,5 @@
+$ infrafile audit --max-age 45d --json
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: 无法读取 state/_sync.yaml，请检查格式

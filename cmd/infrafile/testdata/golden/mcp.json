@@ -1,4 +1,19 @@
 {
+  "audit": {
+    "as_of": "2026-12-01T12:00:00Z",
+    "findings": [],
+    "max_age_days": null,
+    "notices": [],
+    "ok": true,
+    "rules": [
+      "cdn_drift",
+      "origin_exposure",
+      "orphan",
+      "zombie"
+    ],
+    "snapshots": [],
+    "version": "v1"
+  },
   "error": {
     "error": {
       "code": "arguments",
@@ -78,6 +93,38 @@
     "version": "v1"
   },
   "tools": [
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 需要 max_age_days。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "max_age_days": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "rules": {
+            "items": {
+              "enum": [
+                "cdn_drift",
+                "origin_exposure",
+                "orphan",
+                "stale_state",
+                "zombie"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "name": "infrafile_audit"
+    },
     {
       "annotations": {
         "idempotentHint": true,

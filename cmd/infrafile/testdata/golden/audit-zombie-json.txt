@@ -1,0 +1,63 @@
+$ infrafile audit ../../examples/homelab/lifecycle --rule zombie --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": null,
+  "rules": [
+    "zombie"
+  ],
+  "snapshots": [
+    {
+      "plugin": "aliyun",
+      "instance": "home",
+      "file": "state/aliyun/home.yaml",
+      "observed_at": "2026-10-26T03:00:00Z",
+      "age_days": 36
+    }
+  ],
+  "findings": [
+    {
+      "rule": "zombie",
+      "target": "Domain/old.example.com",
+      "file": "inventory/domains/old.example.com.yaml",
+      "message": "台账已归档，但快照中仍观测到该资产",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "old.example.com"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": null
+    },
+    {
+      "rule": "zombie",
+      "target": "Domain/waived.example.com",
+      "file": "inventory/domains/waived.example.com.yaml",
+      "message": "台账已归档，但快照中仍观测到该资产",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "waived.example.com"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": {
+        "reason": "迁移窗口保留到年底",
+        "until": "2026-12-31",
+        "source": "inventory/domains/waived.example.com.yaml"
+      }
+    }
+  ],
+  "notices": []
+}
+--- stderr
