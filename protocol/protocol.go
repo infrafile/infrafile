@@ -1,10 +1,11 @@
-// Package protocol 定义内置和外部插件共用的 v1 契约。
+// Package protocol 定义插件 v1 契约与版本化管理记录信封。
 package protocol
 
 import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -44,7 +45,7 @@ type ControlParams struct {
 var schemas = sync.OnceValues(func() (map[string]*jsonschema.Schema, error) {
 	c := jsonschema.NewCompiler()
 	result := map[string]*jsonschema.Schema{}
-	for _, name := range []string{"request", "response", "describe", "sync", "snapshot"} {
+	for _, name := range []string{"request", "response", "describe", "sync", "snapshot", "record"} {
 		data, err := files.ReadFile(name + ".schema.json")
 		if err != nil {
 			return nil, err
@@ -72,9 +73,13 @@ func Validate(name string, data json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	schema, ok := compiled[name]
+	if !ok {
+		return fmt.Errorf("未知协议 Schema：%s", name)
+	}
 	v, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
-	return compiled[name].Validate(v)
+	return schema.Validate(v)
 }

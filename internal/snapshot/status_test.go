@@ -38,6 +38,7 @@ func TestParseStatusRejectsUnsafeAndInconsistentInput(t *testing.T) {
 	cases := map[string]string{
 		"empty":                "",
 		"envelope":             strings.Replace(good, "SyncStatus", "Snapshot", 1),
+		"version":              strings.Replace(good, "infrafile/v1alpha1", "infrafile/v2", 1),
 		"unknown-root":         good + "password: synthetic-private-status-value\n",
 		"unknown-field":        good + "      message: synthetic-private-status-value\n",
 		"duplicate":            good + "      code: protocol\n",

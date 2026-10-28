@@ -43,6 +43,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [受控写与 DNSControl](docs/control.md)
 - [Agent 接口、MCP 与指南安装](docs/agent.md)
 - [JSON 契约](docs/json/README.md)
+- [兼容、存储版本与恢复](docs/compatibility.md)
 - [Gatus 配置生成](docs/json/gatus.md)
 - [参与贡献](CONTRIBUTING.md)
 

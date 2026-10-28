@@ -27,8 +27,8 @@ func TestEncodeRejectsPlanBeyondParserLimit(t *testing.T) {
 	}
 }
 
-// 可选的 ruleset_id / rule_id 显式写成空串，与省略等价，不算非规范字段。
-func TestReadAcceptsExplicitEmptyTargetIDs(t *testing.T) {
+func readTestPlan(t *testing.T) []byte {
+	t.Helper()
 	before := map[string]any{"paused": false}
 	after, err := plugin.Desired(before, protocol.Target{ZoneID: "example-zone"}, "cdn-pause", map[string]any{})
 	if err != nil {
@@ -42,6 +42,12 @@ func TestReadAcceptsExplicitEmptyTargetIDs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return data
+}
+
+// 可选的 ruleset_id / rule_id 显式写成空串，与省略等价，不算非规范字段。
+func TestReadAcceptsExplicitEmptyTargetIDs(t *testing.T) {
+	data := readTestPlan(t)
 	data = bytes.Replace(data, []byte(`"zone_id": "example-zone"`), []byte(`"zone_id": "example-zone", "ruleset_id": "", "rule_id": ""`), 1)
 	path := filepath.Join(t.TempDir(), "plan.json")
 	if err := os.WriteFile(path, data, 0600); err != nil {
@@ -57,6 +63,21 @@ func TestReadAcceptsExplicitEmptyTargetIDs(t *testing.T) {
 	}
 	if _, err := Read(context.Background(), path); err == nil {
 		t.Fatal("case variant accepted")
+	}
+}
+
+func TestReadRejectsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "plan.json")
+	if err := os.WriteFile(target, readTestPlan(t), 0600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "linked.json")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := Read(context.Background(), link); err == nil {
+		t.Fatal("followed plan symlink")
 	}
 }
 

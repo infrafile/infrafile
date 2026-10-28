@@ -21,6 +21,8 @@ tags: [inventory, schema]
 
 内嵌 JSON Schema 是字段与 `x-ref` 外键声明的来源，运行时编译和导出复用同一份定义；Schema 编译使用虚拟文件地址，不请求网络。归档由 metadata.archived 是否存在判断。
 
+Config 可显式声明 storageVersion: v1，为后续管理记录启用最低存储契约；缺省保持旧布局，未知值拒绝。该标记由 Schema 校验，不由 Load 自动迁移或写入；旧版完整业务校验会因未知字段拒绝。公共接口及恢复策略见 `docs/compatibility.md`。
+
 ## 边界
 
 本包不写资产、不解析凭据、不调用插件。加载不执行跨记录外键、明文或 Git 删除检查。当前项目依赖及长期边界的待确认说明见 `infrafile-architecture`。

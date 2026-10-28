@@ -2,6 +2,8 @@
 
 CLI 命令可以加全局选项 `--json`，把结果以 JSON 输出到标准输出。`mcp` 本身使用逐行 JSON-RPC，`--json` 不改变协议。下述 CLI 结构是给脚本和 agent 用的稳定契约：
 
+公共接口版本、新管理记录信封与降级恢复要求见[兼容策略](../compatibility.md)。新增存储是显式选择，安装新版不会改写旧数据仓。
+
 - 顶层都有 `"version": "v1"`，表示输出结构的版本。新增字段不升版本；删除、改名或改变字段含义时升版本。
 - 字段的确切输出由 `cmd/infrafile/testdata/golden/` 下的黄金测试锁定。
 - 退出码与文本模式相同：0 成功，1 发现问题（`validate`、`expiry`、`audit`、`secret check`、`sync`、`apply`），2 用法错误或命令无法执行。`run` 保留子进程退出码。
