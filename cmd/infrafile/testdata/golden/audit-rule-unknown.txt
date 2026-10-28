@@ -8,7 +8,7 @@ infrafile: 未知规则 nope
   infrafile audit [目录] [选项]
 
 选项:
-      --max-age string     快照观测时间上限，如 7d；设置后运行 stale_state
+      --max-age string     快照观测时间上限，如 7d；设置后运行 stale_state 和 missing
       --rule stringArray   只运行指定规则，可重复
 
 全局选项:

@@ -2,7 +2,7 @@
 
 `infrafile audit [目录] [--rule <id>]... [--max-age 7d] --json` 先完整校验台账，再离线读取已启用插件实例的快照和 `state/_sync.yaml`。不访问网络、不解析凭据、不写文件。
 
-当前实现 `cdn_drift`、`origin_exposure`、`orphan`、`zombie` 和 `stale_state`。未指定 `--rule` 时运行全部已就绪规则：前四条默认运行，`stale_state` 仅在提供 `--max-age` 时运行。显式指定 `stale_state` 必须同时提供 `--max-age`；未知规则退出 2。重复规则 ID 只运行一次。`ok: true` 只表示没有未豁免发现，不代表资产或快照完整、健康。
+当前实现 `cdn_drift`、`origin_exposure`、`orphan`、`zombie`、`stale_state` 和 `missing`。未指定 `--rule` 时运行全部已就绪规则：前四条默认运行，`stale_state` 和 `missing` 仅在提供 `--max-age` 时运行。显式指定这两条规则必须同时提供 `--max-age`；未知规则退出 2。重复规则 ID 只运行一次。`ok: true` 只表示没有未豁免发现，不代表资产或快照完整、健康。
 
 | 字段 | 含义 |
 | --- | --- |
@@ -36,11 +36,11 @@
 }
 ```
 
-快照没有同步记录时，observed_at 和 age_days 均为 null；只要运行 `stale_state` 就报告。`state/` 不存在、或启用实例尚无快照时，不为缺失的快照生成发现，输出中也没有对应 snapshot。当前不检测资产缺失。`_sync.yaml` 只记录最近一次成功同步时间。时效规则不屏蔽生命周期发现，旧快照仍参与比对，应先刷新观测再决定修复。
+快照没有同步记录时，observed_at 和 age_days 均为 null；只要运行 `stale_state` 就报告。`state/` 不存在、或启用实例尚无快照时，不为缺失的快照生成发现，输出中也没有对应 snapshot。missing 对已声明但无有效证据的目标给出提示，见下文。`_sync.yaml` 只记录最近一次成功同步时间。时效规则不屏蔽生命周期发现，旧快照仍参与比对，应先刷新观测再决定修复。
 
 v0.3 开发版额外离线读取 `state/.sync-status.yaml`。启用实例最近一次失败输出 sync_failed，running 输出 sync_incomplete；回执缺失或配置哈希、成功时间、快照字节不对应时输出 sync_status_unverified。首次失败即使没有快照也会提示。无回执文件的旧仓保持原行为；未启用实例的回执不参与提示。回执损坏或不是普通文件时退出 2，不回显原文。
 
-这些是 notices，不是审计规则，不支持 waiver、不改变 ok 或退出码，也不屏蔽历史快照的既有发现。自动化必须检查本次 sync 的退出码；不能把 audit 的 ok=true 当作采集成功。回执匹配不代表清单完整或凭据拥有全量权限，missing 尚未实现。
+这些是 notices，不是审计规则，不支持 waiver、不改变 ok 或退出码，也不屏蔽历史快照的既有发现。自动化必须检查本次 sync 的退出码；不能把 audit 的 ok=true 当作采集成功。回执匹配不代表清单完整或凭据拥有全量权限。
 
 ## 生命周期与自然身份
 
@@ -61,7 +61,44 @@ v0.3 开发版额外离线读取 `state/.sync-status.yaml`。启用实例最近�
 
 Cloudflare zone 可匹配 dns-zone Resource 或同名 Domain，均包含归档记录；DNS/CDN 不因此被当作注册域名。Cloudflare 发现的 identity 仍是 Resource，条目级 match 应直接复制该 identity，不能换成覆盖它的 Domain 身份。
 
-生命周期只说明快照中仍存在该资产，不推断进程运行状态、云端实时状态、所有权或最新同步是否成功。`missing` 尚未实现。
+orphan / zombie 只说明快照中仍存在该资产，不推断进程运行状态、云端实时状态、所有权或最新同步是否成功。missing 的负向判断另有以下前提。
+
+## missing：指定查询范围内不再可见
+
+v0.3 开发版只检查 `infrafile.yaml` 的 `audit.watch`，不从 provider、account、control 或标签猜测检查范围。例如：
+
+```yaml
+audit:
+  watch:
+    - target: Domain/example.com
+      plugin: aliyun
+      instance: home
+      service: domains
+    - target: Resource/edge
+      plugin: cloudflare
+      instance: home
+      service: zones
+```
+
+每个 target 只允许一条绑定，必须存在且未归档；实例须启用，服务须受支持且在当前 services 配置中启用（省略时沿用插件默认服务）。未启用、重复、归档目标、类型或 provider 不匹配均在台账校验时报错。归档或移除目标时同时移除 watch。
+
+| 插件 / service | 允许的目标 |
+| --- | --- |
+| aliyun / tencent / baidu 的 domains | Domain |
+| aliyun / tencent / baidu / ctyun 的 cdn | 同 provider、type 为 cdn 的 Resource |
+| cloudflare 的 zones | 同名 Domain 或 provider 为 cloudflare、type 为 dns-zone 的 Resource |
+
+Resource 至少有 resource_id 或 endpoint。匹配沿用自然身份：观测有 ID 时必须匹配 ID，不能用同名 endpoint 覆盖 ID 差异；无观测 ID 才按 endpoint 匹配。SSH、DNS、TLS、WHOIS 和外部插件不支持 missing。
+
+sync 在 `.presence.yaml` 为真正出现过的目标建立正向基线。首次空清单不会建立基线，新录入记录也不会因旧快照中没有它而误报。目标自然身份（含 endpoint 后备身份）、watch 绑定或实例配置改变后必须重新出现过；备注和豁免不影响基线。sync 会清除移除或改变的绑定，失败采集不能建立新基线，空清单不推进 last_seen。只读 audit 不保存或迁移基线。
+
+missing 必须提供非负 `--max-age`；仅当对应实例的成功回执与配置、快照字节、成功时间完全匹配，观测未过期且不在未来，声明服务返回完整集合，并有相同绑定且不晚于观测的正向基线时，才作缺失判断。恰好到阈值仍有效，超过一秒也算过期；`0d` 只接受与检查时刻相同的观测。
+
+不满足前提时，输出 `missing_unknown` notice，包含 rule、target、记录 file 和不能判断的原因；不产生 missing finding，不改变 ok / 退出码，也不能通过 waiver 隐藏。损坏或符号链接基线、损坏的服务集合仍退出 2。无 watch 时这条规则不作资产判断。
+
+finding 的 target / file 属于声明的台账记录；evidence 包含 `identity`（目标自然身份）、`plugin`、`instance`、`service`、`snapshot_file`、`observed_at`、`last_seen`、`max_age_days`。消息要求核对权限和查询范围：未找到只表示在该凭据本轮查询范围内不可见，不能断言已删除。凭据引用背后的令牌或权限变化不会自动改变配置指纹；若 API 静默缩小可见范围，工具无法将其与删除区分。
+
+使用目标记录的 `metadata.waivers: [{rule: missing, reason: ...}]` 精确豁免；可附 until，过期后重新报告。不支持 missing 的 `audit.ignore`，同名或同身份的其他记录豁免不影响该目标。CLI 与 MCP 使用同一判断和证据。
 
 ## 源站暴露
 

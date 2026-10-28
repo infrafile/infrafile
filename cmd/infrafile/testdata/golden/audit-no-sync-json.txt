@@ -8,6 +8,7 @@ $ infrafile audit --max-age 45d --json
   "max_age_days": 45,
   "rules": [
     "cdn_drift",
+    "missing",
     "origin_exposure",
     "orphan",
     "stale_state",

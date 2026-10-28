@@ -151,7 +151,7 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 		{"list", "按主键、类型或标签筛选台账（含归档）；标签精确匹配且全部满足。", listSchema},
 		{"show", "读取唯一记录和引用关系，省略凭据字段。" + strings.Join(descriptions, "；"), selector(true)},
 		{"expiry", "检查在用资产到期日，默认30天，含已过期及边界当天。", expirySchema},
-		{"audit", "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 需要 max_age_days。", auditSchema},
+		{"audit", "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 和 missing 需要 max_age_days。", auditSchema},
 		{"validate", "只读校验当前数据仓，返回问题代码与数量；详细诊断用 CLI validate。", empty},
 		{"schema", "返回与 CLI 校验相同的内嵌 JSON Schema。", empty},
 		{"plan", "只读生成单动作计划，不保存、不执行。标签必须唯一匹配在用 Resource；改回源必须提供已登记的 origin_key。", planSchema},

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/infrafile/infrafile/internal/ledger"
+	"github.com/infrafile/infrafile/internal/observation"
 )
 
 // Options 是 validate 的可选项。
@@ -50,6 +51,10 @@ func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
 		problems = append(problems, scanPlaintext(r.Document)...)
 	}
 	problems = append(problems, checkRefs(repo.Records, schemas)...)
+	if len(problems) == 0 {
+		_, watches := observation.Watches(repo)
+		problems = append(problems, watches...)
+	}
 
 	if opts.Base != "" {
 		ps, err := checkDeleted(repo, opts.Base)

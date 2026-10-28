@@ -209,7 +209,7 @@ spec:
 	for path, msg := range map[string]string{
 		"metadata.waivers[0].reason": "缺少必填字段",
 		"metadata.waivers[1].reason": "不能为空",
-		"metadata.waivers[2].rule":   `应为以下之一："stale_state"、"orphan"、"zombie"、"origin_exposure"、"cdn_drift"`,
+		"metadata.waivers[2].rule":   `应为以下之一："stale_state"、"orphan"、"zombie"、"origin_exposure"、"cdn_drift"、"missing"`,
 		"metadata.waivers[3].until":  "应为日期（YYYY-MM-DD）",
 	} {
 		if msgs[path] != msg {

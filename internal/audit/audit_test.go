@@ -101,14 +101,14 @@ func TestSelect(t *testing.T) {
 		t.Fatalf("未设 --max-age 时默认规则 = %v, %v", ids(got), err)
 	}
 	got, err = Select(nil, &Input{MaxAge: days(7)})
-	if err != nil || !slices.Equal(ids(got), []string{"cdn_drift", "origin_exposure", "orphan", "stale_state", "zombie"}) {
+	if err != nil || !slices.Equal(ids(got), []string{"cdn_drift", "missing", "origin_exposure", "orphan", "stale_state", "zombie"}) {
 		t.Fatalf("默认规则 = %v, %v", ids(got), err)
 	}
 	got, err = Select([]string{"stale_state", "stale_state"}, &Input{MaxAge: days(7)})
 	if err != nil || !slices.Equal(ids(got), []string{"stale_state"}) {
 		t.Fatalf("重复规则 = %v, %v", ids(got), err)
 	}
-	for id, want := range map[string]string{"stale_state": "--max-age", "nope": "未知规则"} {
+	for id, want := range map[string]string{"stale_state": "--max-age", "missing": "--max-age", "nope": "未知规则"} {
 		if _, err := Select([]string{id}, &Input{}); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("Select(%s) err = %v，想要包含 %q", id, err, want)
 		}
@@ -149,9 +149,9 @@ func TestStaleState(t *testing.T) {
 		Repo: repo(t, "", nil),
 		Now:  now,
 		Snapshots: []Snapshot{
-			{"aliyun", "home", "state/aliyun/home.yaml", &fresh, nil},
-			{"cloudflare", "home", "state/cloudflare/home.yaml", &old, nil},
-			{"dns", "blog", "state/dns/blog.yaml", nil, nil},
+			{Plugin: "aliyun", Instance: "home", File: "state/aliyun/home.yaml", ObservedAt: &fresh},
+			{Plugin: "cloudflare", Instance: "home", File: "state/cloudflare/home.yaml", ObservedAt: &old},
+			{Plugin: "dns", Instance: "blog", File: "state/dns/blog.yaml"},
 		},
 		MaxAge: days(7),
 	}
@@ -198,8 +198,8 @@ func TestStaleStateAgeBoundary(t *testing.T) {
 func TestWaivers(t *testing.T) {
 	old := now.Add(-30 * 24 * time.Hour)
 	snaps := []Snapshot{
-		{"aliyun", "home", "state/aliyun/home.yaml", &old, nil},
-		{"cloudflare", "home", "state/cloudflare/home.yaml", &old, nil},
+		{Plugin: "aliyun", Instance: "home", File: "state/aliyun/home.yaml", ObservedAt: &old},
+		{Plugin: "cloudflare", Instance: "home", File: "state/cloudflare/home.yaml", ObservedAt: &old},
 	}
 	ignore := func(entries ...string) string {
 		return "audit:\n  ignore:\n" + strings.Join(entries, "")

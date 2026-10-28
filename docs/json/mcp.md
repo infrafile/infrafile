@@ -16,7 +16,7 @@
 
 expiry 的 within_days 为非负整数，默认 30；沿用 CLI 的有效日期范围校验。发现到期项返回 ok=false，仍是成功的工具调用（isError=false）。validate 发现台账问题同样返回 ok=false / isError=false；无法加载则是工具失败。list / show / expiry / audit / plan 先校验整个台账，失败时不返回部分业务结果。
 
-audit 仅接受可选的 rules（cdn_drift / origin_exposure / orphan / zombie / stale_state 的 ID 数组）和 max_age_days（非负整数，须能表示为 Go int）。省略 rules 或传空数组时运行全部就绪规则；重复 ID 只运行一次。默认运行前四条；stale_state 需要 max_age_days，显式点名却未提供阈值时失败。未豁免发现返回 ok=false / isError=false；无快照不报缺失；不能传 key / labels / kind、路径或命令。未知规则、额外字段与重复键均被拒绝。审计不调用插件、不访问网络、不读取凭据值。精确 match、自然身份、源站证据和 CDN 状态映射与 [CLI audit 契约](audit.md) 相同，豁免从数据仓配置读取，不能通过工具参数临时覆盖。
+audit 仅接受可选的 rules（cdn_drift / origin_exposure / orphan / zombie / stale_state / missing 的 ID 数组）和 max_age_days（非负整数，须能表示为 Go int）。省略 rules 或传空数组时运行全部就绪规则；重复 ID 只运行一次。默认运行前四条；stale_state 和 missing 需要 max_age_days，显式点名却未提供阈值时失败。未豁免发现返回 ok=false / isError=false；无有效快照不报缺失，声明的 watch 目标输出 missing_unknown；不能传 key / labels / kind、路径或命令。未知规则、额外字段与重复键均被拒绝。审计不调用插件、不访问网络、不读取凭据值。精确 match、自然身份、源站证据和 CDN 状态映射与 [CLI audit 契约](audit.md) 相同，豁免从数据仓配置读取，不能通过工具参数临时覆盖。
 
 工具执行失败使用 `isError: true`，同时提供固定消息：
 

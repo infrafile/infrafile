@@ -10,11 +10,12 @@ import (
 	"github.com/infrafile/infrafile/internal/snapshot"
 )
 
-func syncNotices(ctx context.Context, repo *ledger.Repo, enabled map[string]map[string]any, all []snapshot.Snapshot, stamps map[string]map[string]time.Time) ([]Notice, error) {
+func syncNotices(ctx context.Context, repo *ledger.Repo, enabled map[string]map[string]any, all []snapshot.Snapshot, stamps map[string]map[string]time.Time) ([]Notice, map[string]bool, error) {
 	status, err := snapshot.ReadStatus(ctx, repo.Dir)
 	if err != nil || status == nil {
-		return nil, err
+		return nil, nil, err
 	}
+	verified := map[string]bool{}
 	hashes := map[string]string{}
 	for _, s := range all {
 		if !s.Skipped {
@@ -37,6 +38,7 @@ func syncNotices(ctx context.Context, repo *ledger.Repo, enabled map[string]map[
 					n.Code, n.Message = "sync_incomplete", "最近一次同步未留下结束回执；请核对执行状态后重新采集"
 				case "succeeded":
 					if stamp.Equal(at) && hashes[n.Target] == attempt.SnapshotHash {
+						verified[n.Target] = true
 						continue
 					}
 				}
@@ -45,5 +47,5 @@ func syncNotices(ctx context.Context, repo *ledger.Repo, enabled map[string]map[
 		}
 	}
 	sort.Slice(notices, func(i, j int) bool { return notices[i].Target < notices[j].Target })
-	return notices, nil
+	return notices, verified, nil
 }

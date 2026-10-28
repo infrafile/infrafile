@@ -20,6 +20,10 @@ func Prepare(ctx context.Context, in *Input, rules []Rule) error {
 			if err := prepareCDN(ctx, in); err != nil {
 				return err
 			}
+		case "missing":
+			if err := prepareMissing(ctx, in); err != nil {
+				return err
+			}
 		}
 	}
 	if len(lifecycleRules) > 0 {

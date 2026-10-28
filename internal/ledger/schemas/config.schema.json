@@ -30,6 +30,21 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "watch": {
+          "description": "missing 的显式检查范围；每个在用目标只绑定一个插件实例和服务。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["target", "plugin", "instance", "service"],
+            "additionalProperties": false,
+            "properties": {
+              "target": {"type": "string", "pattern": "^(Domain|Resource)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$"},
+              "plugin": {"enum": ["aliyun", "tencent", "baidu", "ctyun", "cloudflare"]},
+              "instance": {"$ref": "#/$defs/name"},
+              "service": {"enum": ["domains", "cdn", "zones"]}
+            }
+          }
+        },
         "ignore": {
           "description": "stale_state 按实例豁免；orphan/zombie 必须用 match 精确指定单个观测身份。",
           "type": "array",

@@ -1,0 +1,10 @@
+$ infrafile audit --rule missing --max-age 7d
+[退出码 1]
+--- stdout
+截至 2026-12-01T12:00:00Z（观测上限 7 天）
+快照 1 份
+  cloudflare/home  2026-12-01T11:00:00Z 观测，0 天前
+missing：曾观测到的在用资产在指定查询范围内不再可见
+  Resource/edge  inventory/resources/edge.yaml  曾观测到此资产，本次在指定凭据的查询范围内未找到；请核对权限和范围，不能据此断言已删除
+发现 1 条偏差，0 条已豁免
+--- stderr
