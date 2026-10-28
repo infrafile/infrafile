@@ -42,6 +42,8 @@ type Input struct {
 	MaxAge          *int
 	lifecycle       *lifecycleInput
 	origins         map[string][]originEvidence
+	originFindings  []Finding
+	originNotices   []Notice
 	cdnFindings     []Finding
 	cdnNotices      []Notice
 	missingFindings []Finding
@@ -220,6 +222,9 @@ func Run(in *Input, rules []Rule) ([]Finding, []Notice) {
 	notices := []Notice{}
 	if ran["cdn_drift"] {
 		notices = append(notices, in.cdnNotices...)
+	}
+	if ran["origin_exposure"] {
+		notices = append(notices, in.originNotices...)
 	}
 	if ran["missing"] {
 		notices = append(notices, in.missingNotices...)

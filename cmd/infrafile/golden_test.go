@@ -139,6 +139,7 @@ func TestGolden(t *testing.T) {
 		{"audit-cdn", []string{"audit", "--rule", "cdn_drift"}, goldenCDN},
 		{"audit-cdn-json", []string{"audit", "--rule", "cdn_drift", "--json"}, goldenCDN},
 		{"audit-cdn-origin-json", []string{"audit", "--rule", "cdn_drift", "--max-age", "7d", "--json"}, goldenCDNOrigin("drift")},
+		{"audit-cdn-origin-equal-json", []string{"audit", "--rule", "cdn_drift", "--max-age", "7d", "--json"}, goldenCDNOrigin("equal")},
 		{"audit-cdn-origin-unknown-json", []string{"audit", "--rule", "cdn_drift", "--max-age", "7d", "--json"}, goldenCDNOrigin("unknown")},
 		{"audit-missing", []string{"audit", "--rule", "missing", "--max-age", "7d"}, goldenMissing("missing")},
 		{"audit-missing-json", []string{"audit", "--rule", "missing", "--max-age", "7d", "--json"}, goldenMissing("missing")},

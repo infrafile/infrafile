@@ -1,6 +1,6 @@
 # infrafile
 
-> **[v0.2.0](https://github.com/infrafile/infrafile/releases/tag/v0.2.0)**：离线审计、偏差豁免和 Gatus 配置生成，数据格式保持 `v1alpha1`。
+> **[v0.3.0](https://github.com/infrafile/infrafile/releases/tag/v0.3.0)**：同步回执、missing 检查、CDN 回源漂移和 App 部署源站检查，数据格式保持 `v1alpha1`。
 
 infrafile 是面向个人和小团队的基础设施资产台账：**以 git 为后端**，服务器、应用、域名、云账号、云资源、代码仓都写成明文 YAML 存进 git。另外几项能力：
 
@@ -30,7 +30,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
 - [v0.3 方案与实施顺序](docs/plan/v0.3.md)
-- [v0.3 开发版回源采集与漂移检查](docs/first-party-plugins.md#回源采集v03-开发版)
+- [v0.3 回源采集与漂移检查](docs/first-party-plugins.md#回源采集v03)
 - [快速上手](docs/quickstart.md)
 - [发布与验签](docs/release.md)
 - [凭据引用与运行命令](docs/secrets.md)
@@ -47,7 +47,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 
 全部通过 `infrafile sync [插件] --dir <数据仓>` 执行。凭据只写引用；按需配置 `services: [domains]` 或 `[cdn]` 可减少请求和授权范围。
 
-下表是默认清单权限；v0.3 开发版显式开启 `collect_origin` 后的详情接口与额外权限见[回源接口核对](docs/research/v0.3-cdn-origins.md)。
+下表是默认清单权限；v0.3 显式开启 `collect_origin` 后的详情接口与额外权限见[回源接口核对](docs/research/v0.3-cdn-origins.md)。
 
 | 插件 | 只读范围 | 所需权限 |
 |---|---|---|

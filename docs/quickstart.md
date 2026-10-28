@@ -83,6 +83,10 @@ git commit -m '更新观测快照'
 infrafile audit . --max-age 7d --json
 ```
 
+v0.3 中提交 `state/` 时要包含隐藏的 `.sync-status.yaml` 和 `.presence.yaml`，否则 CI 只能看到旧快照，不能验证本轮执行和 missing 的正向基线。采集在持有凭据的使用方环境中定时运行；离线 CI 不需要解密凭据。CI 如需“证据完整才通过”，除命令退出码外还应检查 JSON notices 中的 `sync_failed`、`sync_incomplete`、`sync_status_unverified` 和各规则的 `*_unknown`，不能只检查 `ok`。首次接入尚未建立基线属于 unknown，不能据此断言远端已删除。
+
+虚构回放的[一致](https://github.com/infrafile/infrafile/blob/main/cmd/infrafile/testdata/golden/audit-cdn-origin-equal-json.txt)、[漂移](https://github.com/infrafile/infrafile/blob/main/cmd/infrafile/testdata/golden/audit-cdn-origin-json.txt)和[证据不足](https://github.com/infrafile/infrafile/blob/main/cmd/infrafile/testdata/golden/audit-cdn-origin-unknown-json.txt)给出三类完整 JSON 输出；CI 的黄金测试会执行这些场景。各厂商真实接口的已验证范围见 [v0.3 验收记录](plan/v0.3.md)。
+
 orphan / zombie 的配置级豁免必须精确指定 plugin、instance 和完整自然身份；字段见[审计契约](json/audit.md)。审计不自动修台账或执行线上写入。
 
 ## 生成配置与 Agent 指南

@@ -1,6 +1,6 @@
 # 发版
 
-发布入口是 `.github/workflows/release.yml`。`v*` 标签触发测试、离线快速上手、GoReleaser 六个平台构建，以及基于 GitHub OIDC 的 Cosign keyless 签名。工作流先创建草稿 Release，验收后公开并更新 Homebrew tap。以下以 v0.2.0 为例。
+发布入口是 `.github/workflows/release.yml`。`v*` 标签触发测试、离线快速上手、GoReleaser 六个平台构建，以及基于 GitHub OIDC 的 Cosign keyless 签名。工作流先创建草稿 Release，验收后公开并更新 Homebrew tap。以下以 v0.3.0 为例。
 
 ## 构建与发布约定
 
@@ -26,8 +26,8 @@ snapshot 只检验打包，不代表正式签名或发布成功；再次生成�
 确认目标 tag 尚不存在，再创建不可移动的发布标签：
 
 ```sh
-git tag -a v0.2.0 -m 'infrafile v0.2.0'
-git push origin v0.2.0
+git tag -a v0.3.0 -m 'infrafile v0.3.0'
+git push origin v0.3.0
 ```
 
 不要移动已发布标签。下载草稿需要有仓库权限的 gh 登录；工作流失败时先检查已存在的草稿资产，再修复原因。不要用本地 snapshot 替换正式构建产物。
@@ -39,7 +39,7 @@ git push origin v0.2.0
 ```sh
 (
 set -eu
-tag=v0.2.0
+tag=v0.3.0
 gh release download "$tag" --repo infrafile/infrafile
 identity="https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/$tag"
 cosign verify-blob --certificate-identity "$identity" \
@@ -66,7 +66,7 @@ PY
 验签、版本和离线流程通过后：
 
 ```sh
-gh release edit v0.2.0 --repo infrafile/infrafile --draft=false --latest
+gh release edit v0.3.0 --repo infrafile/infrafile --draft=false --latest
 ```
 
 第一次创建公开的 `infrafile/homebrew-tap`；后续更新使用该仓当前 main。审阅下载的 `infrafile.rb`，确认四个平台 URL 和 SHA 与本次已验签的校验和一致，将其保存为 tap 的 `Formula/infrafile.rb`，带 DCO 提交后推送。tap 不存储任何凭据。
@@ -80,13 +80,13 @@ ifl version --json
 
 Homebrew 要求信任时，审阅配方后只信任这一 formula：`brew trust --formula infrafile/tap/infrafile`，见 [Tap Trust](https://docs.brew.sh/Tap-Trust)。升级已有安装使用 `brew update`、`brew upgrade infrafile/tap/infrafile`。最后按[快速上手](quickstart.md)跑完临时 homelab 流程，才能把“签名产物已发布”与“包管理器安装可用”两项都记为完成。
 
-## v0.2.0 发布验收
+## v0.3.0 发布验收
 
 2026-10-28 完成公开发布及 Homebrew 升级验收：
 
-- [v0.2.0 Release](https://github.com/infrafile/infrafile/releases/tag/v0.2.0) 已公开为正式最新版，共 10 个附件：六个平台归档、校验清单及签名 bundle、formula 及签名 bundle。标签固定在 `d8de6fafe3396cf0bbf097a77a8a047328d4400b`，未移动 v0.1.0 标签。
+- [v0.3.0 Release](https://github.com/infrafile/infrafile/releases/tag/v0.3.0) 已公开为正式最新版，共 10 个附件：六个平台归档、校验清单及签名 bundle、formula 及签名 bundle。标签固定在 `d8de6fafe3396cf0bbf097a77a8a047328d4400b`，未移动 v0.1.0 标签。
 - [PR #1](https://github.com/infrafile/infrafile/pull/1) 合并后，[最终发布提交的 CI](https://github.com/infrafile/infrafile/actions/runs/40672698855) 与[正式发布工作流](https://github.com/infrafile/infrafile/actions/runs/40673075746)通过，包括 gofmt、vet、全仓 race、配方测试，以及 Linux amd64 正式归档的离线上手。
-- 下载草稿附件后，使用 Cosign v3.1.4 验证两份 bundle：identity 为 `https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/v0.2.0`，issuer 为 `https://token.actions.githubusercontent.com`。六个 SHA-256、各平台二进制及归档内文档/示例均通过核对，包含新增 audit/Gatus 契约与同步时间示例；无私有验收数据。重新生成的 formula 与签名附件逐字节相同。
+- 下载草稿附件后，使用 Cosign v3.1.4 验证两份 bundle：identity 为 `https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/v0.3.0`，issuer 为 `https://token.actions.githubusercontent.com`。六个 SHA-256、各平台二进制及归档内文档/示例均通过核对，包含新增 audit/Gatus 契约与同步时间示例；无私有验收数据。重新生成的 formula 与签名附件逐字节相同。
 - macOS arm64 正式归档报告 `0.2.0 / d8de6fa`，完整离线上手通过。随后公开 Release，[tap 配方提交 bc3e70c](https://github.com/infrafile/homebrew-tap/commit/bc3e70c87026ef8991df77d47369302a3135c868)采用已验签的同批附件。
 - 本机 Homebrew 从 0.1.0 升级到 0.2.0，`brew test infrafile/tap/infrafile` 通过；`infrafile` 与 `ifl` 解析到同一二进制，版本均为 `0.2.0 / d8de6fa`。安装版的完整离线上手与先前私有台账验收快照的离线审计回归通过；后者未重新请求云 API，也未迁移权威台账。
 

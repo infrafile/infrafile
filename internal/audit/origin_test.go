@@ -92,6 +92,64 @@ func TestOriginExposureWaiverIsolation(t *testing.T) {
 	}
 }
 
+func TestOriginAppDeployments(t *testing.T) {
+	for _, tc := range []struct {
+		name, binding, deployments, address string
+		archiveApp, archiveServer           bool
+		findings, unknown                   int
+	}{
+		{"all_deployments", "{name: '@', app: blog}", "[{server: web}, {server: v6}, {server: web}]", "192.0.2.10", false, false, 2, 0},
+		{"partial_unknown", "{name: '@', app: blog}", "[{server: web}, {server: v6}]", "origin.example.net", false, false, 1, 1},
+		{"no_deployments", "{name: '@', app: blog}", "[]", "192.0.2.10", false, false, 0, 1},
+		{"mixed_archived", "{name: '@', app: blog}", "[{server: web}, {server: v6}]", "192.0.2.10", false, true, 1, 0},
+		{"all_archived", "{name: '@', app: blog}", "[{server: web}]", "192.0.2.10", false, true, 0, 1},
+		{"archived_app", "{name: '@', app: blog}", "[{server: web}]", "192.0.2.10", true, false, 0, 0},
+		{"explicit_server", "{name: '@', app: blog, server: web}", "[{server: v6}]", "192.0.2.10", false, false, 1, 0},
+		{"resource_precedence", "{name: '@', app: blog, server: web, resource: cdn}", "[{server: web}]", "192.0.2.10", false, false, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := originFiles(tc.address, tc.binding, "  dns: {provider: example, records: [{name: '@', type: A, content: 192.0.2.10}, {name: '@', type: AAAA, content: '2001:db8::10'}]}\n")
+			files["inventory/servers/v6.yaml"] = "kind: Server\nmetadata: {name: v6}\nspec: {address: '2001:db8::10'}\n"
+			files["inventory/apps/blog.yaml"] = "kind: App\nmetadata: {name: blog}\nspec: {deployments: " + tc.deployments + "}\n"
+			if tc.archiveApp {
+				files["inventory/apps/blog.yaml"] = strings.Replace(files["inventory/apps/blog.yaml"], "name: blog", "name: blog, archived: {date: 2026-11-01, reason: retired}", 1)
+			}
+			if tc.archiveServer {
+				files["inventory/servers/web.yaml"] = strings.Replace(files["inventory/servers/web.yaml"], "name: web", "name: web, archived: {date: 2026-11-01, reason: retired}", 1)
+			}
+			f, n := originRun(t, "", files)
+			if len(f) != tc.findings || len(n) != tc.unknown {
+				t.Fatalf("findings=%+v notices=%+v", f, n)
+			}
+			for _, notice := range n {
+				if notice.Code != "origin_exposure_unknown" || notice.Target != "Domain/example.com" {
+					t.Fatal(notice)
+				}
+			}
+		})
+	}
+}
+
+func TestOriginAppSharedEvidenceAndWaivers(t *testing.T) {
+	files := originFiles("192.0.2.10", "{name: '@', app: blog}, {name: '@', app: shared}", "  dns: {provider: example, records: [{name: '@', type: A, content: 192.0.2.10}]}\n")
+	for _, name := range []string{"blog", "shared"} {
+		files["inventory/apps/"+name+".yaml"] = "kind: App\nmetadata: {name: " + name + "}\nspec: {deployments: [{server: web}]}\n"
+	}
+	files["inventory/domains/other.example.net.yaml"] = strings.ReplaceAll(files["inventory/domains/example.com.yaml"], "example.com", "other.example.net")
+	files["inventory/domains/example.com.yaml"] = strings.Replace(files["inventory/domains/example.com.yaml"], "name: example.com", "name: example.com, waivers: [{rule: origin_exposure, reason: 迁移期间暂缓}]", 1)
+	files["state/dns/home.yaml"] = "apiVersion: infrafile/v1alpha1\nkind: Snapshot\nmetadata: {name: home}\nspec: {host: example.com, addresses: [192.0.2.10, 192.0.2.10]}\n"
+	files["state/cloudflare/home.yaml"] = "apiVersion: infrafile/v1alpha1\nkind: Snapshot\nmetadata: {name: home}\nspec: {zones: [{name: example.com, dns_records: [{name: example.com, type: A, content: 192.0.2.10, proxied: false}]}]}\n"
+	f, n := originRun(t, "plugins: {dns: {instances: {home: {}}}, cloudflare: {instances: {home: {}}}}\n", files)
+	if len(f) != 4 || len(n) != 0 {
+		t.Fatalf("findings=%+v notices=%+v", f, n)
+	}
+	for _, finding := range f {
+		if finding.Evidence["app"] != "App/blog" || (finding.Waiver != nil) != (finding.Target == "Domain/example.com") {
+			t.Fatal(finding)
+		}
+	}
+}
+
 func TestOriginExposureMultipleSourcesAndDisabled(t *testing.T) {
 	files := originFiles("192.0.2.10", "{name: '@', server: web}", "  dns: {provider: example, records: [{name: '@', type: A, content: 192.0.2.10}]}\n")
 	files["state/dns/home.yaml"] = "apiVersion: infrafile/v1alpha1\nkind: Snapshot\nmetadata: {name: home}\nspec: {host: example.com, addresses: [192.0.2.10, 192.0.2.10]}\n"

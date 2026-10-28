@@ -38,7 +38,7 @@
 
 快照没有同步记录时，observed_at 和 age_days 均为 null；只要运行 `stale_state` 就报告。`state/` 不存在、或启用实例尚无快照时，不为缺失的快照生成发现，输出中也没有对应 snapshot。missing 对已声明但无有效证据的目标给出提示，见下文。`_sync.yaml` 只记录最近一次成功同步时间。时效规则不屏蔽生命周期发现，旧快照仍参与比对，应先刷新观测再决定修复。
 
-v0.3 开发版额外离线读取 `state/.sync-status.yaml`。启用实例最近一次失败输出 sync_failed，running 输出 sync_incomplete；回执缺失或配置哈希、成功时间、快照字节不对应时输出 sync_status_unverified。首次失败即使没有快照也会提示。无回执文件的旧仓保持原行为；未启用实例的回执不参与提示。回执损坏或不是普通文件时退出 2，不回显原文。
+v0.3额外离线读取 `state/.sync-status.yaml`。启用实例最近一次失败输出 sync_failed，running 输出 sync_incomplete；回执缺失或配置哈希、成功时间、快照字节不对应时输出 sync_status_unverified。首次失败即使没有快照也会提示。无回执文件的旧仓保持原行为；未启用实例的回执不参与提示。回执损坏或不是普通文件时退出 2，不回显原文。
 
 这些是 notices，不是审计规则，不支持 waiver、不改变 ok 或退出码，也不屏蔽历史快照的既有发现。自动化必须检查本次 sync 的退出码；不能把 audit 的 ok=true 当作采集成功。回执匹配不代表清单完整或凭据拥有全量权限。
 
@@ -65,7 +65,7 @@ orphan / zombie 只说明快照中仍存在该资产，不推断进程运行状�
 
 ## missing：指定查询范围内不再可见
 
-v0.3 开发版只检查 `infrafile.yaml` 的 `audit.watch`，不从 provider、account、control 或标签猜测检查范围。例如：
+v0.3只检查 `infrafile.yaml` 的 `audit.watch`，不从 provider、account、control 或标签猜测检查范围。例如：
 
 ```yaml
 audit:
@@ -102,7 +102,7 @@ finding 的 target / file 属于声明的台账记录；evidence 包含 `identit
 
 ## 源站暴露
 
-`origin_exposure` 检查在用 Domain 中显式绑定在用 Server 的主机名（根域名写 `@`）。A/AAAA 地址与 Server.spec.address 规范化后相等时报告：台账 DNS 记录没有 `proxied: true`、Cloudflare 快照明确为 `proxied: false`，或 DNS 探测直接解析到该地址。IPv4 映射 IPv6 会先归一化；私有、回环、链路本地地址跳过。Resource 绑定优先跳过；仅 App 绑定、Server 地址为主机名、CNAME 链均不展开，不访问网络。
+`origin_exposure` 检查在用 Domain 中显式绑定在用 Server 的主机名（根域名写 `@`）。A/AAAA 地址与 Server.spec.address 规范化后相等时报告：台账 DNS 记录没有 `proxied: true`、Cloudflare 快照明确为 `proxied: false`，或 DNS 探测直接解析到该地址。IPv4 映射 IPv6 会先归一化；私有、回环、链路本地地址跳过。Resource 绑定优先跳过；显式 Server 绑定优先于 App。仅 App 绑定时展开该在用 App 的全部在用 Server 部署，共享部署及同来源重复证据去重，证据增加 `app` 主键。无在用部署或部署地址不是明确 IP 时提示 `origin_exposure_unknown`；部分部署可判断时同时保留发现和提示。归档 Domain/App/Server 不参与。Server 地址为主机名、CNAME 链均不展开，不访问网络。
 
 target 为 `Domain/name`，file 为域名记录。evidence 包含 `hostname`、`server`、`address`、`record_type`、`source`（ledger/cloudflare/dns）、`source_file`、`observed_at`；快照证据另含 `plugin`、`instance`，明确声明代理状态时包含 `proxied`。台账证据的 observed_at 为 null。不同来源保留各自发现，同一来源重复地址去重。Cloudflare 未声明代理状态时不推断为直连。
 
@@ -124,7 +124,7 @@ target 为 `Domain/name`，file 为域名记录。evidence 包含 `hostname`、`
 
 target 为 `Resource/name`，file 为资源记录；evidence 包含 `aspect: status`、`plugin`、`instance`、`snapshot_file`、`observed_at`、`identity`、原始 `status`，观测提供 area 时也保留。不同实例/区域保留各自证据，同一实例相同身份、状态、区域去重。豁免写在 Resource 的 `metadata.waivers`，不支持实例级 audit.ignore。不推断快照没有记录的资源已删除。停用检查保留 v0.2 的历史快照行为，不受下面新增回源判断的时效门槛影响。
 
-## CDN 回源漂移（v0.3 开发版）
+## CDN 回源漂移（v0.3）
 
 在 CDN Resource 或 Cloudflare dns-zone Resource 中声明期望，例如 `spec.origin: {hosts: [origin.example.com, 192.0.2.1], port: 8443, protocol: https}`。hosts 必填、非空，只接受 DNS 名称或 IP；拒绝 URL、端口后缀、通配符和 IPv6 zone ID。主机名小写、去尾点，IP 规范化并去 IPv4 映射；比较排序去重后的集合，不查 DNS。可选 port/protocol 表示所有配置源站的共同期望，省略时不检查；protocol 只支持 http/https/follow。不检查主备优先级、权重或运行时可达性。`import state` 不把观测回源写成期望。
 

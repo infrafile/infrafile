@@ -7,7 +7,7 @@ $ infrafile audit ../../examples/homelab
   cloudflare/home  2026-09-01T03:00:00Z 观测，91 天前
 cdn_drift：在用 CDN 的停用状态或显式期望回源与观测不一致
   无偏差
-origin_exposure：绑定 Server 的域名地址直连源站
+origin_exposure：绑定 Server 或 App 部署的域名地址直连源站
   Domain/example.net  inventory/domains/example.net.yaml  example.net 的 A 地址 203.0.113.10 直连 Server/web1（cloudflare 证据）
     [已豁免] 只做跳转，迁到 CDN 前先直连 web1（至 2027-06-30，来源 inventory/domains/example.net.yaml）
 orphan：快照中存在但台账未登记的资产
