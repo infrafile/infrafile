@@ -18,7 +18,7 @@ git commit -s
 
 ## 本地开发
 
-需要 Go（版本见 `go.mod`）与 Python 3（Homebrew 配方生成器测试）。
+需要 Go（版本见 `go.mod`）、Python 3（Homebrew 配方生成器测试）与 Node.js 22+（编辑器 Schema 正则兼容测试，无 npm 依赖）。
 
 ```bash
 make check   # gofmt + go vet + go test -race + 配方生成器测试，与 CI 一致

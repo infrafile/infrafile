@@ -70,7 +70,8 @@ func Load(ctx context.Context, dir string) (*Repo, []Problem, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
-	if _, err := os.Stat(filepath.Join(dir, ConfigFile)); err != nil {
+	info, err := os.Lstat(filepath.Join(dir, ConfigFile))
+	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil, &NotRepoError{Dir: dir}
 		}
@@ -78,16 +79,26 @@ func Load(ctx context.Context, dir string) (*Repo, []Problem, error) {
 	}
 
 	repo := &Repo{Dir: dir}
+	if !info.Mode().IsRegular() {
+		return repo, []Problem{{Code: CodeLayout, File: ConfigFile, Message: "配置必须是普通文件，不能是符号链接"}}, nil
+	}
 	cfg, problems, err := parseFile(ctx, dir, ConfigFile)
 	if err != nil {
 		return nil, nil, err
 	}
 	repo.Config = cfg
 
-	entries, err := os.ReadDir(filepath.Join(dir, InventoryDir))
+	info, err = os.Lstat(filepath.Join(dir, InventoryDir))
 	if errors.Is(err, fs.ErrNotExist) {
 		return repo, problems, nil
 	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if !info.IsDir() {
+		return repo, append(problems, Problem{Code: CodeLayout, File: InventoryDir + "/", Message: "inventory 必须是普通目录，不能是符号链接"}), nil
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, InventoryDir))
 	if err != nil {
 		return nil, nil, err
 	}

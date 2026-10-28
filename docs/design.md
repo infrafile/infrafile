@@ -4,7 +4,7 @@
 
 2026-10-28：[v0.2.0](https://github.com/infrafile/infrafile/releases/tag/v0.2.0) 已发布，包含离线审计、偏差豁免和 Gatus 配置生成；签名产物与 Homebrew 升级验收完成，范围与延后项见 [v0.2 计划](plan/v0.2.md)。
 
-后续「观测可信」的执行回执、missing、回源漂移与覆盖边界见 [v0.3 方案](plan/v0.3.md)；开发版已实现执行回执和显式范围 missing，Web UI 仍排在审计体系稳定之后。
+后续「观测可信」的执行回执、missing、回源漂移与覆盖边界见 [v0.3 方案](plan/v0.3.md)；v0.3 已实现执行回执、显式范围 missing、CDN 回源漂移和 App 部署源站检查，Web UI 仍排在审计体系稳定之后。
 
 > 标「建议」的是落实时的默认做法，可以调整；其余是已定的决定。
 

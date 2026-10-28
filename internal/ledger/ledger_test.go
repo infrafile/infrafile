@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -190,5 +191,34 @@ func TestLoadRejectsSymlinkedKindDir(t *testing.T) {
 	}
 	if len(problems) != 1 || problems[0].Code != CodeLayout || problems[0].File != "inventory/servers/" {
 		t.Fatalf("问题 = %v", problems)
+	}
+}
+
+func TestLoadRejectsSymlinkedRoots(t *testing.T) {
+	for _, path := range []string{ConfigFile, InventoryDir} {
+		for _, dangling := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/dangling=%t", path, dangling), func(t *testing.T) {
+				dir, outside := t.TempDir(), t.TempDir()
+				write(t, dir, ConfigFile, "apiVersion: infrafile/v1alpha1\nkind: Config\n")
+				write(t, outside, ConfigFile, "not valid: [")
+				write(t, outside, "inventory/servers/web.yaml", "not valid: [")
+				if path == ConfigFile {
+					if err := os.Remove(filepath.Join(dir, path)); err != nil {
+						t.Fatal(err)
+					}
+				}
+				target := filepath.Join(outside, path)
+				if dangling {
+					target += "-absent"
+				}
+				if err := os.Symlink(target, filepath.Join(dir, path)); err != nil {
+					t.Fatal(err)
+				}
+				repo, problems, err := Load(context.Background(), dir)
+				if err != nil || len(repo.Records) != 0 || len(problems) != 1 || problems[0].Code != CodeLayout {
+					t.Fatalf("repo=%+v problems=%+v err=%v", repo, problems, err)
+				}
+			})
+		}
 	}
 }

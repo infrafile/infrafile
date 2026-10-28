@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -65,8 +66,9 @@ func aliyunOrigin(ctx context.Context, auth cloudAuth, entry cdnEntry) (*observa
 		Code          string
 		DomainConfigs struct {
 			DomainConfig []struct {
-				Status, ParentId, FunctionName string
-				FunctionArgs                   struct {
+				Status, FunctionName string
+				ParentId             json.Number
+				FunctionArgs         struct {
 					FunctionArg []struct{ ArgName, ArgValue string }
 				}
 			}
@@ -83,7 +85,7 @@ func aliyunOrigin(ctx context.Context, auth cloudAuth, entry cdnEntry) (*observa
 	}
 	policies := 0
 	for _, c := range config.DomainConfigs.DomainConfig {
-		if c.ParentId != "" && c.ParentId != "-1" {
+		if c.ParentId.String() != "" && c.ParentId.String() != "-1" {
 			o.Scope = "conditional"
 		}
 		if c.FunctionName != "forward_scheme" && c.FunctionName != "ali_origin_port_scheme" {

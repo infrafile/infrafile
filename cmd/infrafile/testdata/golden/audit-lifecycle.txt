@@ -6,7 +6,7 @@ $ infrafile audit ../../examples/homelab/lifecycle
   aliyun/home  2026-10-26T03:00:00Z 观测，36 天前
 cdn_drift：在用 CDN 的停用状态或显式期望回源与观测不一致
   无偏差
-origin_exposure：绑定 Server 的域名地址直连源站
+origin_exposure：绑定 Server 或 App 部署的域名地址直连源站
   无偏差
 orphan：快照中存在但台账未登记的资产
   aliyun/home/Domain/ignored.example.net  state/aliyun/home.yaml  快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿

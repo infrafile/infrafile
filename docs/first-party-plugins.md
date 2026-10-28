@@ -57,7 +57,7 @@ Cloudflare 显式请求 full、partial、secondary、internal zone 类型；DNS 
 
 认证只在内存中用于 Bearer、ACS3、TC3、BCEv1 或 EOP 请求；不保存原始响应、联系信息、回源鉴权和请求日志。写入前仍执行宿主 deny-list，并拒绝结果中出现本次解析的完整认证值。未知字段名下的未知秘密仍不能靠 deny-list 完整识别。
 
-## 回源采集（v0.3 开发版）
+## 回源采集（v0.3）
 
 五家云实例可显式配置布尔 `collect_origin: true`；国内云同时需要 cdn 服务。默认关闭，关闭时请求与权限保持原清单行为。开启后逐条写入 `cdn[].origin` 或 `zones[].origin`。新增只读权限、请求预算和各厂商字段限制见[接口核对](research/v0.3-cdn-origins.md)；不要沿用只具备列表权限的令牌假定采集会成功。
 
@@ -98,7 +98,7 @@ spec:
 
 先执行 `infrafile sync aliyun --dir /path/to/my-infra --timeout 60s --json` 并确认成功，再执行 `infrafile audit /path/to/my-infra --rule cdn_drift --max-age 7d --json`。audit 全程离线。期望由人维护，`import state` 不自动填充 origin。
 
-每实例最多 200 个条目；任意详情超时、403、业务错误或超限都使该实例失败，保留旧快照。Cloudflare 没有 Origin Rules entrypoint 时的 404 也视为失败，不冒充空配置。已成功采集但条件/区域复杂、源站字段缺失或端口/协议不可观测时保存未知，在 audit 中输出 cdn_origin_unknown；ok=true 不等于配置全部符合期望。字段、证据与豁免见 [audit 契约](json/audit.md#cdn-回源漂移v03-开发版)。
+每实例最多 200 个条目；任意详情超时、403、业务错误或超限都使该实例失败，保留旧快照。Cloudflare 没有 Origin Rules entrypoint 时的 404 也视为失败，不冒充空配置。已成功采集但条件/区域复杂、源站字段缺失或端口/协议不可观测时保存未知，在 audit 中输出 cdn_origin_unknown；ok=true 不等于配置全部符合期望。字段、证据与豁免见 [audit 契约](json/audit.md#cdn-回源漂移v03)。
 
 `spec.origin`、collect_origin 不适用于 v0.2 的校验/插件配置；回退前移除这两个字段及 v0.3 的 watch 配置。v0.3 的回源只读映射尚未进行真实账号验收，不等同于下面已完成的 v0.2 清单验收。
 

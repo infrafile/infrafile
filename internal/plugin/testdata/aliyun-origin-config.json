@@ -1,6 +1,6 @@
 {
   "DomainConfigs": {"DomainConfig": [
-    {"Status": "success", "FunctionName": "ali_origin_port_scheme", "FunctionArgs": {"FunctionArg": [
+    {"ParentId": -1, "Status": "success", "FunctionName": "ali_origin_port_scheme", "FunctionArgs": {"FunctionArg": [
       {"ArgName": "scheme", "ArgValue": "https"}, {"ArgName": "port", "ArgValue": "8443"}
     ]}},
     {"Status": "success", "FunctionName": "aliauth", "FunctionArgs": {"FunctionArg": [

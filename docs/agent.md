@@ -57,7 +57,7 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 
 发现未豁免偏差时返回 `ok: false`，工具调用仍成功；全部豁免时返回 `ok: true`，发现仍保留。生命周期复用导入的观测映射，按自然身份找未登记资产和仅匹配归档的资产；DNS/TLS 不参与，Cloudflare 同名 Domain 可覆盖 zone。未同步的实例没有快照时不报告缺失。orphan / zombie 的 audit.ignore 必须提供完整 match，可复制发现的 evidence.identity，并限定 plugin / instance；不得用整实例忽略压住其他资产。完整字段、豁免与缺失输入语义见[审计 JSON 契约](json/audit.md)。
 
-origin_exposure 检查显式 Server 绑定的台账与观测地址；cdn_drift 只报告阿里云、腾讯云和天翼云明确停用的 CDN 状态，未知值只提示。两条规则均支持记录上的 metadata.waivers，不接受实例级 audit.ignore。源站检测不扫描端口，CDN 检测不比较回源配置。
+origin_exposure 检查显式 Server 或仅 App 绑定的全部在用部署地址；无部署或地址不明确时提示 origin_exposure_unknown。cdn_drift 保留停用状态检查，并比较显式 spec.origin 与新鲜、匹配的回源快照；须配置 audit.watch、collect_origin 和 max_age_days，证据不足提示 cdn_origin_unknown。两条规则均支持记录上的 metadata.waivers，不接受实例级 audit.ignore。源站检测不扫描端口或追踪 CNAME。
 
 ## 只读计划
 

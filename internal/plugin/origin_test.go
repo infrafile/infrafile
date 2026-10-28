@@ -139,6 +139,8 @@ func TestOriginRecordedCollection(t *testing.T) {
 
 func TestOriginUnknownScopesAndMissingFields(t *testing.T) {
 	for _, tc := range []struct{ name, from, to, scope string }{
+		{"aliyun", `"ParentId": -1`, `"ParentId": 42`, "conditional"},
+		{"aliyun", `"ParentId": -1`, `"ParentId": "-1"`, "global"},
 		{"aliyun", `"Status": "success", "FunctionName": "ali_origin_port_scheme"`, `"Status":"success","ParentId":"42","FunctionName":"ali_origin_port_scheme"`, "conditional"},
 		{"aliyun", `"SourceModel": [`, `"SourceModelIgnored": [`, "unknown"},
 		{"tencent", `"Origins": [`, `"PathRules":[{}],"Origins": [`, "conditional"},
