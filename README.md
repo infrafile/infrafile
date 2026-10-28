@@ -30,6 +30,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
 - [v0.3 方案与实施顺序](docs/plan/v0.3.md)
+- [v0.3 开发版回源采集与漂移检查](docs/first-party-plugins.md#回源采集v03-开发版)
 - [快速上手](docs/quickstart.md)
 - [发布与验签](docs/release.md)
 - [凭据引用与运行命令](docs/secrets.md)
@@ -45,6 +46,8 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 ## 第一方插件与最小权限
 
 全部通过 `infrafile sync [插件] --dir <数据仓>` 执行。凭据只写引用；按需配置 `services: [domains]` 或 `[cdn]` 可减少请求和授权范围。
+
+下表是默认清单权限；v0.3 开发版显式开启 `collect_origin` 后的详情接口与额外权限见[回源接口核对](docs/research/v0.3-cdn-origins.md)。
 
 | 插件 | 只读范围 | 所需权限 |
 |---|---|---|

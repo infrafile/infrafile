@@ -1,0 +1,10 @@
+{
+  "GetDomainDetailModel": {
+    "DomainName": "static.example.com",
+    "SourceModels": {"SourceModel": [
+      {"Content": "ORIGIN.EXAMPLE.COM.", "Type": "domain", "Port": 8443, "Priority": "20", "Weight": "10"},
+      {"Content": "192.0.2.1", "Type": "ipaddr", "Port": 8443, "Priority": "30", "Weight": "20"}
+    ]},
+    "PrivateKey": "synthetic-do-not-retain"
+  }
+}

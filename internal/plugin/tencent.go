@@ -34,6 +34,7 @@ func (b *builtin) tencent(ctx context.Context, config map[string]any) (any, erro
 						Status    string `json:"BuyStatus"`
 					} `json:"DomainSet"`
 					Domains []struct {
+						tencentOriginDetail
 						Name   string `json:"Domain"`
 						ID     string `json:"ResourceId"`
 						CNAME  string `json:"Cname"`
@@ -46,6 +47,9 @@ func (b *builtin) tencent(ctx context.Context, config map[string]any) (any, erro
 			api, action, version := "domain", "DescribeDomainNameList", "2018-08-08"
 			if service == "cdn" {
 				api, action, version = "cdn", "DescribeDomains", "2018-06-06"
+				if config["collect_origin"] == true {
+					action = "DescribeDomainsConfig"
+				}
 			}
 			body, _ := json.Marshal(map[string]int{"Offset": offset, "Limit": 100})
 			if err := tencentRequest(ctx, api, action, version, body, auth, &response); err != nil {
@@ -62,6 +66,9 @@ func (b *builtin) tencent(ctx context.Context, config map[string]any) (any, erro
 			if total == nil || *total < 0 || (service == "domains" && r.DomainSet == nil) || (service == "cdn" && r.Domains == nil) {
 				return nil, failure("protocol", "腾讯云分页响应不完整")
 			}
+			if service == "cdn" && config["collect_origin"] == true && (*total > maxOriginDomains || offset+count > maxOriginDomains) {
+				return nil, failure("config", "回源采集超过 200 个域名上限")
+			}
 			for _, item := range r.DomainSet {
 				if item.Name == "" {
 					return nil, failure("protocol", "腾讯云域名缺少名称")
@@ -76,7 +83,11 @@ func (b *builtin) tencent(ctx context.Context, config map[string]any) (any, erro
 				if item.Name == "" {
 					return nil, failure("protocol", "腾讯云 CDN 缺少名称")
 				}
-				cdn = append(cdn, cdnEntry{Name: item.Name, ID: item.ID, CNAME: item.CNAME, Status: item.Status, Type: item.Type, Area: item.Area})
+				entry := cdnEntry{Name: item.Name, ID: item.ID, CNAME: item.CNAME, Status: item.Status, Type: item.Type, Area: item.Area}
+				if config["collect_origin"] == true {
+					entry.Origin = item.tencentOriginDetail.observation()
+				}
+				cdn = append(cdn, entry)
 			}
 			offset += count
 			if offset >= *total {

@@ -21,7 +21,12 @@ func (b *builtin) baidu(ctx context.Context, config map[string]any) (any, error)
 		if service == "domains" {
 			result[service], err = baiduDomains(ctx, auth)
 		} else {
-			result[service], err = baiduCDN(ctx, auth)
+			var entries []cdnEntry
+			entries, err = baiduCDN(ctx, auth)
+			if err == nil && config["collect_origin"] == true {
+				err = collectCDNOrigins(ctx, auth, entries, baiduOrigin)
+			}
+			result[service] = entries
 		}
 		if err != nil {
 			return nil, err
@@ -43,7 +48,7 @@ func baiduDomains(ctx context.Context, auth cloudAuth) ([]domainEntry, error) {
 				ExpiresAt string `json:"expireTime"`
 			} `json:"result"`
 		}
-		if err := baiduRequest(ctx, "bcd.baidubce.com", url.Values{"pageNo": {strconv.Itoa(page)}, "pageSize": {"100"}}, auth, &response); err != nil {
+		if err := baiduRequest(ctx, "bcd.baidubce.com", "/v2/domain", url.Values{"pageNo": {strconv.Itoa(page)}, "pageSize": {"100"}}, auth, &response); err != nil {
 			return nil, err
 		}
 		if response.Code != "" {
@@ -90,7 +95,7 @@ func baiduCDN(ctx context.Context, auth cloudAuth) ([]cdnEntry, error) {
 		if marker != "" {
 			query.Set("marker", marker)
 		}
-		if err := baiduRequest(ctx, "cdn.baidubce.com", query, auth, &response); err != nil {
+		if err := baiduRequest(ctx, "cdn.baidubce.com", "/v2/domain", query, auth, &response); err != nil {
 			return nil, err
 		}
 		if response.Code != "" {
@@ -118,7 +123,7 @@ func baiduCDN(ctx context.Context, auth cloudAuth) ([]cdnEntry, error) {
 	return all, nil
 }
 
-func baiduRequest(ctx context.Context, host string, query url.Values, auth cloudAuth, result any) error {
+func baiduRequest(ctx context.Context, host, path string, query url.Values, auth cloudAuth, result any) error {
 	headers := http.Header{}
 	headers.Set("Host", host)
 	headers.Set("X-Bce-Date", time.Now().UTC().Format(time.RFC3339))
@@ -126,8 +131,8 @@ func baiduRequest(ctx context.Context, host string, query url.Values, auth cloud
 		headers.Set("X-Bce-Security-Token", auth.Token)
 	}
 	encoded := rfc3986(query.Encode())
-	headers.Set("Authorization", bceAuthorization("GET", "/v2/domain", encoded, headers, auth))
-	return requestJSON(ctx, "GET", "https://"+host+"/v2/domain?"+encoded, headers, nil, result)
+	headers.Set("Authorization", bceAuthorization("GET", path, encoded, headers, auth))
+	return requestJSON(ctx, "GET", "https://"+host+path+"?"+encoded, headers, nil, result)
 }
 
 func bceAuthorization(method, path, query string, headers http.Header, auth cloudAuth) string {

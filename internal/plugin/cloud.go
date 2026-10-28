@@ -8,15 +8,18 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/infrafile/infrafile/internal/observation"
 )
 
 type cloudAuth struct{ ID, Secret, Token string }
 
 type cloudConfig struct {
-	ID       string   `json:"access_key_id"`
-	Secret   string   `json:"access_key_secret"`
-	Token    string   `json:"session_token"`
-	Services []string `json:"services"`
+	ID            string   `json:"access_key_id"`
+	Secret        string   `json:"access_key_secret"`
+	Token         string   `json:"session_token"`
+	Services      []string `json:"services"`
+	CollectOrigin bool     `json:"collect_origin"`
 }
 
 func (b *builtin) cloudConfig(ctx context.Context, config map[string]any, defaults []string) (cloudAuth, []string, error) {
@@ -36,6 +39,9 @@ func (b *builtin) cloudConfig(ctx context.Context, config map[string]any, defaul
 			return cloudAuth{}, nil, failure("config", "services 含未支持或重复的服务")
 		}
 		seen[service] = true
+	}
+	if cfg.CollectOrigin && !seen["cdn"] {
+		return cloudAuth{}, nil, failure("config", "collect_origin 需要启用 cdn 服务")
 	}
 	id, err := b.credential(ctx, cfg.ID)
 	if err != nil {
@@ -60,12 +66,13 @@ type domainEntry struct {
 }
 
 type cdnEntry struct {
-	Name   string `json:"name"`
-	ID     string `json:"id,omitempty"`
-	CNAME  string `json:"cname,omitempty"`
-	Status string `json:"status,omitempty"`
-	Type   string `json:"type,omitempty"`
-	Area   string `json:"area,omitempty"`
+	Name   string              `json:"name"`
+	ID     string              `json:"id,omitempty"`
+	CNAME  string              `json:"cname,omitempty"`
+	Status string              `json:"status,omitempty"`
+	Type   string              `json:"type,omitempty"`
+	Area   string              `json:"area,omitempty"`
+	Origin *observation.Origin `json:"origin,omitempty"`
 }
 
 func dateOnly(value string) (string, error) {

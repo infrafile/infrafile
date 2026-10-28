@@ -49,6 +49,9 @@ func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
 				Message: fmt.Sprintf("metadata.name 是 %s，与文件名 %s.yaml 不一致", r.Name, r.Stem())})
 		}
 		problems = append(problems, scanPlaintext(r.Document)...)
+		if r.Kind == "Resource" {
+			problems = append(problems, checkOrigin(r)...)
+		}
 	}
 	problems = append(problems, checkRefs(repo.Records, schemas)...)
 	if len(problems) == 0 {
@@ -69,6 +72,27 @@ func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
 	}
 	ledger.SortProblems(problems)
 	return &Result{Repo: repo, Records: len(repo.Records), Problems: problems}, nil
+}
+
+func checkOrigin(r *ledger.Record) []ledger.Problem {
+	value, _ := r.Value.(map[string]any)
+	spec, _ := value["spec"].(map[string]any)
+	origin, ok := spec["origin"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	message := ""
+	hosts, _ := origin["hosts"].([]any)
+	for _, value := range hosts {
+		host, _ := value.(string)
+		if _, ok := observation.OriginHost(host); !ok {
+			message = "origin.hosts 必须是 DNS 名称或 IP 地址，不能包含 URL、端口、通配符或鉴权信息"
+		}
+	}
+	if message == "" {
+		return nil
+	}
+	return []ledger.Problem{{Code: ledger.CodeSchema, File: r.File, Path: "spec.origin", Line: r.Line("spec.origin"), Message: message}}
 }
 
 func checkRefs(records []*ledger.Record, schemas *ledger.Schemas) []ledger.Problem {

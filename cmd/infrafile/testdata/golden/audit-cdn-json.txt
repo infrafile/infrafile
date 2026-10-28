@@ -32,6 +32,7 @@ $ infrafile audit --rule cdn_drift --json
       "file": "inventory/resources/audit-edge.yaml",
       "message": "台账 CDN 在用，但快照状态为 offline（已停用或已删除）",
       "evidence": {
+        "aspect": "status",
         "identity": {
           "kind": "Resource",
           "provider": "aliyun",

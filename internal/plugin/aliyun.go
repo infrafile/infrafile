@@ -23,7 +23,12 @@ func (b *builtin) aliyun(ctx context.Context, config map[string]any) (any, error
 		if service == "domains" {
 			result[service], err = aliyunDomains(ctx, auth)
 		} else {
-			result[service], err = aliyunCDN(ctx, auth)
+			var entries []cdnEntry
+			entries, err = aliyunCDN(ctx, auth)
+			if err == nil && config["collect_origin"] == true {
+				err = collectCDNOrigins(ctx, auth, entries, aliyunOrigin)
+			}
+			result[service] = entries
 		}
 		if err != nil {
 			return nil, err

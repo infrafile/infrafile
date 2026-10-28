@@ -110,7 +110,7 @@ target 为 `Domain/name`，file 为域名记录。evidence 包含 `hostname`、`
 
 ## CDN 停用漂移
 
-`cdn_drift` 只检查在用、`spec.type: cdn` 的 Resource。与生命周期规则使用同一自然身份：观测有 ID 时按 provider/resource_id，否则按 provider/type/endpoint；不要求台账主键与导入生成名相同。归档资源、其他 provider/type、未启用实例或无 CDN 观测时不判断。台账中的「在用」是指未归档，不能由 notes 推断停用意图。
+`cdn_drift` 的停用部分只检查在用、`spec.type: cdn` 的 Resource。与生命周期规则使用同一自然身份：观测有 ID 时按 provider/resource_id，否则按 provider/type/endpoint；不要求台账主键与导入生成名相同。归档资源、其他 provider/type、未启用实例或无 CDN 观测时不判断。台账中的「在用」是指未归档，不能由 notes 推断停用意图。
 
 下表于 2026-10-28 按官方 API 文档核实；仅明确停用或删除的终态产生发现，不将审核失败、配置失败或过渡状态推断为停用：
 
@@ -120,9 +120,21 @@ target 为 `Domain/name`，file 为域名记录。evidence 包含 `hostname`、`
 | tencent | `offline` | online、rejected、processing、closing | [BriefDomain](https://cloud.tencent.com/document/api/228/30987#BriefDomain) |
 | ctyun | `6`（已停止）、`8`（已删除） | 1–5、7、9–12 | [查询域名列表](https://www.ctyun.cn/document/10015932/10035101) |
 
-天翼云插件已把 API 的整数状态转成快照字符串；审计不另作数字类型转换。百度云快照没有状态字段，本版不判断；Cloudflare zone 不属于此规则。未知或缺失的 status 不产生发现，输出 `cdn_status_unknown` 提示并原样保留状态文本；不据此认定 CDN 正常。业务字段损坏或 status 类型错误时退出 2。
+天翼云插件已把 API 的整数状态转成快照字符串；审计不另作数字类型转换。百度云快照没有状态字段，本版不判断；Cloudflare zone 不参与停用判断。未知或缺失的 status 不产生发现，输出 `cdn_status_unknown` 提示并原样保留状态文本；不据此认定 CDN 正常。业务字段损坏或 status 类型错误时退出 2。
 
-target 为 `Resource/name`，file 为资源记录；evidence 包含 `plugin`、`instance`、`snapshot_file`、`observed_at`、`identity`、原始 `status`，观测提供 area 时也保留。不同实例/区域保留各自证据，同一实例相同身份、状态、区域去重。豁免写在 Resource 的 `metadata.waivers`，不支持实例级 audit.ignore。本版不比较回源配置，不推断快照没有记录的资源已删除。
+target 为 `Resource/name`，file 为资源记录；evidence 包含 `aspect: status`、`plugin`、`instance`、`snapshot_file`、`observed_at`、`identity`、原始 `status`，观测提供 area 时也保留。不同实例/区域保留各自证据，同一实例相同身份、状态、区域去重。豁免写在 Resource 的 `metadata.waivers`，不支持实例级 audit.ignore。不推断快照没有记录的资源已删除。停用检查保留 v0.2 的历史快照行为，不受下面新增回源判断的时效门槛影响。
+
+## CDN 回源漂移（v0.3 开发版）
+
+在 CDN Resource 或 Cloudflare dns-zone Resource 中声明期望，例如 `spec.origin: {hosts: [origin.example.com, 192.0.2.1], port: 8443, protocol: https}`。hosts 必填、非空，只接受 DNS 名称或 IP；拒绝 URL、端口后缀、通配符和 IPv6 zone ID。主机名小写、去尾点，IP 规范化并去 IPv4 映射；比较排序去重后的集合，不查 DNS。可选 port/protocol 表示所有配置源站的共同期望，省略时不检查；protocol 只支持 http/https/follow。不检查主备优先级、权重或运行时可达性。`import state` 不把观测回源写成期望。
+
+必须用 `audit.watch` 显式绑定实例和 cdn/zones 服务，开启实例 `collect_origin: true`，并传非负 `--max-age`。只有成功回执与配置、快照字节及时间对应，且观测不在未来、不超过阈值时才判断。回源比较不需要 missing 的正向基线；改变 spec.origin 不要求重新同步。同一自然身份有多个区域/产品条目时不能合并成单一配置。
+
+采集方输出 `origin: {scope, sources: [{host, port?, protocol?}]}`。scope 为 global 表示该详情中的无条件配置，conditional 表示条件/区域/规则配置，unknown 表示不支持或字段不足；这里的 global 不等于 CDN 覆盖全球。仅 global 且非空有效主机集合参与比较。Cloudflare 单条无条件 Origin Rule 的 origin.host/port 可比较，未返回传输协议时即为未知；Host header、SNI 和 DNS 默认源站不会被替代使用。
+
+差异生成同一个 cdn_drift finding，evidence 包含 `aspect: origin`、`identity`、`plugin`、`instance`、`service`、`snapshot_file`、`observed_at`、`max_age_days`、规范化的 `expected`/`observed` 和字段名数组 `differences`。Resource 上的 cdn_drift waiver 同时覆盖停用与回源发现。
+
+绑定缺失、采集未开启、没有 max-age、失败/不匹配/过期证据、未找到唯一条目、复杂作用范围或无法观测用户要求的字段，均产生 `cdn_origin_unknown` notice。未知字段不推断默认值；已有可确定的字段差异仍可单独报告。未知不改变 ok/退出码，不能用 waiver 隐藏，因此 ok=true 不能证明回源符合期望。云 API、权限及支持边界见[回源接口核对](../research/v0.3-cdn-origins.md)。
 
 未启用实例的快照不读取内容，只输出 `instance_disabled` 提示；路径仍须合法。已启用快照格式、信封或敏感检查失败，`_sync.yaml` 损坏、目录不可读或存在 `.sync.lock` 时退出 2。台账校验失败同样退出 2。退出 2 时 stdout 为空，stderr 是人读的错误说明。
 
@@ -163,6 +175,7 @@ audit:
 | waiver_expired | 豁免已过期，不再抑制发现 |
 | waiver_unused | 有效豁免没有抑制任何发现，可删除 |
 | cdn_status_unknown | CDN 状态未纳入官方映射，未判断该条目的停用漂移 |
+| cdn_origin_unknown | 回源的范围、字段或新鲜成功证据不足，不能判断相关期望 |
 | sync_failed | 最近一次执行失败；旧快照仅是历史观测 |
 | sync_incomplete | 最近执行没有结束回执，仍是 running |
 | sync_status_unverified | 当前配置、成功时间、快照与回执不对应，或缺少该实例回执 |

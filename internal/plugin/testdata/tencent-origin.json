@@ -1,0 +1,11 @@
+{
+  "Response": {
+    "TotalNumber": 1,
+    "Domains": [{
+      "Domain": "static.example.com", "ResourceId": "edge", "Status": "online", "Area": "mainland",
+      "Origin": {"Origins": ["ORIGIN.EXAMPLE.COM.:8443:10"], "BackupOrigins": ["192.0.2.1:8443"], "OriginPullProtocol": "https"},
+      "RuleEngine": {"Switch": "off", "Content": "synthetic-do-not-retain"},
+      "OssPrivateAccess": {"SecretKey": "synthetic-do-not-retain"}
+    }]
+  }
+}

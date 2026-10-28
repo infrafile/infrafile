@@ -12,10 +12,7 @@ import (
 var cfIdentifier = regexp.MustCompile(`^[a-f0-9]{32}$`)
 
 func (b *builtin) cloudflareControl(ctx context.Context, method string, p protocol.ControlParams) (any, error) {
-	var cfg struct {
-		APIToken  string `json:"api_token"`
-		AccountID string `json:"account_id"`
-	}
+	var cfg cfConfig
 	if err := decodeConfig(p.Config, &cfg); err != nil {
 		return nil, err
 	}

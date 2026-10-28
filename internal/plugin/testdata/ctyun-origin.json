@@ -1,0 +1,9 @@
+{
+  "code": 100000, "domain": "static.example.com", "product_code": "001", "area_scope": 1,
+  "origin_protocol": "https", "https_basic": {"origin_protocol": "https"}, "xos_origin_is": 0,
+  "origin": [
+    {"origin": "ORIGIN.EXAMPLE.COM.", "port": 8443, "role": "master", "protocol": "domain", "weight": 10},
+    {"origin": "192.0.2.1", "port": 8443, "role": "slave", "protocol": "ip", "weight": 20}
+  ],
+  "xos_origin": {"ak": "synthetic-do-not-retain", "sk": "synthetic-do-not-retain"}
+}

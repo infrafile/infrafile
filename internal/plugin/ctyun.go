@@ -40,7 +40,7 @@ func (b *builtin) ctyun(ctx context.Context, config map[string]any) (any, error)
 				} `json:"result"`
 			}
 			query := url.Values{"area_scope": {strconv.Itoa(scope)}, "page": {strconv.Itoa(page)}, "page_size": {"100"}}
-			if err := ctyunRequest(ctx, query, auth, &response); err != nil {
+			if err := ctyunRequest(ctx, "/domain/query-domain-list", query, auth, &response); err != nil {
 				return nil, err
 			}
 			if response.Code != 100000 {
@@ -93,10 +93,15 @@ func (b *builtin) ctyun(ctx context.Context, config map[string]any) (any, error)
 		}
 		return all[i].Area < all[j].Area
 	})
+	if config["collect_origin"] == true {
+		if err := collectCDNOrigins(ctx, auth, all, ctyunOrigin); err != nil {
+			return nil, err
+		}
+	}
 	return map[string]any{"cdn": all, "unsupported": []string{"registered-domains"}}, nil
 }
 
-func ctyunRequest(ctx context.Context, query url.Values, auth cloudAuth, result any) error {
+func ctyunRequest(ctx context.Context, path string, query url.Values, auth cloudAuth, result any) error {
 	id := make([]byte, 16)
 	if _, err := rand.Read(id); err != nil {
 		return failure("http", "无法生成请求标识")
@@ -111,7 +116,7 @@ func ctyunRequest(ctx context.Context, query url.Values, auth cloudAuth, result 
 	headers.Set("Eop-Date", date)
 	encoded := query.Encode()
 	headers.Set("Eop-Authorization", eopAuthorization(nonce, date, encoded, auth))
-	return requestJSON(ctx, "GET", "https://cdnapi-global.ctapi.ctyun.cn/domain/query-domain-list?"+encoded, headers, nil, result)
+	return requestJSON(ctx, "GET", "https://cdnapi-global.ctapi.ctyun.cn"+path+"?"+encoded, headers, nil, result)
 }
 
 func eopAuthorization(nonce, date, query string, auth cloudAuth) string {

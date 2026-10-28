@@ -90,7 +90,7 @@ func prepareCDN(ctx context.Context, in *Input) error {
 				at = s.ObservedAt.UTC().Format(time.RFC3339)
 			}
 			for _, r := range index[id] {
-				evidence := map[string]any{"plugin": s.Plugin, "instance": s.Instance, "snapshot_file": s.File, "observed_at": at, "identity": id, "status": status}
+				evidence := map[string]any{"aspect": "status", "plugin": s.Plugin, "instance": s.Instance, "snapshot_file": s.File, "observed_at": at, "identity": id, "status": status}
 				if area != "" {
 					evidence["area"] = area
 				}
@@ -98,11 +98,11 @@ func prepareCDN(ctx context.Context, in *Input) error {
 			}
 		}
 	}
-	return nil
+	return prepareCDNOrigins(ctx, in)
 }
 
 var cdnDrift = Rule{
-	ID: "cdn_drift", Description: "在用 CDN 资源的观测状态已停用或删除",
-	Observations: []observation.Requirement{{Plugin: "aliyun", Services: []string{"cdn"}}, {Plugin: "tencent", Services: []string{"cdn"}}, {Plugin: "ctyun", Services: []string{"cdn"}}},
+	ID: "cdn_drift", Description: "在用 CDN 的停用状态或显式期望回源与观测不一致",
+	Observations: []observation.Requirement{{Plugin: "aliyun", Services: []string{"cdn"}}, {Plugin: "tencent", Services: []string{"cdn"}}, {Plugin: "baidu", Services: []string{"cdn"}}, {Plugin: "ctyun", Services: []string{"cdn"}}, {Plugin: "cloudflare", Services: []string{"zones"}}},
 	Ready:        func(*Input) error { return nil }, Eval: func(in *Input) []Finding { return in.cdnFindings },
 }

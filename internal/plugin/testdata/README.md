@@ -16,4 +16,6 @@
 
 TLS 测试在运行时生成或使用 Go httptest 的测试证书，含过期和不受信任场景，不读取本机私钥。API 失败、凭据反射、Cloudflare 多页等响应直接在测试内合成。
 
+v0.3 M2 的 `aliyun-origin*.json`、`tencent-origin.json`、`baidu-origin*.json`、`ctyun-origin.json`、`cloudflare-origin.json` 分别依据[回源接口核对](../../../docs/research/v0.3-cdn-origins.md)中链接的官方详情结构改写。均为虚构主备源，包含显式端口、协议及应剔除的鉴权对象；Cloudflare 只含单条无条件 Origin Rule。测试派生条件/区域、缺字段、畸形地址、API 错误、超大响应和取消场景，不读取真实账号。
+
 `../signing_test.go` 的 ACS3、BCEv1 使用官方公开签名向量；TC3 使用官方请求形状与合成 testid / testsecret，EOP 使用全合成向量并以独立 Python / Node 计算交叉核对。来源和计算规则见 `docs/research/`，这些字符串不是可用凭据。

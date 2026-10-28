@@ -33,9 +33,9 @@ SOPS age 密钥命令受实例取消信号控制；仅支持非交互身份，�
 
 | 插件 | 必填字段 | 可选字段 |
 |---|---|---|
-| `cloudflare` | `api_token` | `account_id` 限定账号 |
-| `aliyun`、`tencent`、`baidu` | `access_key_id`、`access_key_secret` | `services`，默认 `[domains, cdn]`；`session_token` 临时凭据引用 |
-| `ctyun` | `access_key_id`、`access_key_secret` | `services` 仅允许 `[cdn]`（默认）；不支持 `session_token` |
+| `cloudflare` | `api_token` | `account_id` 限定账号；v0.3 可选 `collect_origin` |
+| `aliyun`、`tencent`、`baidu` | `access_key_id`、`access_key_secret` | `services`，默认 `[domains, cdn]`；`session_token` 临时凭据引用；v0.3 可选 `collect_origin` |
+| `ctyun` | `access_key_id`、`access_key_secret` | `services` 仅允许 `[cdn]`（默认）；不支持 `session_token`；v0.3 可选 `collect_origin` |
 
 未知字段、空服务列表、重复或未支持的服务返回 `config` 错误。选择单项服务时，只调用对应 API。每个实例所有服务共用 `--timeout` 时限；任一服务失败，该实例整体失败并保留上次快照。当前不自动重试。API 地址固定，拒绝重定向，单页响应最多 4 MiB。
 
@@ -56,6 +56,51 @@ SOPS age 密钥命令受实例取消信号控制；仅支持非交互身份，�
 Cloudflare 显式请求 full、partial、secondary、internal zone 类型；DNS 内容和代理状态属于观测数据。阿里云使用中国站 domain / CDN 地址。天翼的 `area` 映射为 domestic / overseas / global；数值 status 转成字符串，type 保留 product_code。不把 DNS zone 或 CDN 域名冒充已注册域名。注册域名查询只列当前云账号的注册清单，不查询全网注册信息。
 
 认证只在内存中用于 Bearer、ACS3、TC3、BCEv1 或 EOP 请求；不保存原始响应、联系信息、回源鉴权和请求日志。写入前仍执行宿主 deny-list，并拒绝结果中出现本次解析的完整认证值。未知字段名下的未知秘密仍不能靠 deny-list 完整识别。
+
+## 回源采集（v0.3 开发版）
+
+五家云实例可显式配置布尔 `collect_origin: true`；国内云同时需要 cdn 服务。默认关闭，关闭时请求与权限保持原清单行为。开启后逐条写入 `cdn[].origin` 或 `zones[].origin`。新增只读权限、请求预算和各厂商字段限制见[接口核对](research/v0.3-cdn-origins.md)；不要沿用只具备列表权限的令牌假定采集会成功。
+
+例如以下两段分别位于 `infrafile.yaml` 与 `inventory/resources/edge.yaml`：
+
+```yaml
+apiVersion: infrafile/v1alpha1
+kind: Config
+plugins:
+  aliyun:
+    instances:
+      home:
+        access_key_id: env://ALIYUN_ACCESS_KEY_ID
+        access_key_secret: env://ALIYUN_ACCESS_KEY_SECRET
+        services: [cdn]
+        collect_origin: true
+audit:
+  watch:
+    - {target: Resource/edge, plugin: aliyun, instance: home, service: cdn}
+```
+
+```yaml
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata: {name: edge}
+spec:
+  provider: aliyun
+  type: cdn
+  resource_id: '10001' # 替换为已审核清单中的真实 ID
+  endpoint: static.example.com
+  origin:
+    hosts: [origin.example.com, 192.0.2.1]
+    port: 8443
+    protocol: https
+```
+
+有 resource_id 的观测要求台账登记匹配的 ID；只有无 ID 的观测才按 endpoint 后备匹配。Cloudflare 使用 provider=cloudflare、type=dns-zone、zone ID，watch.service=zones。
+
+先执行 `infrafile sync aliyun --dir /path/to/my-infra --timeout 60s --json` 并确认成功，再执行 `infrafile audit /path/to/my-infra --rule cdn_drift --max-age 7d --json`。audit 全程离线。期望由人维护，`import state` 不自动填充 origin。
+
+每实例最多 200 个条目；任意详情超时、403、业务错误或超限都使该实例失败，保留旧快照。Cloudflare 没有 Origin Rules entrypoint 时的 404 也视为失败，不冒充空配置。已成功采集但条件/区域复杂、源站字段缺失或端口/协议不可观测时保存未知，在 audit 中输出 cdn_origin_unknown；ok=true 不等于配置全部符合期望。字段、证据与豁免见 [audit 契约](json/audit.md#cdn-回源漂移v03-开发版)。
+
+`spec.origin`、collect_origin 不适用于 v0.2 的校验/插件配置；回退前移除这两个字段及 v0.3 的 watch 配置。v0.3 的回源只读映射尚未进行真实账号验收，不等同于下面已完成的 v0.2 清单验收。
 
 ## DNS、TLS、WHOIS 与 SSH
 

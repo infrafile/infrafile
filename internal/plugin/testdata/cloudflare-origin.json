@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "result": {"kind": "zone", "phase": "http_request_origin", "rules": [
+    {"id": "00000000000000000000000000000002", "enabled": true, "action": "route", "expression": "true",
+      "action_parameters": {"origin": {"host": "ORIGIN.EXAMPLE.COM.", "port": 8443}, "host_header": "host-header.example.net", "sni": {"value": "sni.example.net"}},
+      "description": "synthetic-do-not-retain"}
+  ]}
+}
