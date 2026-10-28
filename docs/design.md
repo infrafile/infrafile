@@ -1,4 +1,14 @@
+---
+id: infrafile-architecture
+type: architecture-design
+title: infrafile 架构与设计
+status: draft
+parent: infrafile-goals
+---
+
 # infrafile 设计
+
+本文在原位置纳入 spec graph，产品目标见 `infrafile-goals`。原有已确认决定继续保留；新增模块边界根据当前代码整理，其作为长期依赖约束的意图尚待维护者确认。本文保留已记录但尚未实现的 `serve` 要求，不将其视为当前能力。
 
 **状态**：设计已确认（2026-10-24），M0–M9 已完成，v0.1.0 已发布（2026-10-25）。实现与验收见 [v0.1 实现计划](plan/v0.1.md)。
 
@@ -35,6 +45,26 @@
 | 治理 | BDFL + DCO，见 [CONTRIBUTING](../CONTRIBUTING.md) |
 | 分发 | GitHub Release（goreleaser，多平台二进制 + checksum + 签名）+ Homebrew tap |
 
+## 模块拓扑与边界
+
+CLI 是装配入口；数据仓是文件协议，不引入常驻数据库。以下是生产 Go 代码当前的直接项目依赖，测试依赖不在此表中。各模块的职责和本地契约由对应 `SPEC.md` 说明；共享依赖关系只在这里叙述。
+
+| 模块 spec id | 直接依赖的模块 spec id |
+|---|---|
+| `infrafile-cli` | `infrafile-agent`、`infrafile-audit`、`infrafile-control`、`infrafile-importer`、`infrafile-ledger`、`infrafile-plugin`、`infrafile-secret`、`infrafile-validate` |
+| `infrafile-audit` | `infrafile-ledger`、`infrafile-observation`、`infrafile-plugin`、`infrafile-snapshot` |
+| `infrafile-control` | `infrafile-ledger`、`infrafile-plugin`、`infrafile-protocol` |
+| `infrafile-importer` | `infrafile-ledger`、`infrafile-observation`、`infrafile-snapshot`、`infrafile-validate` |
+| `infrafile-plugin` | `infrafile-ledger`、`infrafile-observation`、`infrafile-secret`、`infrafile-snapshot`、`infrafile-validate`、`infrafile-protocol` |
+| `infrafile-snapshot` | `infrafile-ledger`、`infrafile-validate`、`infrafile-protocol` |
+| `infrafile-validate` | `infrafile-ledger`、`infrafile-observation` |
+| `infrafile-observation` | `infrafile-ledger` |
+| `infrafile-ledger`、`infrafile-secret`、`infrafile-agent`、`infrafile-protocol` | 无项目内依赖 |
+
+`internal/testutil` 仅为测试辅助，不是产品模块。`protocol` 是外部插件可复用的公开包；其余库受 Go `internal` 可见性限制，CLI 入口不被库反向导入。
+
+审计对 plugin 的依赖只使用稳定 JSON 哈希等无 I/O 的辅助函数；它不打开插件或解析凭据。同步写入与快照读取刻意分属 plugin、snapshot：snapshot 提供共享读取和状态解析，不负责采集或更新文件。将这些当前边界作为长期禁止反向依赖的规则，是本次整理的推断，尚待确认；代码没有专门的架构 lint。
+
 ## 数据模型
 
 ### 每条记录一个文件 + 轻量信封
@@ -58,12 +88,13 @@ spec:
 ```
 
 - **kind**：初始有六种：Server / App / Domain / Account / Resource / Repo。
-- **schema**：字段用声明式 schema 定义，**同时发布 JSON Schema**。校验、`show` 和 MCP 工具描述都从这份 schema 生成。
-- **外键完整性**：任何引用都必须指向一条存在的 live 记录，校验失败时退出码非零。
+- **schema**：字段用声明式 schema 定义，**同时发布 JSON Schema**。校验和 `show` 的外键关系提取复用这份 schema；MCP 的 `schema` 工具返回相同 bundle，工具参数 Schema 则由 MCP 适配层单独定义。
+- **外键完整性**：任何引用都必须指向存在的记录；在用记录不能引用已归档记录，归档记录可以保留到归档记录的历史引用。校验失败时退出码非零。
 - **下线不删除**：下线的记录归档而不是删除，保留历史事实。
 - **人写的和机器写的分开**：
-  - 采集器只写 `state/` 目录（观测快照），不自动改变管理意图。
-  - 管理意图放在 inventory；可由人直接编辑，或通过明确授权的导入/变更流程写入。v1.0 的共享编辑入口尚待实现，不能把 observed 自动提升为 desired。
+  - sync 产生的机器观测只写 `state/` 目录。
+  - 人维护的记录放在 inventory 目录；sync、audit 和 plan / apply 不改这些记录。显式 `import --write` 只创建不存在的记录，不覆盖人写字段。
+  - v1.0 规划共享编辑入口，管理意图可由人编辑或经明确授权的导入/变更流程写入；该入口尚待实现，不能把 observed 自动提升为 desired。
 
 ### 凭据引用：统一 URI
 
@@ -114,7 +145,7 @@ M6 已实现两种离线导入，默认输出 YAML 草稿，支持待审目录�
   - `infrafile agent install` 把与当前版本匹配的指南写进 Claude Code、Codex 等工具的配置目录。
   - `infrafile agent guide` 直接打印指南。
 
-M8 已实现六个只读查询／计划工具和项目技能安装。2026-10-25 确认改回源按在用 Server / Resource / Domain 主键取主机名；标签选择计划目标必须唯一。查询省略凭据字段，计划仅内部使用配置的凭据引用认证。工具目录固定、结果带版本；安装保留已有不同内容，不修改客户端 MCP 设置。见[Agent 指南](agent.md)。
+M8 已实现六个只读查询／计划工具和项目技能安装；离线 audit 接入后 MCP 共七个工具。2026-10-25 确认改回源按在用 Server / Resource / Domain 主键取主机名；标签选择计划目标必须唯一。查询省略凭据字段，计划仅内部使用配置的凭据引用认证。工具目录固定、结果带版本；安装保留已有不同内容，不修改客户端 MCP 设置。见[Agent 指南](agent.md)。
 
 ## 受控写
 
@@ -129,7 +160,7 @@ M7 已实现，2026-10-25 确认：Cloudflare 暂停／恢复按 zone，改回�
 
 以下规则要做成校验规则和默认行为，不能只写在文档里：
 - 明文凭据不进台账。
-- 下线的记录归档，不删除。
+- 下线的记录归档，不删除；`validate --base <git-ref>` 检查相对基线的删除，未提供基线时不推断历史删除。
 - 每次修改后都要能通过校验。
 - 对外域名不直接暴露源站 IP（v0.2 审计规则）。
 
