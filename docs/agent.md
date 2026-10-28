@@ -97,4 +97,4 @@ infrafile agent install claude --dir /path/to/project --json
 
 相同内容返回 unchanged，不改修改时间；已有不同内容、符号链接或非普通文件会报错并保留原文件。升级时先用 `agent guide` 比较差异，审阅并移走旧指南后再安装。不修改 AGENTS.md、CLAUDE.md 或客户端设置，不自动安装到个人目录。文件写入成功与客户端实际加载是两项验证。
 
-接口契约见 [Agent JSON](json/agent.md)和 [MCP JSON](json/mcp.md)。离线测试覆盖实际子进程 stdio 握手、工具发现、查询、选择约束、只读计划、超时取消、凭据反射和安装保留；未以真实云账号或桌面客户端验收。
+接口契约见 [Agent JSON](json/agent.md)和 [MCP JSON](json/mcp.md)。离线测试覆盖实际子进程 stdio 握手、工具发现、查询、选择约束、只读计划、超时取消、凭据反射和安装保留。v0.2 另在使用方真实数据上完成 stdio 客户端的七个工具调用、CLI/MCP 审计一致性、Account 凭据引用省略与真实 Cloudflare 只读计划验收；这不代表桌面客户端加载已验收，也未执行云端写入。

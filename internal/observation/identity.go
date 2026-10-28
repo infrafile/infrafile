@@ -36,9 +36,18 @@ type Identity struct {
 
 func hostname(value string) string { return strings.TrimSuffix(strings.ToLower(value), ".") }
 
+func resourceEndpoint(provider, kind, value string) string {
+	value = hostname(value)
+	// 阿里云 CDN 的 .example.com 是泛域名，统一成 *.example.com，保留根域名区别。
+	if provider == "aliyun" && kind == "cdn" && strings.HasPrefix(value, ".") {
+		value = "*" + value
+	}
+	return value
+}
+
 func (id Identity) Normalized() Identity {
 	id.Name = hostname(id.Name)
-	id.Endpoint = hostname(id.Endpoint)
+	id.Endpoint = resourceEndpoint(id.Provider, id.Type, id.Endpoint)
 	if addr, err := netip.ParseAddr(id.Address); err == nil {
 		id.Address = addr.Unmap().String()
 	} else {

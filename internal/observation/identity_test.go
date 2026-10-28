@@ -8,6 +8,7 @@ func TestIdentityNormalization(t *testing.T) {
 		{{Kind: "Server", Address: "::ffff:192.0.2.10"}, {Kind: "Server", Address: "192.0.2.10"}},
 		{{Kind: "Server", Address: "HOST.EXAMPLE.COM."}, {Kind: "Server", Address: "host.example.com"}},
 		{{Kind: "Resource", Provider: "baidu", Type: "cdn", Endpoint: "*.EXAMPLE.COM."}, {Kind: "Resource", Provider: "baidu", Type: "cdn", Endpoint: "*.example.com"}},
+		{{Kind: "Resource", Provider: "aliyun", Type: "cdn", Endpoint: ".EXAMPLE.COM."}, {Kind: "Resource", Provider: "aliyun", Type: "cdn", Endpoint: "*.example.com"}},
 	} {
 		if got := pair[0].Normalized(); got != pair[1] {
 			t.Fatalf("%+v != %+v", got, pair[1])

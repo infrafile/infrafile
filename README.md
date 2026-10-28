@@ -57,7 +57,7 @@ v0.2 开发版新增离线 `audit`：快照过期、孤儿、僵尸、源站暴�
 | `whois` | 域名、注册商、到期日、NS、状态 | 无账号权限，只需 WHOIS TCP 43 可达 |
 | `ssh` | 系统、内核版本、架构 | 能执行固定 `uname -srm` 的普通 SSH 用户；已信任主机密钥与非交互认证，不需 sudo |
 
-天翼注册域名暂不支持；快照明确返回 `unsupported: [registered-domains]`。云 API 签名和分页由官方样例改写的虚构响应及合成边界夹具离线验证，未进行真实账号调用或 IAM 授权验收；BCD 与天翼的权限确认缺口见[调研记录](docs/research/m5-baidu-ctyun.md)。
+天翼注册域名暂不支持；快照明确返回 `unsupported: [registered-domains]`。云 API 签名和分页由官方样例改写的虚构响应及合成边界夹具离线验证；v0.2 另在使用方私有台账完成 Cloudflare 与四家国内云 CDN 的真实只读调用、SOPS、TLS/WHOIS/SSH 和 MCP 验收。真实资产、凭据及快照不进入本仓库。上述结果不代表注册域名列表 API、最小 IAM 策略或线上写入验收完成；BCD 与天翼的权限确认缺口见[调研记录](docs/research/m5-baidu-ctyun.md)。
 
 ## 许可证
 

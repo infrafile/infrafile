@@ -69,7 +69,7 @@ zone 动作的观测范围是 zone ID、名称及 paused；Origin Rule 动作还
 - zone 观测使用 Zone Read；暂停／恢复使用 Zone Write，限定目标 zone。[读取 zone](https://developers.cloudflare.com/api/resources/zones/methods/get/)、[编辑 zone](https://developers.cloudflare.com/api/resources/zones/methods/edit/)。
 - Origin Rules 需要 Origin Read / Origin Write，并具有对应功能授权。**回源主机覆盖需要 Enterprise**，且新主机名应属于同一个 Cloudflare 账号；这里只校验主机名形式，服务端负责授权与可用性判断。[权限名称](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)、[可用性](https://developers.cloudflare.com/rules/origin-rules/)、[设置约束](https://developers.cloudflare.com/rules/origin-rules/features/)。
 - 通过单规则 PATCH 保留其他规则，按 API 要求携带目标规则完整定义。[更新规则](https://developers.cloudflare.com/ruleset-engine/rulesets-api/update-rule/)。
-- HTTP 成功和回读一致代表配置已接受，不代表公网流量、源站连通性或 TLS 握手已验收。本阶段仅验证虚构离线响应，未使用真实账号，也未验证真实 IAM 或 Enterprise 授权。
+- HTTP 成功和回读一致代表配置已接受，不代表公网流量、源站连通性或 TLS 握手已验收。Cloudflare zone 的只读计划生成及 plan show 已在使用方真实账号验证；未执行 apply，Origin Rules、写入 IAM 与 Enterprise 授权仍只覆盖虚构离线测试。
 
 外部插件可复用同一 `probe` / `control` 契约，见[插件指南](plugins.md)。插件是受信任的本地程序；宿主不能阻止恶意插件在 probe 中写远端。
 

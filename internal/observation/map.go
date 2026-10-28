@@ -54,6 +54,7 @@ func Map(plugin, instance, source string, spec map[string]any) ([]Record, []Noti
 		if !ok {
 			return invalid
 		}
+		host = resourceEndpoint(plugin, kind, host)
 		name, ok := domainName(strings.TrimPrefix(host, "*."))
 		if !ok {
 			return invalid

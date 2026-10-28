@@ -60,6 +60,8 @@ Include 支持绝对路径、`~/`、相对路径和 glob；相对路径遵循用
 
 天翼注册域名仍不支持；出现该字段会报错。DNS zone 和 CDN 域名不会被视为注册域名。域名转小写并去掉尾点，国际域名需使用 ASCII punycode。Resource 名字由供应商、实例、类型、域名和稳定的短哈希组成，以区分实例并满足名称长度；同一来源再次导入保持相同主键。
 
+阿里云 CDN 可能用 `.example.com` 表示泛域名，导入与自然身份匹配统一为 `*.example.com`，不会合并成根域名；原始 state 保留供应商写法。只对阿里云的 CDN 资源应用此兼容，不允许注册域名或其他提供方借此绕过名称校验。格式说明见[阿里云泛域名文档](https://www.alibabacloud.com/help/zh/cdn/does-alibaba-cloud-cdn-support-wildcard-domain-names)。
+
 观测属于采集当时的事实，导入不推断其新鲜度或所有权，也不把 DNS 地址自动连成 Server 外键。Cloudflare DNS 记录、CDN 状态及 SSH 架构等未映射字段保留在 state，草稿不复制整份原始快照。
 
 虚构演示源已放在 [homelab](../examples/homelab/README.md)，自动化测试覆盖五家云回放 → 同步 → 导入 → 校验，以及重复导入、归档保护、冲突和路径边界。
