@@ -29,6 +29,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
+- [v0.3 方案与实施顺序](docs/plan/v0.3.md)
 - [快速上手](docs/quickstart.md)
 - [发布与验签](docs/release.md)
 - [凭据引用与运行命令](docs/secrets.md)

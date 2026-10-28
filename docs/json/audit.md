@@ -36,7 +36,11 @@
 }
 ```
 
-快照没有同步记录时，observed_at 和 age_days 均为 null；只要运行 `stale_state` 就报告。`state/` 不存在、或启用实例尚无快照时，不为缺失的快照生成发现，输出中也没有对应 snapshot。当前不检测资产缺失或同步失败。`_sync.yaml` 只记录最近一次成功同步时间。时效规则不屏蔽生命周期发现，旧快照仍参与比对，应先刷新观测再决定修复。
+快照没有同步记录时，observed_at 和 age_days 均为 null；只要运行 `stale_state` 就报告。`state/` 不存在、或启用实例尚无快照时，不为缺失的快照生成发现，输出中也没有对应 snapshot。当前不检测资产缺失。`_sync.yaml` 只记录最近一次成功同步时间。时效规则不屏蔽生命周期发现，旧快照仍参与比对，应先刷新观测再决定修复。
+
+v0.3 开发版额外离线读取 `state/.sync-status.yaml`。启用实例最近一次失败输出 sync_failed，running 输出 sync_incomplete；回执缺失或配置哈希、成功时间、快照字节不对应时输出 sync_status_unverified。首次失败即使没有快照也会提示。无回执文件的旧仓保持原行为；未启用实例的回执不参与提示。回执损坏或不是普通文件时退出 2，不回显原文。
+
+这些是 notices，不是审计规则，不支持 waiver、不改变 ok 或退出码，也不屏蔽历史快照的既有发现。自动化必须检查本次 sync 的退出码；不能把 audit 的 ok=true 当作采集成功。回执匹配不代表清单完整或凭据拥有全量权限，missing 尚未实现。
 
 ## 生命周期与自然身份
 
@@ -122,6 +126,9 @@ audit:
 | waiver_expired | 豁免已过期，不再抑制发现 |
 | waiver_unused | 有效豁免没有抑制任何发现，可删除 |
 | cdn_status_unknown | CDN 状态未纳入官方映射，未判断该条目的停用漂移 |
+| sync_failed | 最近一次执行失败；旧快照仅是历史观测 |
+| sync_incomplete | 最近执行没有结束回执，仍是 running |
+| sync_status_unverified | 当前配置、成功时间、快照与回执不对应，或缺少该实例回执 |
 
 每条提示另有 `file`、`target`、`message`；豁免提示还有 `rule`。提示本身不影响退出码；未豁免发现退出 1，其余可完成的审计退出 0。
 

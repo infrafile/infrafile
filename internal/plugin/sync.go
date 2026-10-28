@@ -3,6 +3,7 @@ package plugin
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/infrafile/infrafile/internal/ledger"
+	"github.com/infrafile/infrafile/internal/snapshot"
 	"github.com/infrafile/infrafile/internal/validate"
 	"github.com/infrafile/infrafile/protocol"
 	"go.yaml.in/yaml/v3"
@@ -42,7 +44,7 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 	if len(names) == 0 {
 		return results, nil
 	}
-	state, err := openState(repo.Dir)
+	state, err := openState(ctx, repo.Dir)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +52,16 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 	for _, name := range names {
 		instances := plugins[name].(map[string]any)["instances"].(map[string]any)
 		for _, instance := range sortedKeys(instances) {
+			if ctx.Err() != nil {
+				return results, nil
+			}
 			r := Result{Plugin: name, Instance: instance, File: "state/" + name + "/" + instance + ".yaml"}
-			data, err := syncInstance(ctx, name, repo.Dir, protocol.SyncParams{Instance: instance, Config: instances[instance].(map[string]any)}, timeout)
+			config := instances[instance].(map[string]any)
+			attempt := snapshot.Attempt{AttemptedAt: now.UTC().Format(time.RFC3339), Status: "running", ConfigHash: Hash(config)}
+			if err := state.WriteStatus(name, instance, attempt); err != nil {
+				return nil, err
+			}
+			data, err := syncInstance(ctx, name, repo.Dir, protocol.SyncParams{Instance: instance, Config: config}, timeout)
 			if err == nil {
 				r.Changed, err = state.Write(name, instance, data, now)
 			}
@@ -62,6 +72,15 @@ func Run(ctx context.Context, repo *ledger.Repo, selected string, timeout time.D
 				if errors.As(err, &e) {
 					r.Code, r.Message = e.Code, e.Message
 				}
+			}
+			attempt.Status = "succeeded"
+			attempt.SnapshotHash = fmt.Sprintf("%x", sha256.Sum256(data))
+			if !r.OK {
+				attempt.Status, attempt.Code, attempt.SnapshotHash = "failed", r.Code, ""
+			}
+			if err := state.WriteStatus(name, instance, attempt); err != nil {
+				r.OK, r.Code, r.Message = false, "write", "执行回执保存失败，已停止后续实例；请检查 state/.sync-status.yaml"
+				return append(results, r), nil
 			}
 			results = append(results, r)
 			if ctx.Err() != nil {

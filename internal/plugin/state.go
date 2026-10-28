@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/infrafile/infrafile/internal/ledger"
+	"github.com/infrafile/infrafile/internal/snapshot"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -20,11 +22,12 @@ type syncLog struct {
 }
 
 type state struct {
-	root *os.Root
-	log  syncLog
+	root   *os.Root
+	log    syncLog
+	status snapshot.Status
 }
 
-func openState(dir string) (*state, error) {
+func openState(ctx context.Context, dir string) (*state, error) {
 	repo, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, failure("write", "无法打开数据仓")
@@ -44,6 +47,15 @@ func openState(dir string) (*state, error) {
 	}
 	lock.Close()
 	s := &state{root: root, log: syncLog{ledger.APIVersion, "Sync", map[string]map[string]string{}}}
+	status, err := snapshot.ReadStatusFile(ctx, root)
+	if err != nil {
+		s.Close()
+		return nil, failure("write", "无法读取 state/"+snapshot.StatusFile+"；保留原文件，请检查格式")
+	}
+	s.status = snapshot.Status{APIVersion: ledger.APIVersion, Kind: "SyncStatus", Spec: map[string]map[string]snapshot.Attempt{}}
+	if status != nil {
+		s.status = *status
+	}
 	info, err := root.Lstat("_sync.yaml")
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -82,6 +94,34 @@ func openState(dir string) (*state, error) {
 }
 
 func (s *state) Close() { s.root.Remove(".sync.lock"); s.root.Close() }
+
+func (s *state) WriteStatus(plugin, instance string, attempt snapshot.Attempt) error {
+	if info, err := s.root.Lstat(snapshot.StatusFile); err == nil && !info.Mode().IsRegular() {
+		return failure("write", "执行回执路径必须是普通文件")
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return failure("write", "无法检查执行回执")
+	}
+	updated := s.status
+	updated.Spec = maps.Clone(s.status.Spec)
+	updated.Spec[plugin] = maps.Clone(s.status.Spec[plugin])
+	if updated.Spec[plugin] == nil {
+		updated.Spec[plugin] = map[string]snapshot.Attempt{}
+	}
+	updated.Spec[plugin][instance] = attempt
+	data, err := yaml.Marshal(updated)
+	if err == nil {
+		// 取消后仍需保存当前实例失败；解析受固定大小和展开上限约束。
+		_, err = snapshot.ParseStatus(context.Background(), data)
+	}
+	if err != nil {
+		return failure("write", "无法编码执行回执或回执超过上限")
+	}
+	if err := atomicWrite(s.root, snapshot.StatusFile, data); err != nil {
+		return failure("write", "无法保存执行回执")
+	}
+	s.status = updated
+	return nil
+}
 
 // directory 拒绝符号链接，不能让 state 指回 inventory 或仓外。
 func directory(root *os.Root, name string) error {

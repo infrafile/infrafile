@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/infrafile/infrafile/internal/snapshot"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -65,6 +67,12 @@ func pluginHelper() {
 			}
 			reply["result"] = map[string]any{"protocol_version": version, "capabilities": capabilities}
 		} else {
+			if mode == "status-write-failure" {
+				file := filepath.Join(os.Getenv("INFRAFILE_TEST_STATE"), snapshot.StatusFile)
+				if os.Rename(file, file+".saved") != nil || os.Mkdir(file, 0o755) != nil {
+					os.Exit(8)
+				}
+			}
 			if mode == "time-write-failure" {
 				file := filepath.Join(os.Getenv("INFRAFILE_TEST_STATE"), "_sync.yaml")
 				if req.Params.Instance == "a" {
@@ -215,6 +223,10 @@ func TestSyncExternalFailuresAreIsolated(t *testing.T) {
 			if !bytes.Equal(inventory, inventoryAfter) {
 				t.Fatal("改动了手写台账")
 			}
+			status, err := snapshot.ReadStatus(context.Background(), dir)
+			if err != nil || status.Spec["aaa"]["home"].Code != tc.code || status.Spec["example"]["home"].Status != "succeeded" {
+				t.Fatalf("execution status not isolated: %+v %v", status, err)
+			}
 		})
 	}
 }
@@ -257,6 +269,44 @@ func TestSyncFailedTimeWriteDoesNotAdvanceLater(t *testing.T) {
 	}
 	if log.Spec["aaa"]["a"] != "2026-12-01T12:00:00Z" || log.Spec["aaa"]["b"] != "2026-12-01T13:00:00Z" {
 		t.Fatalf("failed instance time advanced: %s", data)
+	}
+	status, err := snapshot.ReadStatus(context.Background(), dir)
+	if err != nil || status.Spec["aaa"]["a"].Code != "write" || status.Spec["aaa"]["b"].Status != "succeeded" {
+		t.Fatalf("failed time write marked successful: %+v %v", status, err)
+	}
+}
+
+func TestSyncStopsAfterStatusWriteFailure(t *testing.T) {
+	fixturePlugin(t)
+	dir := syncRepo(t, twoPlugins)
+	t.Setenv("INFRAFILE_PLUGIN_MODE", "status-write-failure")
+	t.Setenv("INFRAFILE_TEST_STATE", filepath.Join(dir, "state"))
+	var out, stderr bytes.Buffer
+	if code := run([]string{"sync", "--dir", dir, "--json"}, &out, &stderr); code != 1 {
+		t.Fatalf("exit %d: %s %s", code, &out, &stderr)
+	}
+	var result struct {
+		Results []struct {
+			Code    string `json:"code"`
+			Changed bool   `json:"changed"`
+		} `json:"results"`
+	}
+	if json.Unmarshal(out.Bytes(), &result) != nil || len(result.Results) != 1 || result.Results[0].Code != "write" || !result.Results[0].Changed {
+		t.Fatalf("status failure: %s", &out)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "state/example/home.yaml")); !os.IsNotExist(err) {
+		t.Fatal("continued after status storage became unusable")
+	}
+	file := filepath.Join(dir, "state", snapshot.StatusFile)
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(file+".saved", file); err != nil {
+		t.Fatal(err)
+	}
+	status, err := snapshot.ReadStatus(context.Background(), dir)
+	if err != nil || status.Spec["aaa"]["home"].Status != "running" {
+		t.Fatalf("missing incomplete receipt: %+v %v", status, err)
 	}
 }
 
