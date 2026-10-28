@@ -4,6 +4,7 @@ package snapshot
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ type Snapshot struct {
 	File     string
 	Spec     map[string]any
 	Skipped  bool
+	Hash     string
 }
 
 // openState 打开 state 目录；不存在时返回 nil。存在同步锁时拒绝读取。
@@ -121,7 +123,7 @@ func Read(ctx context.Context, dir string, skip func(plugin, instance string) bo
 			if f.Name() != instance+".yaml" {
 				return nil, errors.New("快照实例名与文件名不符")
 			}
-			snapshots = append(snapshots, Snapshot{Plugin: p.Name(), Instance: instance, File: source, Spec: value["spec"].(map[string]any)})
+			snapshots = append(snapshots, Snapshot{Plugin: p.Name(), Instance: instance, File: source, Spec: value["spec"].(map[string]any), Hash: fmt.Sprintf("%x", sha256.Sum256(data))})
 		}
 	}
 	return snapshots, nil

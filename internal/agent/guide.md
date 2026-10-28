@@ -22,6 +22,7 @@ description: 查询 infrafile 基础设施台账、检查资产到期和引用�
 4. `infrafile.yaml` 的 audit.ignore 对 stale_state 仍按整个实例匹配；orphan/zombie 必须额外带完整 match，直接复制发现的 evidence.identity，并精确限定 plugin/instance。match 不支持通配或部分匹配，同实例其他资产不受影响。reason 必填，until 可选；字段名是 waiver，过期或未命中给提示。zombie 也可用归档记录的 metadata.waivers 按主键豁免。
 5. origin_exposure 只检查显式绑定在用 Server 的主机名及其台账地址，证据来自台账未代理 A/AAAA、Cloudflare 明确未代理记录或 DNS 地址快照；跳过私有、回环、链路本地地址及 Resource 绑定。不展开仅绑定 App 的部署，不解析 CNAME 或服务器主机名，不扫描端口。豁免写在 Domain 的 metadata.waivers，不支持 audit.ignore。
 6. cdn_drift 只检查在用 CDN Resource：阿里云/腾讯云 offline、天翼云 6/8 才报停用或删除；未知状态只提示，百度云与 Cloudflare 不判断。不比较回源配置，不把缺少快照当成已删除。豁免写在 Resource 的 metadata.waivers。
+7. v0.3 开发版读取 state/.sync-status.yaml：sync_failed 表示最近执行失败，sync_incomplete 表示未留下结束回执，sync_status_unverified 表示回执与配置/时间/快照不对应。首次失败无快照也能提示；旧仓没有回执时保持原行为。这些 notices 不改变 ok 或退出码，也不能用 waiver 压下；须核对 sync 实际结果，不能把 audit 的 ok=true 当作本轮采集成功。哈希匹配不证明权限或资源清单完整；missing 仍未实现。
 
 ## 计划流程
 

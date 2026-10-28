@@ -133,6 +133,10 @@ func ReadSnapshots(ctx context.Context, repo *ledger.Repo) ([]Snapshot, []Notice
 	if err != nil {
 		return nil, nil, err
 	}
+	execution, err := syncNotices(ctx, repo, enabled, all, stamps)
+	if err != nil {
+		return nil, nil, err
+	}
 	snapshots, notices := []Snapshot{}, []Notice{}
 	for _, s := range all {
 		if s.Skipped {
@@ -146,7 +150,7 @@ func ReadSnapshots(ctx context.Context, repo *ledger.Repo) ([]Snapshot, []Notice
 		}
 		snapshots = append(snapshots, snap)
 	}
-	return snapshots, notices, nil
+	return snapshots, append(notices, execution...), nil
 }
 
 type waiverEntry struct {

@@ -87,7 +87,7 @@ func TestSyncCancelledReturnsFailure(t *testing.T) {
 }
 
 func TestSyncProtectsStateAndInventory(t *testing.T) {
-	for _, scenario := range []string{"state-link", "plugin-link", "snapshot-link", "log-link", "bad-log", "incomplete-log", "locked"} {
+	for _, scenario := range []string{"state-link", "plugin-link", "snapshot-link", "log-link", "status-link", "bad-status", "bad-log", "incomplete-log", "locked"} {
 		t.Run(scenario, func(t *testing.T) {
 			dir := syncRepo(t, "  example:\n    instances:\n      home: {}\n")
 			inventory := filepath.Join(dir, "inventory", "servers", "web.yaml")
@@ -110,6 +110,12 @@ func TestSyncProtectsStateAndInventory(t *testing.T) {
 					link, target = filepath.Join(stateDir, "example", "home.yaml"), inventory
 				case "log-link":
 					link, target = filepath.Join(stateDir, "_sync.yaml"), inventory
+				case "status-link":
+					link, target = filepath.Join(stateDir, ".sync-status.yaml"), inventory
+				case "bad-status":
+					if err := os.WriteFile(filepath.Join(stateDir, ".sync-status.yaml"), []byte("[broken"), 0o644); err != nil {
+						t.Fatal(err)
+					}
 				case "bad-log":
 					if err := os.WriteFile(filepath.Join(stateDir, "_sync.yaml"), []byte("[broken"), 0o644); err != nil {
 						t.Fatal(err)
@@ -136,6 +142,11 @@ func TestSyncProtectsStateAndInventory(t *testing.T) {
 			after, _ := os.ReadFile(inventory)
 			if !bytes.Equal(before, after) {
 				t.Fatal("改动了 inventory")
+			}
+			if scenario == "status-link" || scenario == "bad-status" {
+				if _, err := os.Stat(filepath.Join(stateDir, "example/home.yaml")); !os.IsNotExist(err) {
+					t.Fatal("插件在执行回执预检失败后仍被调用")
+				}
 			}
 			if scenario == "locked" {
 				if _, err := os.Stat(filepath.Join(stateDir, ".sync.lock")); err != nil {
