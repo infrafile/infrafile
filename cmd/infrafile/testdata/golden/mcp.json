@@ -132,6 +132,19 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
+      "description": "离线返回第一方插件的字段、动作、权限前提和支持边界；不检查当前账号或现场健康，外部插件细节未知。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "infrafile_capabilities"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "检查在用资产到期日，默认30天，含已过期及边界当天。",
       "inputSchema": {
         "additionalProperties": false,

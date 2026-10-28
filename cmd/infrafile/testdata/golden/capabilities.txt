@@ -1,0 +1,30 @@
+$ infrafile capabilities
+[退出码 0]
+--- stdout
+记录类型：Server, App, Domain, Account, Resource, Repo
+插件          服务/动作               登记           观测           比较           计划           执行           回读
+aliyun      domains             conditional  conditional  conditional  unsupported  unsupported  unsupported
+aliyun      cdn                 conditional  conditional  conditional  unsupported  unsupported  unsupported
+aliyun      cdn-origin          unsupported  conditional  conditional  unsupported  unsupported  unsupported
+baidu       domains             conditional  conditional  conditional  unsupported  unsupported  unsupported
+baidu       cdn                 conditional  conditional  conditional  unsupported  unsupported  unsupported
+baidu       cdn-origin          unsupported  conditional  conditional  unsupported  unsupported  unsupported
+cloudflare  zones               conditional  conditional  conditional  unsupported  unsupported  unsupported
+cloudflare  dns                 unsupported  conditional  conditional  unsupported  unsupported  unsupported
+cloudflare  cdn-origin          unsupported  conditional  conditional  unsupported  unsupported  unsupported
+cloudflare  control/cdn-pause   unsupported  conditional  unsupported  conditional  conditional  conditional
+cloudflare  control/cdn-resume  unsupported  conditional  unsupported  conditional  conditional  conditional
+cloudflare  control/cdn-origin  unsupported  conditional  unsupported  conditional  conditional  conditional
+ctyun       cdn                 conditional  conditional  conditional  unsupported  unsupported  unsupported
+ctyun       cdn-origin          unsupported  conditional  conditional  unsupported  unsupported  unsupported
+ctyun       domains             unsupported  unsupported  unsupported  unsupported  unsupported  unsupported
+dns         dns                 unsupported  conditional  conditional  unsupported  unsupported  unsupported
+ssh         host                conditional  conditional  conditional  unsupported  unsupported  unsupported
+tencent     domains             conditional  conditional  conditional  unsupported  unsupported  unsupported
+tencent     cdn                 conditional  conditional  conditional  unsupported  unsupported  unsupported
+tencent     cdn-origin          unsupported  conditional  conditional  unsupported  unsupported  unsupported
+tls         tls                 unsupported  conditional  unsupported  unsupported  unsupported  unsupported
+whois       found               conditional  conditional  conditional  unsupported  unsupported  unsupported
+conditional 表示有配置/范围前提；unsupported 表示未实现。详细字段、权限与限制见 --json。
+目录不检查当前账号权限或现场健康；验证等级保守为 automated-only，外部插件细节为 unknown。
+--- stderr

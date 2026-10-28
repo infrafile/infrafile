@@ -31,6 +31,8 @@ func TestGolden(t *testing.T) {
 	}{
 		{"version", []string{"version"}, nil},
 		{"version-json", []string{"version", "--json"}, nil},
+		{"capabilities", []string{"capabilities"}, nil},
+		{"capabilities-json", []string{"capabilities", "--json"}, nil},
 		{"agent-guide", []string{"agent", "guide"}, nil},
 		{"agent-guide-json", []string{"agent", "guide", "--json"}, nil},
 		{"agent-install", []string{"agent", "install", "codex"}, tempDir},

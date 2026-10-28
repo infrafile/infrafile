@@ -2,6 +2,8 @@
 
 九个插件随二进制内置，通过同一条 `sync` 命令执行。每个实例产生独立的 `state/<插件>/<实例>.yaml`，只更新机器观测，不修改 `inventory/`。配置、超时、失败保留旧快照和退出码沿用[插件宿主](plugins.md)。
 
+用 `infrafile capabilities` 查看登记、观测、比较、计划、执行、回读范围；`infrafile capabilities --json` 提供字段、权限前提、条件和验证等级，MCP 的 `infrafile_capabilities` 返回同一目录。该查询离线且不需要数据仓，不执行插件或检查当前账号；[能力契约](json/capabilities.md)说明状态含义与旧插件兼容边界。
+
 ## 配置与凭据
 
 完整的虚构配置见 [homelab 示例](../examples/homelab/first-party.example.yaml)。只把需要的实例复制到自己的 `infrafile.yaml`：
@@ -100,7 +102,7 @@ spec:
 
 每实例最多 200 个条目；任意详情超时、403、业务错误或超限都使该实例失败，保留旧快照。Cloudflare 没有 Origin Rules entrypoint 时的 404 也视为失败，不冒充空配置。已成功采集但条件/区域复杂、源站字段缺失或端口/协议不可观测时保存未知，在 audit 中输出 cdn_origin_unknown；ok=true 不等于配置全部符合期望。字段、证据与豁免见 [audit 契约](json/audit.md#cdn-回源漂移v03)。
 
-`spec.origin`、collect_origin 不适用于 v0.2 的校验/插件配置；回退前移除这两个字段及 v0.3 的 watch 配置。v0.3 的回源只读映射尚未进行真实账号验收，不等同于下面已完成的 v0.2 清单验收。
+`spec.origin`、collect_origin 不适用于 v0.2 的校验/插件配置；回退前移除这两个字段及 v0.3 的 watch 配置。v0.3 已完成部分真实只读回源验收，具体范围见[验收记录](plan/v0.3.md)；Cloudflare 读取 403、不可观测字段及未覆盖的最小 IAM 仍保留为已知边界。能力目录保守标注自动化测试等级，不替代逐账号验收记录。
 
 ## DNS、TLS、WHOIS 与 SSH
 

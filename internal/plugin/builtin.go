@@ -24,11 +24,8 @@ func (b *builtin) Call(ctx context.Context, method string, params any) (json.Raw
 		return nil, failure("timeout", "插件超时或被取消")
 	}
 	if method == "describe" {
-		capabilities := []string{"sync"}
-		if b.name == "cloudflare" {
-			capabilities = append(capabilities, "probe", "control")
-		}
-		return json.Marshal(protocol.Description{ProtocolVersion: protocol.Version, Capabilities: capabilities})
+		capability, _ := builtinCapability(b.name)
+		return json.Marshal(protocol.Description{ProtocolVersion: protocol.Version, Capabilities: capability.Methods})
 	}
 	if b.name == "cloudflare" && (method == "probe" || method == "control") {
 		p, ok := params.(protocol.ControlParams)

@@ -23,7 +23,7 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 
 这是进程配置示意；外层配置格式由客户端决定。`agent install` 只安装指南，不注册 MCP 服务或注入凭据。
 
-## 七个工具
+## 八个工具
 
 | 工具 | 输入 | 输出 |
 | --- | --- | --- |
@@ -33,6 +33,7 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 | `infrafile_audit` | 可选 rules / max_age_days | 离线快照审计，与 CLI audit JSON 相同 |
 | `infrafile_validate` | `{}` | 记录数、问题数、按代码统计的校验结果 |
 | `infrafile_schema` | `{}` | 与 `schema export` 相同的内嵌 Schema bundle |
+| `infrafile_capabilities` | `{}` | 第一方插件的字段、动作、权限前提与支持边界；不检查当前权限或现场健康 |
 | `infrafile_plan` | action、key 或非空 labels；可选 kind；改回源另需 origin_key | `dry_run: true` 与单动作计划对象 |
 
 `key` 必须是已登记的 `Kind/name`。标签是字符串键值对象，全部精确匹配；kind 是六种台账类型之一。list / expiry 的过滤条件取交集，标签未匹配时可返回空结果；显式 key 不存在或被过滤掉时失败。show / plan 必须唯一匹配。查询包含归档，expiry 忽略归档，plan 只选在用 Resource。工具不接受任意地址、URL、命令、凭据引用、路径或未知字段。
