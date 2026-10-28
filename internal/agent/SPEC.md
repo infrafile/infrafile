@@ -13,6 +13,8 @@ tags: [agent]
 
 随二进制内嵌 agent 指南，将构建版本与 commit 填入文本，并按显式指定的客户端安装到项目技能目录。安装内容与同一二进制的 guide 输出一致。
 
+指南要求在判断支持范围时读取离线 capabilities 目录，并区分条件支持、未实现、未知与真实验收；工具实现与结果契约由 CLI/MCP 入口负责。
+
 ## 安装契约
 
 仅支持项目内 Codex 的 `.agents/skills/infrafile/SKILL.md` 和 Claude Code 的 `.claude/skills/infrafile/SKILL.md`；项目目录须已存在，不必是台账。
