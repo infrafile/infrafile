@@ -6,7 +6,7 @@ var REG_NONE = NewRegistrar("none");
 var DSP_0 = NewDnsProvider("cloudflare-main");
 
 D("example.com", REG_NONE, DnsProvider(DSP_0), NO_PURGE,
-  A("@", "192.0.2.10", TTL(300), CF_PROXY_ON),
+  A("@", "203.0.113.10", TTL(300), CF_PROXY_ON),
   CAA("@", "issue", "ca.example.net"),
   CNAME("www", "example.com.", CF_PROXY_ON),
   MX("@", 10, "mail.example.net."),

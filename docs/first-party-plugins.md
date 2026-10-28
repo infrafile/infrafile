@@ -72,8 +72,12 @@ WHOIS 只解析常见域名、到期日、注册商、NS 和状态字段，不�
 
 SSH 需要本机 `ssh` 与目标的类 Unix `uname`。开启 BatchMode、严格主机密钥验证，关闭密钥自动更新、交互、PTY、代理/X11/端口转发、连接复用和 LocalCommand；继承用户可信 SSH 配置与已有认证选择（包括配置中的 ProxyJump / ProxyCommand）。私钥由 OpenSSH 读取，不从凭据引用写出临时私钥。显式文件路径相对数据仓或使用绝对路径；不展开 `~`。未指定 user / port 时沿用 SSH 配置。单次连接超时 10 秒，整个实例仍受 `--timeout` 控制；SSH 原始 stderr 不返回。
 
-## 离线验证
+DNS 使用运行机器的系统解析器；TUN/fake-IP 代理可能返回虚拟地址，即使 sync 成功，也不能将其视为真实公网解析。应在干净出口执行探测，或用已验证的外部采集器生成带真实观测时间的快照。切勿给历史快照改时间来假装刷新。
+
+阿里云 CDN 原始清单可能用 `.example.com` 表示泛域名；state 保留原文，导入和审计在共享映射中归一成 `*.example.com`，不会当成根域名。注册域名和其他供应商的校验边界不变。
+
+## 验证范围
 
 云插件回放[公开样例改写及合成夹具](../internal/plugin/testdata/README.md)，覆盖分页、业务错误、HTTP 错误、缺失字段、取消、凭据反射拒绝与 CLI 输出。签名测试使用官方向量或独立计算的合成向量。探测测试使用内存 DNS、本地 TLS / WHOIS 和模拟 SSH 进程，无需云账号、用户密钥或真实服务器。
 
-本阶段没有真实账号抓包、线上调用或 IAM 策略验收。天翼注册域名暂不支持，百度 BCD 和天翼精确 API 授权仍有公开文档缺口。官方来源、签名细节与权限证据见[阿里云／腾讯云调研](research/m5-aliyun-tencent.md)及[百度／天翼调研](research/m5-baidu-ctyun.md)。
+v0.2 已在使用方私有环境验证真实 SOPS 引用、Cloudflare zone/DNS 与四家国内云 CDN 只读清单、TLS、WHOIS 及固定 SSH uname 探测；空清单只验证到有权查询，不证明非空资源的全部边界。原始快照和验收投影留在使用方私有数据仓，不作为公开测试夹具。注册域名列表 API、真实最小 IAM 策略和线上写入仍未验收；天翼注册域名暂不支持，百度 BCD 和天翼精确 API 授权仍有公开文档缺口。官方来源、签名细节与权限证据见[阿里云／腾讯云调研](research/m5-aliyun-tencent.md)及[百度／天翼调研](research/m5-baidu-ctyun.md)。

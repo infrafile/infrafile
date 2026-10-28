@@ -6,4 +6,5 @@ spec:
   zones:
     - id: fictional-zone-id
       name: example.net
-      dns_records: []
+      dns_records:
+        - {name: example.net, type: A, content: 203.0.113.10, proxied: false}

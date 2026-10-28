@@ -1,0 +1,14 @@
+$ infrafile audit ../../examples/homelab --rule stale_state --max-age 45d
+[退出码 1]
+--- stdout
+截至 2026-12-01T12:00:00Z（观测上限 45 天）
+快照 2 份
+  aliyun/home  2026-10-24T03:00:00Z 观测，38 天前
+  cloudflare/home  2026-09-01T03:00:00Z 观测，91 天前
+stale_state：快照观测时间超过上限或未知
+  cloudflare/home  state/cloudflare/home.yaml  观测已 91 天未更新（上限 45 天）
+提示：
+  dns/blog  state/dns/blog.yaml  插件实例未在 infrafile.yaml 启用，已忽略此快照
+  ssh/observed-web  state/ssh/observed-web.yaml  插件实例未在 infrafile.yaml 启用，已忽略此快照
+发现 1 条偏差，0 条已豁免
+--- stderr

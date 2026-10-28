@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/infrafile/infrafile/internal/ledger"
+	"github.com/infrafile/infrafile/internal/observation"
 	"github.com/infrafile/infrafile/internal/validate"
 	"go.yaml.in/yaml/v3"
 )
@@ -26,10 +27,7 @@ type Entry struct {
 	Record map[string]any `json:"record,omitempty"`
 }
 
-type Notice struct {
-	Source string `json:"source"`
-	Reason string `json:"reason"`
-}
+type Notice = observation.Notice
 
 type Result struct {
 	Records []Entry  `json:"records"`
@@ -72,7 +70,7 @@ func Prepare(repo *ledger.Repo, entries []Entry, notices []Notice) (*Result, err
 				if !bytes.Equal(previous, encoded) {
 					return nil, fmt.Errorf("多个来源对 %s 给出不同草稿；请先人工确认并建立该记录", key)
 				}
-				result.Skipped = append(result.Skipped, Notice{entry.Source, "duplicate"})
+				result.Skipped = append(result.Skipped, Notice{Source: entry.Source, Reason: "duplicate"})
 				continue
 			}
 			seen[key] = encoded

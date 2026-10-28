@@ -1,0 +1,6 @@
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata:
+  name: old.example.com
+  archived: {date: 2026-10-01, reason: 演示已退役资产仍被观测}
+spec: {}

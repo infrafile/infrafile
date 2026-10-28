@@ -1,0 +1,10 @@
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata:
+  name: waived.example.com
+  archived: {date: 2026-10-01, reason: 演示迁移窗口}
+  waivers:
+    - rule: zombie
+      reason: 迁移窗口保留到年底
+      until: 2026-12-31
+spec: {}

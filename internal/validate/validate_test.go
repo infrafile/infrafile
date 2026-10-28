@@ -218,6 +218,41 @@ spec:
 	}
 }
 
+func TestAuditIgnore(t *testing.T) {
+	dir := newRepo(t, map[string]string{"infrafile.yaml": `apiVersion: infrafile/v1alpha1
+kind: Config
+audit:
+  ignore:
+    - rule: stale_state
+      plugin: aliyun
+      instance: home
+      reason: 只在月初同步
+      until: 2027-01-01
+`})
+	want(t, run(t, dir, Options{}))
+
+	dir = newRepo(t, map[string]string{"infrafile.yaml": `apiVersion: infrafile/v1alpha1
+kind: Config
+audit:
+  ignore:
+    - rule: orphan
+      plugin: aliyun
+      instance: home
+      reason: 缺少精确观测身份
+    - rule: stale_state
+      plugin: Aliyun
+      instance: home
+      reason: ""
+  match: x
+`})
+	want(t, run(t, dir, Options{}),
+		"schema infrafile.yaml:5 audit.ignore[0].match",
+		"schema infrafile.yaml:10 audit.ignore[1].plugin",
+		"schema infrafile.yaml:12 audit.ignore[1].reason",
+		"schema infrafile.yaml:13 audit.match",
+	)
+}
+
 func TestName(t *testing.T) {
 	dir := newRepo(t, map[string]string{
 		"inventory/servers/web2.yaml": `apiVersion: infrafile/v1alpha1

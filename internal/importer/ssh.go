@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/google/shlex"
 )
+
+var unsafeName = regexp.MustCompile(`[^a-z0-9.-]+`)
 
 type directive struct {
 	key      string

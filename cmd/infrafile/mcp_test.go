@@ -85,10 +85,11 @@ func TestMCPStdio(t *testing.T) {
 	}
 	defer s.Close()
 	list, err := s.ListTools(ctx, nil)
-	if err != nil || len(list.Tools) != 6 {
+	if err != nil || len(list.Tools) != 7 {
 		t.Fatalf("list: %v %v", list, err)
 	}
 	callMCP(t, s, "show", map[string]any{"key": "Server/web1"}, false)
+	callMCP(t, s, "audit", map[string]any{"max_age_days": 45}, false)
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -293,10 +294,10 @@ func TestMCPAllToolsExcludeCredentialsAndDoNotWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 6 {
+	if len(listed.Tools) != 7 {
 		t.Fatalf("tools: %v", listed.Tools)
 	}
-	args := map[string]any{"list": map[string]any{}, "show": map[string]any{"key": "Resource/edge"}, "expiry": map[string]any{}, "validate": map[string]any{}, "schema": map[string]any{}, "plan": map[string]any{"key": "Resource/edge", "action": "cdn-pause"}}
+	args := map[string]any{"list": map[string]any{}, "show": map[string]any{"key": "Resource/edge"}, "expiry": map[string]any{}, "audit": map[string]any{"max_age_days": 7}, "validate": map[string]any{}, "schema": map[string]any{}, "plan": map[string]any{"key": "Resource/edge", "action": "cdn-pause"}}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
 			t.Fatalf("not read-only: %s", tool.Name)
@@ -382,12 +383,196 @@ func TestMCPLabelsFreshReadsAndExpiry(t *testing.T) {
 	wg.Wait()
 }
 
+func TestMCPAudit(t *testing.T) {
+	s := mcpSession(t, homelab)
+	got := callMCP(t, s, "audit", map[string]any{}, false)
+	if got["ok"] != false || len(got["rules"].([]any)) != 4 || len(got["snapshots"].([]any)) != 2 || len(got["findings"].([]any)) != 3 {
+		t.Fatal(got)
+	}
+	got = callMCP(t, s, "audit", map[string]any{"rules": []string{"stale_state"}, "max_age_days": 45}, false)
+	findings := got["findings"].([]any)
+	if got["ok"] != false || len(findings) != 1 || findings[0].(map[string]any)["target"] != "cloudflare/home" {
+		t.Fatal(got)
+	}
+	want, err := mcpCLI(context.Background(), time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC), "audit", homelab, "--rule", "stale_state", "--max-age", "45d", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, _ := json.Marshal(want)
+	var decoded map[string]any
+	json.Unmarshal(encoded, &decoded)
+	if !reflect.DeepEqual(got, decoded) {
+		t.Fatalf("audit differs from CLI: %v / %v", got, decoded)
+	}
+	got = callMCP(t, s, "audit", map[string]any{"rules": []string{"stale_state"}, "max_age_days": int(^uint(0) >> 1)}, false)
+	if got["ok"] != true || len(got["findings"].([]any)) != 0 {
+		t.Fatalf("large max_age_days overflowed: %v", got)
+	}
+	for _, args := range []map[string]any{
+		{"rules": []string{"unknown_rule"}},
+		{"rules": []string{"stale_state"}},
+		{"rules": []string{"--json"}},
+		{"max_age_days": -1},
+		{"max_age_days": 1.5},
+		{"max_age_days": "7"},
+		{"max_age_days": nil},
+		{"max_age_days": json.Number("9223372036854775808")},
+		{"rules": "stale_state"},
+		{"dir": "/"},
+		{"command": "audit"},
+		{"key": "Server/web1"},
+	} {
+		callMCP(t, s, "audit", args, true)
+	}
+	result, err := s.CallTool(context.Background(), &mcp.CallToolParams{Name: "infrafile_audit", Arguments: json.RawMessage(`{"max_age_days":7,"max_age_days":45}`)})
+	if err != nil || result == nil || !result.IsError {
+		t.Fatalf("duplicate arguments accepted: %v %v", result, err)
+	}
+}
+
+func TestMCPAuditRejectsSensitiveSnapshot(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {
+		t.Fatal(err)
+	}
+	s := mcpSession(t, dir)
+	writeImportFile(t, filepath.Join(dir, "state/cloudflare/home.yaml"), "apiVersion: infrafile/v1alpha1\nkind: Snapshot\nmetadata: {name: home}\nspec: {password: synthetic-mcp-private-value}\n")
+	t.Chdir(dir)
+	before := mcpFiles(t)
+	got := callMCP(t, s, "audit", map[string]any{"max_age_days": 7}, true)
+	encoded, _ := json.Marshal(got)
+	if bytes.Contains(encoded, []byte("synthetic-mcp-private-value")) || got["error"].(map[string]any)["code"] != "request" {
+		t.Fatalf("snapshot failure leaked details: %s", encoded)
+	}
+	if !reflect.DeepEqual(before, mcpFiles(t)) {
+		t.Fatal("audit changed local files")
+	}
+}
+
+func TestMCPLifecycle(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(filepath.Join(homelab, "lifecycle"))); err != nil {
+		t.Fatal(err)
+	}
+	s := mcpSession(t, dir)
+	t.Chdir(dir)
+	before := mcpFiles(t)
+	got := callMCP(t, s, "audit", map[string]any{}, false)
+	if got["ok"] != false {
+		t.Fatal(got)
+	}
+	findings := got["findings"].([]any)
+	waived := 0
+	for _, f := range findings {
+		if f.(map[string]any)["waiver"] != nil {
+			waived++
+		}
+	}
+	if len(findings) != 4 || waived != 2 {
+		t.Fatalf("%v", got)
+	}
+	want, err := mcpCLI(context.Background(), time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC), "audit", dir, "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, _ := json.Marshal(want)
+	var decoded any
+	json.Unmarshal(encoded, &decoded)
+	if !reflect.DeepEqual(got, decoded) || !reflect.DeepEqual(before, mcpFiles(t)) {
+		t.Fatal("MCP/CLI differ or audit wrote files")
+	}
+	for _, rule := range []string{"orphan", "zombie"} {
+		filtered := callMCP(t, s, "audit", map[string]any{"rules": []string{rule}}, false)
+		for _, f := range filtered["findings"].([]any) {
+			if f.(map[string]any)["rule"] != rule {
+				t.Fatal(filtered)
+			}
+		}
+	}
+}
+
+const originUnwaivedDomain = "apiVersion: infrafile/v1alpha1\nkind: Domain\nmetadata: {name: example.net}\nspec: {bindings: [{name: '@', server: web1}]}\n"
+
+func goldenCDN(t *testing.T) {
+	t.Helper()
+	goldenImport(t)
+	writeImportFile(t, "inventory/resources/audit-edge.yaml", "apiVersion: infrafile/v1alpha1\nkind: Resource\nmetadata: {name: audit-edge}\nspec: {provider: aliyun, type: cdn, resource_id: fictional-cdn-id}\n")
+	writeImportFile(t, "state/aliyun/home.yaml", "apiVersion: infrafile/v1alpha1\nkind: Snapshot\nmetadata: {name: home}\nspec: {cdn: [{name: static.example.com, id: fictional-cdn-id, status: offline}]}\n")
+}
+
+func TestMCPCDNDrift(t *testing.T) {
+	goldenCDN(t)
+	s := mcpSession(t, ".")
+	before := mcpFiles(t)
+	got := callMCP(t, s, "audit", map[string]any{"rules": []string{"cdn_drift"}}, false)
+	f := got["findings"].([]any)
+	if got["ok"] != false || len(f) != 1 || f[0].(map[string]any)["target"] != "Resource/audit-edge" {
+		t.Fatal(got)
+	}
+	want, err := mcpCLI(context.Background(), time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC), "audit", ".", "--rule", "cdn_drift", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(want)
+	var decoded any
+	json.Unmarshal(data, &decoded)
+	if !reflect.DeepEqual(got, decoded) || !reflect.DeepEqual(before, mcpFiles(t)) {
+		t.Fatal("MCP/CLI differ or CDN audit wrote files")
+	}
+}
+
+func TestMCPOriginExposure(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {
+		t.Fatal(err)
+	}
+	s := mcpSession(t, dir)
+	got := callMCP(t, s, "audit", map[string]any{"rules": []string{"origin_exposure"}}, false)
+	f := got["findings"].([]any)
+	if got["ok"] != true || len(f) != 1 || f[0].(map[string]any)["waiver"] == nil || len(got["notices"].([]any)) != 2 {
+		t.Fatal(got)
+	}
+	for _, notice := range got["notices"].([]any) {
+		if notice.(map[string]any)["code"] == "waiver_unused" {
+			t.Fatal(got)
+		}
+	}
+	writeImportFile(t, filepath.Join(dir, "inventory/domains/example.net.yaml"), originUnwaivedDomain)
+	t.Chdir(dir)
+	before := mcpFiles(t)
+	got = callMCP(t, s, "audit", map[string]any{"rules": []string{"origin_exposure"}}, false)
+	if got["ok"] != false {
+		t.Fatal(got)
+	}
+	want, err := mcpCLI(context.Background(), time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC), "audit", dir, "--rule", "origin_exposure", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(want)
+	var decoded any
+	json.Unmarshal(data, &decoded)
+	if !reflect.DeepEqual(got, decoded) || !reflect.DeepEqual(before, mcpFiles(t)) {
+		t.Fatal("MCP/CLI differ or audit wrote files")
+	}
+	config, _ := os.ReadFile("infrafile.yaml")
+	writeImportFile(t, "infrafile.yaml", string(config)+"  dns:\n    instances:\n      invalid:\n        host: example.com\n")
+	if err := os.MkdirAll("state/dns", 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeImportFile(t, "state/dns/invalid.yaml", "apiVersion: infrafile/v1alpha1\nkind: Snapshot\nmetadata: {name: invalid}\nspec: {host: example.com, addresses: [synthetic-mcp-private-value]}\n")
+	got = callMCP(t, s, "audit", map[string]any{"rules": []string{"origin_exposure"}}, true)
+	data, _ = json.Marshal(got)
+	if bytes.Contains(data, []byte("synthetic-mcp-private-value")) || got["error"].(map[string]any)["code"] != "request" {
+		t.Fatal(string(data))
+	}
+}
+
 func TestMCPInvalidLedgerDoesNotEchoPlaintext(t *testing.T) {
 	controlRepo(t)
 	s := mcpSession(t, ".")
 	data, _ := os.ReadFile("inventory/resources/edge.yaml")
 	writeImportFile(t, "inventory/resources/edge.yaml", string(data)+"  password: synthetic-mcp-private-value\n")
-	for _, tool := range []string{"list", "show", "expiry", "plan", "validate"} {
+	for _, tool := range []string{"list", "show", "expiry", "audit", "plan", "validate"} {
 		args := map[string]any{}
 		if tool == "show" {
 			args["key"] = "Resource/edge"
@@ -440,7 +625,7 @@ func TestMCPGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	value := map[string]any{"tools": list.Tools}
-	for _, tool := range []string{"list", "show", "expiry", "validate", "plan"} {
+	for _, tool := range []string{"list", "show", "expiry", "audit", "validate", "plan"} {
 		args := map[string]any{}
 		if tool == "show" || tool == "plan" {
 			args["key"] = "Resource/edge"

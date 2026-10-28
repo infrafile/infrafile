@@ -1,0 +1,5 @@
+$ infrafile audit testdata/fixtures/broken-ref --max-age 7d --json
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: 数据仓有 5 个问题，请先运行 infrafile validate 校验该目录

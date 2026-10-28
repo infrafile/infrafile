@@ -1,0 +1,71 @@
+$ infrafile audit --rule stale_state --max-age 45d --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": 45,
+  "rules": [
+    "stale_state"
+  ],
+  "snapshots": [
+    {
+      "plugin": "aliyun",
+      "instance": "home",
+      "file": "state/aliyun/home.yaml",
+      "observed_at": "2026-10-24T03:00:00Z",
+      "age_days": 38
+    },
+    {
+      "plugin": "cloudflare",
+      "instance": "home",
+      "file": "state/cloudflare/home.yaml",
+      "observed_at": "2026-09-01T03:00:00Z",
+      "age_days": 91
+    }
+  ],
+  "findings": [
+    {
+      "rule": "stale_state",
+      "target": "cloudflare/home",
+      "file": "state/cloudflare/home.yaml",
+      "message": "观测已 91 天未更新（上限 45 天）",
+      "evidence": {
+        "age_days": 91,
+        "max_age_days": 45,
+        "observed_at": "2026-09-01T03:00:00Z"
+      },
+      "waiver": null
+    }
+  ],
+  "notices": [
+    {
+      "code": "instance_disabled",
+      "file": "state/dns/blog.yaml",
+      "target": "dns/blog",
+      "message": "插件实例未在 infrafile.yaml 启用，已忽略此快照"
+    },
+    {
+      "code": "instance_disabled",
+      "file": "state/ssh/observed-web.yaml",
+      "target": "ssh/observed-web",
+      "message": "插件实例未在 infrafile.yaml 启用，已忽略此快照"
+    },
+    {
+      "code": "waiver_expired",
+      "file": "infrafile.yaml",
+      "target": "cloudflare/home",
+      "rule": "stale_state",
+      "message": "豁免已于 2026-11-30 过期，审计重新报告"
+    },
+    {
+      "code": "waiver_unused",
+      "file": "infrafile.yaml",
+      "target": "example/home",
+      "rule": "stale_state",
+      "message": "豁免未命中任何偏差，可以删除"
+    }
+  ]
+}
+--- stderr

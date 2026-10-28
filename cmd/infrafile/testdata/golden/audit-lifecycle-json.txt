@@ -1,0 +1,104 @@
+$ infrafile audit ../../examples/homelab/lifecycle --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": null,
+  "rules": [
+    "cdn_drift",
+    "origin_exposure",
+    "orphan",
+    "zombie"
+  ],
+  "snapshots": [
+    {
+      "plugin": "aliyun",
+      "instance": "home",
+      "file": "state/aliyun/home.yaml",
+      "observed_at": "2026-10-26T03:00:00Z",
+      "age_days": 36
+    }
+  ],
+  "findings": [
+    {
+      "rule": "orphan",
+      "target": "aliyun/home/Domain/ignored.example.net",
+      "file": "state/aliyun/home.yaml",
+      "message": "快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "ignored.example.net"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": {
+        "reason": "独立团队维护的演示域名",
+        "until": "2026-12-31",
+        "source": "infrafile.yaml"
+      }
+    },
+    {
+      "rule": "orphan",
+      "target": "aliyun/home/Domain/orphan.example.net",
+      "file": "state/aliyun/home.yaml",
+      "message": "快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "orphan.example.net"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": null
+    },
+    {
+      "rule": "zombie",
+      "target": "Domain/old.example.com",
+      "file": "inventory/domains/old.example.com.yaml",
+      "message": "台账已归档，但快照中仍观测到该资产",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "old.example.com"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": null
+    },
+    {
+      "rule": "zombie",
+      "target": "Domain/waived.example.com",
+      "file": "inventory/domains/waived.example.com.yaml",
+      "message": "台账已归档，但快照中仍观测到该资产",
+      "evidence": {
+        "identity": {
+          "kind": "Domain",
+          "name": "waived.example.com"
+        },
+        "instance": "home",
+        "observed_at": "2026-10-26T03:00:00Z",
+        "plugin": "aliyun",
+        "snapshot_file": "state/aliyun/home.yaml"
+      },
+      "waiver": {
+        "reason": "迁移窗口保留到年底",
+        "until": "2026-12-31",
+        "source": "inventory/domains/waived.example.com.yaml"
+      }
+    }
+  ],
+  "notices": []
+}
+--- stderr

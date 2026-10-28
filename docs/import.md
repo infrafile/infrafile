@@ -43,6 +43,8 @@ Include 支持绝对路径、`~/`、相对路径和 glob；相对路径遵循用
 
 ## state 映射
 
+观测到资产的字段与主键生成由 `internal/observation` 统一映射，`import state` 与生命周期审计共用。导入仍按主键只建不覆盖，审计另外按自然身份比对，不改变这里的生成与跳过行为。
+
 读取 `state/<插件>/<实例>.yaml`；不要求插件当前仍启用，也不会自动同步。`_sync.yaml` 不是资产来源。没有 state 时返回空结果；存在 `.sync.lock` 时拒绝读取，避免在同步过程中导入。快照必须是普通文件、信封有效、实例名与文件名一致；重复 YAML 键、多文档、敏感字段或错误类型会被拒绝。
 
 | 来源 | 草稿 | 保留字段 |
@@ -57,6 +59,8 @@ Include 支持绝对路径、`~/`、相对路径和 glob；相对路径遵循用
 | 未支持的插件（含虚构 example） | 不生成资产 | 报告 `unsupported-plugin` |
 
 天翼注册域名仍不支持；出现该字段会报错。DNS zone 和 CDN 域名不会被视为注册域名。域名转小写并去掉尾点，国际域名需使用 ASCII punycode。Resource 名字由供应商、实例、类型、域名和稳定的短哈希组成，以区分实例并满足名称长度；同一来源再次导入保持相同主键。
+
+阿里云 CDN 可能用 `.example.com` 表示泛域名，导入与自然身份匹配统一为 `*.example.com`，不会合并成根域名；原始 state 保留供应商写法。只对阿里云的 CDN 资源应用此兼容，不允许注册域名或其他提供方借此绕过名称校验。格式说明见[阿里云泛域名文档](https://www.alibabacloud.com/help/zh/cdn/does-alibaba-cloud-cdn-support-wildcard-domain-names)。
 
 观测属于采集当时的事实，导入不推断其新鲜度或所有权，也不把 DNS 地址自动连成 Server 外键。Cloudflare DNS 记录、CDN 状态及 SSH 架构等未映射字段保留在 state，草稿不复制整份原始快照。
 

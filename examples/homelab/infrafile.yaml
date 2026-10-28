@@ -8,3 +8,14 @@ plugins:
     instances:
       home:
         region: example-region
+  # 与 state/ 下的手写快照对应，供 audit 离线演示；凭据只写虚构的环境变量引用。
+  aliyun:
+    instances:
+      home:
+        access_key_id: env://INFRAFILE_EXAMPLE_ALIYUN_AK
+        access_key_secret: env://INFRAFILE_EXAMPLE_ALIYUN_SK
+        services: [domains, cdn]
+  cloudflare:
+    instances:
+      home:
+        api_token: env://INFRAFILE_EXAMPLE_CLOUDFLARE_TOKEN

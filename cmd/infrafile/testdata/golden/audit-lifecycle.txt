@@ -1,0 +1,20 @@
+$ infrafile audit ../../examples/homelab/lifecycle
+[退出码 1]
+--- stdout
+截至 2026-12-01T12:00:00Z（未设观测上限）
+快照 1 份
+  aliyun/home  2026-10-26T03:00:00Z 观测，36 天前
+cdn_drift：在用 CDN 资源的观测状态已停用或删除
+  无偏差
+origin_exposure：绑定 Server 的域名地址直连源站
+  无偏差
+orphan：快照中存在但台账未登记的资产
+  aliyun/home/Domain/ignored.example.net  state/aliyun/home.yaml  快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿
+    [已豁免] 独立团队维护的演示域名（至 2026-12-31，来源 infrafile.yaml）
+  aliyun/home/Domain/orphan.example.net  state/aliyun/home.yaml  快照中存在，台账中没有对应记录（含归档）；可用 import state 生成待审草稿
+zombie：已归档但快照中仍存在的资产
+  Domain/old.example.com  inventory/domains/old.example.com.yaml  台账已归档，但快照中仍观测到该资产
+  Domain/waived.example.com  inventory/domains/waived.example.com.yaml  台账已归档，但快照中仍观测到该资产
+    [已豁免] 迁移窗口保留到年底（至 2026-12-31，来源 inventory/domains/waived.example.com.yaml）
+发现 2 条偏差，2 条已豁免
+--- stderr

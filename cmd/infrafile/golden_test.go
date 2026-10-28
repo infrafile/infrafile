@@ -108,6 +108,40 @@ func TestGolden(t *testing.T) {
 		{"dnscontrol", []string{"dnscontrol", homelab}, nil},
 		{"dnscontrol-json", []string{"dnscontrol", homelab, "--json"}, nil},
 		{"dnscontrol-empty-json", []string{"dnscontrol", "--json"}, emptyRepo},
+		{"gatus", []string{"gatus", homelab}, nil},
+		{"gatus-json", []string{"gatus", homelab, "--json"}, nil},
+		{"gatus-empty-json", []string{"gatus", "--json"}, emptyRepo},
+
+		{"audit", []string{"audit", homelab}, nil},
+		{"audit-origin", []string{"audit", homelab, "--rule", "origin_exposure"}, nil},
+		{"audit-origin-json", []string{"audit", homelab, "--rule", "origin_exposure", "--json"}, nil},
+		{"audit-origin-unwaived-json", []string{"audit", "--rule", "origin_exposure", "--json"}, func(t *testing.T) {
+			goldenImport(t)
+			writeImportFile(t, "inventory/domains/example.net.yaml", originUnwaivedDomain)
+		}},
+		{"audit-lifecycle", []string{"audit", homelab + "/lifecycle"}, nil},
+		{"audit-lifecycle-json", []string{"audit", homelab + "/lifecycle", "--json"}, nil},
+		{"audit-orphan-json", []string{"audit", homelab + "/lifecycle", "--rule", "orphan", "--json"}, nil},
+		{"audit-zombie-json", []string{"audit", homelab + "/lifecycle", "--rule", "zombie", "--json"}, nil},
+		{"audit-json", []string{"audit", homelab, "--json"}, nil},
+		{"audit-stale", []string{"audit", homelab, "--rule", "stale_state", "--max-age", "45d"}, nil},
+		{"audit-stale-json", []string{"audit", homelab, "--rule", "stale_state", "--max-age", "45d", "--json"}, nil},
+		{"audit-ignored", []string{"audit", "--rule", "stale_state", "--max-age", "45d"}, auditIgnore(ignoreCloudflare)},
+		{"audit-ignored-json", []string{"audit", "--rule", "stale_state", "--max-age", "45d", "--json"}, auditIgnore(ignoreCloudflare)},
+		{"audit-partial", []string{"audit", "--rule", "stale_state", "--max-age", "7d"}, auditIgnore(ignoreCloudflare)},
+		{"audit-waiver-notices-json", []string{"audit", "--rule", "stale_state", "--max-age", "45d", "--json"}, auditIgnore(ignoreExpired + ignoreUnused)},
+		{"audit-no-state-json", []string{"audit", "--max-age", "7d", "--json"}, emptyRepo},
+		{"audit-no-sync-json", []string{"audit", "--max-age", "45d", "--json"}, auditState("_sync.yaml", "")},
+		{"audit-bad-sync-json", []string{"audit", "--max-age", "45d", "--json"}, auditState("_sync.yaml", "a: [\n")},
+		{"audit-bad-snapshot-json", []string{"audit", "--json"}, auditState("aliyun/home.yaml", "a: [\n")},
+		{"audit-locked-json", []string{"audit", "--json"}, auditState(".sync.lock", "x")},
+		{"audit-disabled-broken-json", []string{"audit", "--json"}, auditState("dns/blog.yaml", "a: [\n")},
+		{"audit-cdn", []string{"audit", "--rule", "cdn_drift"}, goldenCDN},
+		{"audit-cdn-json", []string{"audit", "--rule", "cdn_drift", "--json"}, goldenCDN},
+		{"audit-rule-unknown", []string{"audit", homelab, "--rule", "nope"}, nil},
+		{"audit-rule-needs-max-age", []string{"audit", homelab, "--rule", "stale_state"}, nil},
+		{"audit-bad-max-age", []string{"audit", homelab, "--max-age", "7"}, nil},
+		{"audit-invalid-repo-json", []string{"audit", "testdata/fixtures/broken-ref", "--max-age", "7d", "--json"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -162,6 +196,39 @@ func goldenImport(t *testing.T) {
 func goldenImportWritten(t *testing.T) {
 	goldenImport(t)
 	importCLI(t, 0, "import", "state", "--write")
+}
+
+const (
+	ignoreCloudflare = "  - rule: stale_state\n    plugin: cloudflare\n    instance: home\n    reason: 每季度手动同步一次\n    until: 2026-12-31\n"
+	ignoreExpired    = "  - rule: stale_state\n    plugin: cloudflare\n    instance: home\n    reason: 迁移期间暂停同步\n    until: 2026-11-30\n"
+	ignoreUnused     = "  - rule: stale_state\n    plugin: example\n    instance: home\n    reason: 示例插件不做审计\n"
+)
+
+// auditIgnore 在 homelab 副本的 infrafile.yaml 末尾追加 audit.ignore。
+func auditIgnore(entries string) func(*testing.T) {
+	return func(t *testing.T) {
+		goldenImport(t)
+		config, err := os.ReadFile("infrafile.yaml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeImportFile(t, "infrafile.yaml", string(config)+"audit:\n  ignore:\n"+entries)
+	}
+}
+
+// auditState 改写 homelab 副本 state/ 下的文件；content 为空时删除该文件。
+func auditState(rel, content string) func(*testing.T) {
+	return func(t *testing.T) {
+		goldenImport(t)
+		path := filepath.Join("state", filepath.FromSlash(rel))
+		if content == "" {
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		writeImportFile(t, path, content)
+	}
 }
 
 func goldenSync(t *testing.T) {

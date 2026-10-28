@@ -1,0 +1,5 @@
+$ infrafile audit --json
+[退出码 2]
+--- stdout
+--- stderr
+infrafile: state/aliyun/home.yaml: 快照 YAML 格式错误
