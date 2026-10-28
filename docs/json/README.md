@@ -13,6 +13,7 @@ CLI 命令可以加全局选项 `--json`，把结果以 JSON 输出到标准输�
 | `infrafile init` | [init.md](init.md) |
 | `infrafile schema export` | [schema.md](schema.md) |
 | `infrafile version` | [version.md](version.md) |
+| `infrafile capabilities` | [capabilities.md](capabilities.md) |
 | `infrafile show` | [show.md](show.md) |
 | `infrafile expiry` | [expiry.md](expiry.md) |
 | `infrafile audit` | [audit.md](audit.md) |

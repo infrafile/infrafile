@@ -2,6 +2,8 @@
 
 九个插件随二进制内置，通过同一条 `sync` 命令执行。每个实例产生独立的 `state/<插件>/<实例>.yaml`，只更新机器观测，不修改 `inventory/`。配置、超时、失败保留旧快照和退出码沿用[插件宿主](plugins.md)。
 
+用 `infrafile capabilities` 查看登记、观测、比较、计划、执行、回读范围；`infrafile capabilities --json` 提供字段、权限前提、条件和验证等级，MCP 的 `infrafile_capabilities` 返回同一目录。该查询离线且不需要数据仓，不执行插件或检查当前账号；[能力契约](json/capabilities.md)说明状态含义与旧插件兼容边界。
+
 ## 配置与凭据
 
 完整的虚构配置见 [homelab 示例](../examples/homelab/first-party.example.yaml)。只把需要的实例复制到自己的 `infrafile.yaml`：

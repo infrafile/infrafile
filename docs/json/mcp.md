@@ -12,6 +12,7 @@
 | infrafile_audit | 与 [audit](audit.md) 相同，保留发现、豁免、快照时间及提示 |
 | infrafile_validate | `{version, ok, records, problem_count, codes}`；codes 为问题代码 → 个数，无详细消息或文件路径 |
 | infrafile_schema | `{version, schemas}`；schemas 等于 `schema export` 的 JSON bundle |
+| infrafile_capabilities | 与 [capabilities](capabilities.md) 相同的离线能力目录；输入为 `{}` |
 | infrafile_plan | `{version, dry_run: true, plan}`；plan 为 [plan](plan.md) 的 v1 单动作文件对象 |
 
 expiry 的 within_days 为非负整数，默认 30；沿用 CLI 的有效日期范围校验。发现到期项返回 ok=false，仍是成功的工具调用（isError=false）。validate 发现台账问题同样返回 ok=false / isError=false；无法加载则是工具失败。list / show / expiry / audit / plan 先校验整个台账，失败时不返回部分业务结果。

@@ -106,6 +106,7 @@ func newRoot(now time.Time) *cobra.Command {
 
 	root.AddCommand(
 		newVersionCmd(opts),
+		newCapabilitiesCmd(opts),
 		newValidateCmd(opts),
 		newInitCmd(opts),
 		newSchemaCmd(opts),

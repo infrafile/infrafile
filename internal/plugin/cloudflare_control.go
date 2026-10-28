@@ -19,7 +19,7 @@ func (b *builtin) cloudflareControl(ctx context.Context, method string, p protoc
 	if !cfIdentifier.MatchString(p.Target.ZoneID) || (p.Action == "cdn-origin" && (!cfIdentifier.MatchString(p.Target.RulesetID) || !cfIdentifier.MatchString(p.Target.RuleID))) {
 		return nil, failure("config", "Cloudflare 控制标识必须是 32 位十六进制 ID")
 	}
-	if p.Action != "cdn-pause" && p.Action != "cdn-resume" && p.Action != "cdn-origin" {
+	if !supportsAction(b.name, p.Action) {
 		return nil, failure("config", "不支持的 Cloudflare 动作")
 	}
 	value, err := b.credential(ctx, cfg.APIToken)

@@ -1,0 +1,604 @@
+$ infrafile capabilities --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "kinds": [
+    "Server",
+    "App",
+    "Domain",
+    "Account",
+    "Resource",
+    "Repo"
+  ],
+  "plugins": [
+    {
+      "plugin": "aliyun",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "domains",
+          "fields": [
+            "name",
+            "expires_at"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "注册域名列表只读权限，精确权限见第一方插件指南"
+          ],
+          "conditions": [
+            "缺少字段或权限时不能证明清单完整；missing 需要 watch、新鲜成功回执和正向基线",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn",
+          "fields": [
+            "name",
+            "status",
+            "cname"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "CDN 清单只读权限，精确权限见第一方插件指南"
+          ],
+          "conditions": [
+            "状态值按厂商映射；不识别的状态不判正常",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn-origin",
+          "fields": [
+            "hosts",
+            "port",
+            "protocol"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "额外的 CDN 回源详情只读权限"
+          ],
+          "conditions": [
+            "显式开启 collect_origin；仅比较显式期望；条件/区域策略和不可观测字段为 unknown",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "baidu",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "domains",
+          "fields": [
+            "name",
+            "expires_at"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "注册域名列表只读权限，精确权限见第一方插件指南"
+          ],
+          "conditions": [
+            "缺少字段或权限时不能证明清单完整；missing 需要 watch、新鲜成功回执和正向基线",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn",
+          "fields": [
+            "name"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "CDN 清单只读权限，精确权限见第一方插件指南"
+          ],
+          "conditions": [
+            "状态值按厂商映射；不识别的状态不判正常",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn-origin",
+          "fields": [
+            "hosts",
+            "port",
+            "protocol"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "额外的 CDN 回源详情只读权限"
+          ],
+          "conditions": [
+            "显式开启 collect_origin；仅比较显式期望；条件/区域策略和不可观测字段为 unknown",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "cloudflare",
+      "methods": [
+        "sync",
+        "probe",
+        "control"
+      ],
+      "services": [
+        {
+          "service": "zones",
+          "fields": [
+            "id",
+            "name"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "Zone Read"
+          ],
+          "conditions": [
+            "zone 不是注册域名；missing 需要显式范围和存在基线",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "dns",
+          "fields": [
+            "type",
+            "name",
+            "content",
+            "proxied"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "DNS Read"
+          ],
+          "conditions": [
+            "不导入 DNS 记录为新资产；DNS 写入交由外部 DNSControl",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn-origin",
+          "fields": [
+            "hosts",
+            "port"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "Origin Read 与对应功能授权"
+          ],
+          "conditions": [
+            "显式 collect_origin；只比较单条启用、无条件规则；协议不可观测；复杂规则、Host header、SNI 不在比较范围",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "control",
+          "action": "cdn-pause",
+          "fields": [
+            "paused"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "unsupported",
+            "plan": "conditional",
+            "execute": "conditional",
+            "readback": "conditional"
+          },
+          "permissions": [
+            "Zone Read / Zone Write"
+          ],
+          "conditions": [
+            "作用于整个 zone，可能影响所有代理流量；不是单个主机名操作",
+            "单动作；执行前重读，执行后回读；配置接受不等于业务健康；没有服务端原子 CAS"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "control",
+          "action": "cdn-resume",
+          "fields": [
+            "paused"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "unsupported",
+            "plan": "conditional",
+            "execute": "conditional",
+            "readback": "conditional"
+          },
+          "permissions": [
+            "Zone Read / Zone Write"
+          ],
+          "conditions": [
+            "作用于整个 zone，可能影响所有代理流量；不是单个主机名操作",
+            "单动作；执行前重读，执行后回读；配置接受不等于业务健康；没有服务端原子 CAS"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "control",
+          "action": "cdn-origin",
+          "fields": [
+            "origin.host"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "unsupported",
+            "plan": "conditional",
+            "execute": "conditional",
+            "readback": "conditional"
+          },
+          "permissions": [
+            "Zone Read / Origin Read / Origin Write 与对应功能授权"
+          ],
+          "conditions": [
+            "仅已有启用 Origin Rule 的主机覆盖；权限与套餐有条件；不修改端口、协议、Host header、SNI、DNS 或匹配条件",
+            "单动作；执行前重读，执行后回读；配置接受不等于业务健康；没有服务端原子 CAS"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "ctyun",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "cdn",
+          "fields": [
+            "name",
+            "status",
+            "cname"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "天翼 API 账号与 CDN 只读访问；精确最小 IAM 权限尚未确认"
+          ],
+          "conditions": [
+            "状态值按厂商映射；不识别的状态不判正常",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn-origin",
+          "fields": [
+            "hosts",
+            "port",
+            "protocol"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "额外的天翼 CDN 回源详情只读访问；精确最小 IAM 权限尚未确认"
+          ],
+          "conditions": [
+            "显式开启 collect_origin；仅比较显式期望；条件/区域策略和不可观测字段为 unknown",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "domains",
+          "fields": [],
+          "stages": {
+            "register": "unsupported",
+            "observe": "unsupported",
+            "compare": "unsupported",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [],
+          "conditions": [
+            "没有已支持的注册域名列表接口"
+          ],
+          "verification": "unverified"
+        }
+      ]
+    },
+    {
+      "plugin": "dns",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "dns",
+          "fields": [
+            "addresses",
+            "canonical_name"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "无云权限；系统 DNS 解析器可达"
+          ],
+          "conditions": [
+            "只查询 A/AAAA/CNAME；fake-IP 出口不能证明公网解析；不是完整 DNS 导出",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "ssh",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "host",
+          "fields": [
+            "host",
+            "system",
+            "release",
+            "architecture"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "普通 SSH 账号、可信主机密钥与非交互认证"
+          ],
+          "conditions": [
+            "只运行固定 uname -srm；不证明应用健康，不提供任意命令或资产 missing",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "tencent",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "domains",
+          "fields": [
+            "name",
+            "expires_at"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "注册域名列表只读权限，精确权限见第一方插件指南"
+          ],
+          "conditions": [
+            "缺少字段或权限时不能证明清单完整；missing 需要 watch、新鲜成功回执和正向基线",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn",
+          "fields": [
+            "name",
+            "status",
+            "cname"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "CDN 清单只读权限，精确权限见第一方插件指南"
+          ],
+          "conditions": [
+            "状态值按厂商映射；不识别的状态不判正常",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        },
+        {
+          "service": "cdn-origin",
+          "fields": [
+            "hosts",
+            "port",
+            "protocol"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "额外的 CDN 回源详情只读权限"
+          ],
+          "conditions": [
+            "显式开启 collect_origin；仅比较显式期望；条件/区域策略和不可观测字段为 unknown",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "tls",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "tls",
+          "fields": [
+            "not_after",
+            "verified",
+            "verification"
+          ],
+          "stages": {
+            "register": "unsupported",
+            "observe": "conditional",
+            "compare": "unsupported",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "目标 TLS 端口可达"
+          ],
+          "conditions": [
+            "仅观测服务证书；不枚举证书资产、不做资产 missing、不签发或部署；sync 成功不等于信任通过",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    },
+    {
+      "plugin": "whois",
+      "methods": [
+        "sync"
+      ],
+      "services": [
+        {
+          "service": "found",
+          "fields": [
+            "found",
+            "registrar",
+            "expires_at"
+          ],
+          "stages": {
+            "register": "conditional",
+            "observe": "conditional",
+            "compare": "conditional",
+            "plan": "unsupported",
+            "execute": "unsupported",
+            "readback": "unsupported"
+          },
+          "permissions": [
+            "WHOIS TCP 43 可达"
+          ],
+          "conditions": [
+            "字段取决于公开响应；没有 RDAP 回退；不能证明云账号清单或资产 missing",
+            "字段可能省略；缺失或不可观测字段不能当作正常证据"
+          ],
+          "verification": "automated-only"
+        }
+      ]
+    }
+  ],
+  "external_details": "unknown"
+}
+--- stderr

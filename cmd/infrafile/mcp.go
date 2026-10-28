@@ -154,6 +154,7 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 		{"audit", "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 和 missing 需要 max_age_days。", auditSchema},
 		{"validate", "只读校验当前数据仓，返回问题代码与数量；详细诊断用 CLI validate。", empty},
 		{"schema", "返回与 CLI 校验相同的内嵌 JSON Schema。", empty},
+		{"capabilities", "离线返回第一方插件的字段、动作、权限前提和支持边界；不检查当前账号或现场健康，外部插件细节未知。", empty},
 		{"plan", "只读生成单动作计划，不保存、不执行。标签必须唯一匹配在用 Resource；改回源必须提供已登记的 origin_key。", planSchema},
 	} {
 		compiler := jsonschema.NewCompiler()
@@ -209,6 +210,9 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 }
 
 func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time) (any, error) {
+	if tool == "capabilities" {
+		return capabilityResult(), nil
+	}
 	if tool == "schema" {
 		bundle, err := ledger.Bundle()
 		if err != nil {

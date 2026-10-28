@@ -81,8 +81,7 @@ func Open(ctx context.Context, name, dir string) (Client, error) {
 	if name == "example" {
 		return example{}, nil
 	}
-	switch name {
-	case "cloudflare", "dns", "tls", "whois", "ssh", "aliyun", "tencent", "baidu", "ctyun":
+	if _, ok := builtinCapability(name); ok {
 		return &builtin{name: name, dir: dir}, nil
 	}
 	return openExternal(ctx, name)
