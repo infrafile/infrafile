@@ -30,6 +30,8 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [设计](docs/design.md)：定位、数据模型、插件、agent 接口、受控写
 - [v0.1 实现计划](docs/plan/v0.1.md)
 - [v0.3 方案与实施顺序](docs/plan/v0.3.md)
+- [v1.0 完整方案](docs/plan/v1.0.md)：三个真实使用目标、能力边界与架构
+- [v1.0 任务拆分](docs/plan/v1.0-tasks.md)与[验收门槛](docs/plan/v1.0-acceptance.md)
 - [v0.3 回源采集与漂移检查](docs/first-party-plugins.md#回源采集v03)
 - [快速上手](docs/quickstart.md)
 - [发布与验签](docs/release.md)

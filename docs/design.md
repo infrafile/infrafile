@@ -16,6 +16,8 @@ parent: infrafile-goals
 
 2026-10-28：[v0.3.0](https://github.com/infrafile/infrafile/releases/tag/v0.3.0) 已发布，包含执行回执、显式范围 missing、CDN 回源漂移和 App 部署源站检查。真实只读验收与使用接入的剩余项见 [v0.3 方案](plan/v0.3.md)；Web UI 仍排在审计体系稳定之后。
 
+2026-10-28：后续按 [v1.0 完整方案](plan/v1.0.md)推进，以真实台账长期使用、外部独立上手和 Agent 受控流程为发布门槛；[任务拆分](plan/v1.0-tasks.md)包含 6 个工作包、20 个任务。新增能力尚未实现，当前行为仍以各命令文档为准。
+
 > 标「建议」的是落实时的默认做法，可以调整；其余是已定的决定。
 
 ## 定位
@@ -92,6 +94,7 @@ spec:
 - **人写的和机器写的分开**：
   - sync 产生的机器观测只写 `state/` 目录。
   - 人维护的记录放在 inventory 目录；sync、audit 和 plan / apply 不改这些记录。显式 `import --write` 只创建不存在的记录，不覆盖人写字段。
+  - v1.0 规划共享编辑入口，管理意图可由人编辑或经明确授权的导入/变更流程写入；该入口尚待实现，不能把 observed 自动提升为 desired。
 
 ### 凭据引用：统一 URI
 
@@ -168,6 +171,7 @@ M7 已实现，2026-10-25 确认：Cloudflare 暂停／恢复按 zone，改回�
 | **v0.1** | 账本核心（kind / schema / JSON Schema、外键校验、归档、到期检查、`show` 与关系图、`ssh-config`、`init` 脚手架）；凭据（内置 sops + age、外部引用后端、`run --secret`）；agent 接口（`--json`、只读 MCP、内嵌指南）；`sync` 写入 `state/`；上述插件与导入器；plan / apply 受控写 |
 | **v0.2** | 审计与 drift 检测（孤儿记录、僵尸记录、CDN 配置漂移、源站暴露等）；waivers 偏差豁免；生成 Gatus 监控配置（单向渲染） |
 | **v0.1 之后** | 内置 Web UI `infrafile serve`，读写同一个 git 仓库 |
+| **v1.0 规划中** | 能力/预检、可信巡检与问题历史、单用户工作台、受控 Agent 流程、正式迁移及独立上手；按[工作包](plan/v1.0-tasks.md)交付 |
 
 ### waivers 偏差豁免（v0.2）
 
