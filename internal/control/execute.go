@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"runtime"
 	"time"
 
 	"github.com/infrafile/infrafile/internal/ledger"
@@ -46,6 +47,9 @@ func planCurrent(p *Plan, now time.Time) error {
 
 // Execute journals a v2 attempt before control. A repeated digest only probes; it never writes again.
 func Execute(ctx context.Context, repo *ledger.Repo, p *Plan, opts ExecutionOptions) (Result, error) {
+	if runtime.GOOS == "windows" {
+		return Result{}, errors.New("Windows 尚未验证执行回执权限与持久化；未创建执行目录，请使用 Linux/macOS")
+	}
 	if err := p.Validate(); err != nil {
 		return Result{}, err
 	}

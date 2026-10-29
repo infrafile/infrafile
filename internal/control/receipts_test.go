@@ -234,3 +234,35 @@ func TestReceiptReadBudgetsRefuseWholeResult(t *testing.T) {
 		t.Fatal("oversized receipt accepted")
 	}
 }
+
+func TestReceiptPrivateLockDirectoryReplacementRefusesPublication(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("native write path intentionally rejected")
+	}
+	dir := t.TempDir()
+	ctx := context.Background()
+	r := receiptFixture(t)
+	s, err := openReceiptStore(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.close()
+	old, err := s.save(ctx, r, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	private := filepath.Join(dir, ".infrafile")
+	if err := os.Rename(private, private+".saved"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(private, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.save(ctx, r, old); err == nil {
+		t.Fatal("published after private lock directory was replaced")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "history", "executions", r.Data.ID+".json"))
+	if err != nil || !bytes.Equal(data, old) {
+		t.Fatal("changed evidence after lock directory replacement", err)
+	}
+}

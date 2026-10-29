@@ -349,6 +349,45 @@ func TestManagedControlNoopRecordsMatchingReadWithoutControl(t *testing.T) {
 	}
 }
 
+func TestManagedExecutionLockIsPrivateAndIgnoredInExistingGitRepo(t *testing.T) {
+	managedControlRepo(t)
+	p := managedPlan(t)
+	if out, err := exec.Command("git", "init", "--quiet").CombinedOutput(); err != nil {
+		t.Fatal(err, string(out))
+	}
+	importCLI(t, 0, applyManaged(p)...)
+	for _, name := range []string{".infrafile/execution.lock", ".infrafile/.gitignore"} {
+		info, err := os.Lstat(name)
+		if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
+			t.Fatal("private execution metadata missing", name, err)
+		}
+		if err := exec.Command("git", "check-ignore", "-q", name).Run(); err != nil {
+			t.Fatal("private metadata would be staged by default", name, err)
+		}
+	}
+	if _, err := os.Stat("history/executions/.execution.lock"); !os.IsNotExist(err) {
+		t.Fatal("execution lock leaked into receipt history")
+	}
+}
+
+func TestManagedExecutionPreservesExistingPrivateIgnoreRules(t *testing.T) {
+	managedControlRepo(t)
+	p := managedPlan(t)
+	if err := os.Mkdir(".infrafile", 0700); err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("!operator-file\n")
+	writeImportFile(t, ".infrafile/.gitignore", string(data))
+	importCLI(t, 2, applyManaged(p)...)
+	after, _ := os.ReadFile(".infrafile/.gitignore")
+	if !bytes.Equal(data, after) {
+		t.Fatal("overwrote user ignore rules")
+	}
+	if _, err := os.Stat("changed"); !os.IsNotExist(err) {
+		t.Fatal("unprotected private lock reached cloud control")
+	}
+}
+
 func TestManagedStorageRefusesLegacyExecutionWithoutRewritingPlan(t *testing.T) {
 	controlRepo(t)
 	importCLI(t, 0, "plan", "cdn-pause", "Resource/edge", "-o", "plan.json")
