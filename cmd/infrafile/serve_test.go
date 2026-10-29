@@ -427,7 +427,8 @@ func TestWorkbenchResultLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data = bytes.Replace(data, []byte("跑博客和 wiki 的前端机"), bytes.Repeat([]byte("z"), 4<<20), 1)
+	// JSON HTML escaping makes this bounded record exceed the serialized response limit.
+	data = bytes.Replace(data, []byte("跑博客和 wiki 的前端机"), bytes.Repeat([]byte("<"), 1<<20), 1)
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}

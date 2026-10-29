@@ -315,10 +315,6 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	}
 	if tool != "schema" {
 		result = withoutSecrets(result)
-		if !validate.SnapshotSafe(result) {
-			webError(out, 422)
-			return
-		}
 	}
 	data, err := json.Marshal(result)
 	if ctx.Err() != nil {
@@ -327,6 +323,14 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil || len(data) > 4<<20 {
 		webError(out, 422)
+		return
+	}
+	if tool != "schema" && !validate.SnapshotSafe(result) {
+		webError(out, 422)
+		return
+	}
+	if ctx.Err() != nil {
+		webError(out, 504)
 		return
 	}
 	out.Header().Set("Content-Type", "application/json; charset=utf-8")
