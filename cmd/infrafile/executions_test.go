@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -91,11 +92,46 @@ func TestManagedControlPrewriteFailureAndPostwriteUncertainty(t *testing.T) {
 			p := managedPlan(t)
 			t.Setenv("INFRAFILE_CONTROL_CASE", mode)
 			args := applyManaged(p)
+			var output []byte
 			if mode == "hang_after_write" {
-				args = append(args, "--timeout", "500ms")
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				written := make(chan bool, 1)
+				// 在写后才取消，避免慢 runner 的插件启动耗时把故障移到写前。
+				go func() {
+					ticker := time.NewTicker(10 * time.Millisecond)
+					defer ticker.Stop()
+					for {
+						if _, err := os.Stat("control-child.pid"); err == nil {
+							written <- true
+							cancel()
+							return
+						}
+						select {
+						case <-ctx.Done():
+							written <- false
+							return
+						case <-ticker.C:
+						}
+					}
+				}()
+				root := newRoot(time.Now())
+				root.SetArgs(args)
+				var stdout, stderr bytes.Buffer
+				root.SetOut(&stdout)
+				root.SetErr(&stderr)
+				err := root.ExecuteContext(ctx)
+				cancel()
+				var code exitCode
+				if !<-written || !errors.As(err, &code) || code != 1 {
+					t.Fatalf("write then cancel: %v stdout=%s stderr=%s", err, &stdout, &stderr)
+				}
+				output = stdout.Bytes()
+			} else {
+				output = importCLI(t, 1, args...)
 			}
 			var r control.Result
-			if json.Unmarshal(importCLI(t, 1, args...), &r) != nil || r.Receipt != p.Digest {
+			if json.Unmarshal(output, &r) != nil || r.Receipt != p.Digest {
 				t.Fatal("missing failed receipt", r)
 			}
 			if mode == "mismatch" {
