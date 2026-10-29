@@ -68,7 +68,7 @@ func newWorkbench(ctx context.Context, dir string, address serveAddress, ttl tim
 	if _, _, err := ledger.Load(ctx, dir); err != nil {
 		return nil, fmt.Errorf("无法读取数据仓")
 	}
-	definitions, err := queryTools()
+	definitions, err := workbenchQueries()
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	out.Header().Set("Referrer-Policy", "same-origin")
 	out.Header().Set("X-Content-Type-Options", "nosniff")
 	out.Header().Set("X-Frame-Options", "DENY")
-	out.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	out.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	if !w.trustedRequest(r) {
 		webError(out, 403)
 		return
@@ -211,13 +211,17 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.Body = http.MaxBytesReader(out, r.Body, 64<<10)
-	if r.Method == http.MethodGet && r.URL.Path == "/app.css" {
-		data, _ := workbenchFiles.ReadFile("web/app.css")
-		out.Header().Set("Content-Type", "text/css; charset=utf-8")
+	if r.Method == http.MethodGet && (r.URL.Path == "/app.css" || r.URL.Path == "/app.js") {
+		data, _ := workbenchFiles.ReadFile("web" + r.URL.Path)
+		contentType := "text/css; charset=utf-8"
+		if r.URL.Path == "/app.js" {
+			contentType = "application/javascript; charset=utf-8"
+		}
+		out.Header().Set("Content-Type", contentType)
 		out.Write(data)
 		return
 	}
-	if r.Method == http.MethodGet && r.URL.Path == "/" {
+	if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/assets" || r.URL.Path == "/inspections" || r.URL.Path == "/changes") {
 		w.page(out, r)
 		return
 	}
@@ -304,7 +308,7 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		webError(out, 401)
 		return
 	}
-	result, err := mcpCall(ctx, w.dir, tool, args, w.now())
+	result, err := workbenchCall(ctx, w.dir, tool, args, w.now())
 	if ctx.Err() != nil {
 		webError(out, 504)
 		return
@@ -355,9 +359,9 @@ func (w *workbench) page(out http.ResponseWriter, r *http.Request) {
 	}
 	var page bytes.Buffer
 	err := workbenchTemplate.ExecuteTemplate(&page, "serve.html", struct {
-		LoggedIn            bool
-		CSRF, Repo, Expires string
-	}{loggedIn, csrf, filepath.Base(w.dir), session.expires.UTC().Format(time.RFC3339)})
+		LoggedIn                  bool
+		CSRF, Repo, Expires, Page string
+	}{loggedIn, csrf, filepath.Base(w.dir), session.expires.UTC().Format(time.RFC3339), r.URL.Path})
 	if err != nil {
 		webError(out, 500)
 		return

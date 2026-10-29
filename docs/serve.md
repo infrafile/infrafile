@@ -1,6 +1,6 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定读取一个数据仓，提供配对登录和八个离线只读 API；页面和样式嵌入发行二进制，无需 Node。资产、巡检、变更三页由 T12 继续交付，台账编辑由 T13 交付。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定读取一个数据仓，提供配对登录、资产/巡检/变更三个只读页面和十个离线 API；页面、样式和浏览器脚本嵌入发行二进制，无需 Node。台账变更预览/保存及云计划/执行回执索引仍由 T13/T15 接入，T12 的这些集成验收继续开放。当前正式 v0.3.0 尚无此命令。
 
 ## 本机启动
 
@@ -37,6 +37,16 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 本机模式拒绝所有代理头及非回环连接。两种模式都验证精确 Host、浏览器 Origin 和 Sec-Fetch-Site；不提供 CORS，不接受 URL 查询参数或绝对形式请求 URI。HTTPS 实际证书、代理部署和网络隔离需在使用方另行验证。
 
+## 三页只读使用
+
+登录后默认进入资产页。`/assets` 按主键、类型、在用/归档状态和标签搜索，点击关系可以跳到相关资产；详情并列登记期望与最近保存的观测。观测只从该资产明确绑定的实例和服务提取，以自然身份、SSH host 或绑定 hostname 匹配；身份重复、不匹配或服务不完整时不展示为该资产的事实。Cloudflare DNS 仅限 watch 对应 zone，不借用同账号其他 zone 的同名记录。匹配到保存值不代表本轮新鲜覆盖，旁列检查状态、代码、来源与原始时间。
+
+`/inspections` 分开展示最近执行、固定覆盖分母、当前风险和最近一次显式保存的问题历史。可筛选已检/未知/不适用，不将零 findings、豁免或空历史显示为健康。点击问题可以在 `/changes` 查看同一 fingerprint/scope_hash 的保留变化；退出范围和 unknown 不显示为恢复。
+
+`/changes` 当前交付问题变化时间线。已清理前缀显式标注，返回现存保留事件；大于 JavaScript 安全整数的游标按原始数字文本显示，不取整。缺历史与损坏分别显示空态/失败，不保留上一次成功内容冒充当前结果。台账 diff/保存及云计划/执行回执卡片待共享服务接入；页面保留现有 Git 与本地受控 CLI 的职责说明，这些集成完成后才关闭 T12。
+
+页面支持键盘操作、明确标签、跳过导航、状态文字和窄屏。筛选范围与 TTL 放在 URL fragment（key/days/issue），配对/会话令牌始终不进 URL。默认视图证据有效期 7 天，可显式调整；切换页面保留范围，切换资产会取消旧查询。失效会话或读取失败时清空当前数据并显示重连/重选入口。
+
 ## 只读 API
 
 登录后 `GET /api/session` 返回 `{version, csrf, expires_at}`，读取不延长会话。查询使用同源 `POST /api/<name>`、`Content-Type: application/json`、会话 Cookie 以及 `X-CSRF-Token`；Origin 必须精确匹配启动地址。请求体为 JSON 对象；字段/选择条件复用 [MCP 契约](json/mcp.md)，禁止额外字段、重复 JSON 键、原始地址/路径/命令。
@@ -51,12 +61,14 @@ infrafile serve --dir /absolute/path/to/ledger \
 | validate | `{}` | 记录数、问题数与代码计数，无敏感诊断原文 |
 | schema | `{}` | 内嵌 JSON Schema bundle |
 | capabilities | `{}` | 离线支持能力目录 |
+| context | 必须 key，可选 max_age_days | `{version,inspection,observations}`；inspection 与相同输入 CLI inspect 一致，observations 含 check/plugin/instance/service/file/observed_at/match/values |
+| changes | `{}` | `{version,present,last_sequence,pruned_through,changes}`；相当于 findings changes 从 pruned_through 读取全部保留事件，不接受任意游标或路径 |
 
-结果与 MCP structuredContent 一致。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。查询重新读取并校验固定仓库，不运行插件、联网、解析凭据或写台账/历史。没有 plan、apply、sync、import、run、secret 或任意文件下载 API；这不是远程云端执行入口。
+原八个查询结果与 MCP structuredContent 一致；context/changes 为工作台新增只读入口，MCP 九工具保持。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes 沿用历史救援契约，只严格读取已保存历史，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有 plan、apply、sync、import、run、secret 或任意文件下载 API；这不是远程云端执行入口。
 
 `POST /logout` 和 `/revoke-all` 使用页面表单的会话 CSRF，分别撤销当前/全部设备。`POST /pair` 使用登录表单独立的 CSRF 与配对 Cookie；两者都要求同源 Origin。配对码每分钟最多尝试 5 次，不按 IP 建立无限增长状态。Cookie 或表单过期后重新打开登录页。
 
-所有响应 no-store，HTML 由 html/template 转义；CSP 禁止脚本、嵌入框架及外部资源。请求体最多 64 KiB、响应 JSON 最多 4 MiB、并发最多 4；查询最多 30 秒且不超过会话剩余时间。HTTP 请求头上限配置为 8 KiB，读取头/请求分别限 5/10 秒，写入限 35 秒。根目录身份变化、符号链接记录/状态及不安全动态结果会被拒绝，不暴露失败原文。
+所有响应 no-store，HTML 由 html/template 转义；浏览器动态内容仅用 textContent/DOM 构造，不执行台账文字。CSP 仅允许同源分发的脚本、样式和请求，禁止行内脚本、嵌入框架及外部资源。请求体最多 64 KiB、响应 JSON 最多 4 MiB、并发最多 4；查询最多 30 秒且不超过会话剩余时间。HTTP 请求头上限配置为 8 KiB，读取头/请求分别限 5/10 秒，写入限 35 秒。根目录身份变化、符号链接记录/状态及不安全动态结果会被拒绝，不暴露失败原文。
 
 错误只返回 `{version:"v1", ok:false, error:<固定状态文本>}`：400 参数/表单错误，401 未登录或会话失效，403 来源/CSRF/配对拒绝，404 未提供入口，413 请求体过大，415 媒体类型错误，422 台账/查询/结果拒绝，429 尝试/并发/会话上限，503 根目录或配对发布失败，504 查询超时/取消。不返回请求、路径、配对码、Cookie 或云端错误原文；退出 0 表示服务正常停止，不代表台账健康。
 
