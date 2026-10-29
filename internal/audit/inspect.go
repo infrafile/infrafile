@@ -130,6 +130,14 @@ type inspector struct {
 // Inspect uses the audit rules, while qualifying coverage independently from findings.
 // The caller validates the ledger first. This function never invokes a collector or resolves secrets.
 func Inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*Inspection, error) {
+	i, err := inspect(ctx, repo, opts)
+	if err != nil {
+		return nil, err
+	}
+	return i.report, nil
+}
+
+func inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*inspector, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -322,7 +330,7 @@ func Inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*Insp
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return report, nil
+	return i, nil
 }
 
 func qualifiesFinding(c Check, f Finding) bool {

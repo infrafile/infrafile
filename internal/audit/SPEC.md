@@ -32,6 +32,12 @@ Inspect 与 audit 共用规则、自然身份、missing 的资格判断和 CDN �
 
 历史发现保留为 unknown，只有同账号/服务/方面的有效证据才能确认当前观测风险。当前台账中的直连声明可独立确认；豁免不改变覆盖资格。成功生成报告沿用已冻结的 inspect 退出码 0，即使 ok=false；CLI/MCP 共用结果和敏感值扫描。完整字段/分母/限制由 docs/json/inspect.md 及状态表、禁网/哈希、CLI/MCP/stdio 回归约束。T08/T09 继续问题身份和显式历史推进，本实现不写历史。
 
+## 问题身份和状态转换
+
+各 finding 兼容增加 issues，按规则/目标/实例/服务/方面、区域及结构化自然身份/关联源站生成 v1 指纹；回源按 hosts/port/protocol 分面，不改变旧 finding 数量。scope_hash 独立绑定配置/TTL/身份/期望/关系；备注、时间、观测值、豁免/NA 不参与。不同范围历史单列，范围变化不生成恢复。
+
+EvaluateIssues 从同一次 inspect 的证据和当前/已知问题并集产生 confirmed/clear/unknown、in_scope、found 与独立豁免。AdvanceIssues 为纯函数，保留首次发现、确认/检查/最近恢复时间和发生次数；同范围复发沿用历史，未知/失败/过期/NA/有效豁免不制造恢复，移出范围保留离开前状态。重复/矛盾身份、未知版本、时间倒退和计数溢出拒绝。T09 另接显式保存与查询；本实现不写历史。逐规则 key、状态表和精确 JSON 见 docs/json/issues.md、issue-identities 黄金与真实规则/快照转换回归。
+
 ## 边界
 
 不隐式刷新观测或自动修复偏差。对 plugin 的当前依赖仅用于无 I/O 的哈希；依赖边界及其待确认的长期约束见 `infrafile-architecture`。字段和提示码的详细输出仍由 `docs/json/audit.md` 与 CLI/MCP 黄金测试约束。

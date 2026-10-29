@@ -71,7 +71,7 @@ func TestCDNDriftIdentityAndWaiver(t *testing.T) {
 }
 
 func TestCDNDriftMalformedAndCancelled(t *testing.T) {
-	for _, value := range []any{"invalid", []any{map[string]any{"name": "static.example.com", "status": 6}}, []any{map[string]any{"name": "invalid host", "status": "offline"}}} {
+	for _, value := range []any{"invalid", []any{map[string]any{"name": "static.example.com", "status": 6}}, []any{map[string]any{"name": "invalid host", "status": "offline"}}, []any{map[string]any{"name": "static.example.com", "status": "offline", "area": 6}}} {
 		in := &Input{Repo: repo(t, "", nil), Snapshots: []Snapshot{{Plugin: "aliyun", File: "state/aliyun/home.yaml", Spec: map[string]any{"cdn": value}}}}
 		if err := Prepare(context.Background(), in, []Rule{cdnDrift}); err == nil {
 			t.Fatal("malformed CDN accepted")

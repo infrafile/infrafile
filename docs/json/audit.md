@@ -19,6 +19,8 @@
 
 `findings[]` 包含 `rule`、`target`、`file`、`message`、`evidence`、`waiver`。`stale_state` 的 target 是 `plugin/instance`，evidence 包含 `observed_at`、`age_days`、`max_age_days`。判断使用实际经过时间，严格超过阈值才报告，恰好等于阈值不报；显示的整天数不用于舍弃不足一天的超时。
 
+v1.0 开发分支兼容增加 `issues[]`，为各规则/方面提供 v1 指纹、适用范围摘要及结构化 key；原 finding 数量和以上字段不变。回源多方面可对应多个问题身份；消息/时间/观测值不入指纹。详见[问题身份与恢复规则](issues.md)。audit 查询不推进历史，unknown、豁免或范围退出不表示恢复。
+
 例如以下发现未被豁免，导致 `ok: false`、退出 1：
 
 ```json

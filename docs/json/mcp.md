@@ -22,6 +22,8 @@ inspect 同样先校验整个台账，使用共享离线实现；max_age_days �
 
 audit 仅接受可选的 rules（cdn_drift / origin_exposure / orphan / zombie / stale_state / missing 的 ID 数组）和 max_age_days（非负整数，须能表示为 Go int）。省略 rules 或传空数组时运行全部就绪规则；重复 ID 只运行一次。默认运行前四条；stale_state 和 missing 需要 max_age_days，显式点名却未提供阈值时失败。未豁免发现返回 ok=false / isError=false；无有效快照不报缺失，声明的 watch 目标输出 missing_unknown；不能传 key / labels / kind、路径或命令。未知规则、额外字段与重复键均被拒绝。审计不调用插件、不访问网络、不读取凭据值。精确 match、自然身份、源站证据和 CDN 状态映射与 [CLI audit 契约](audit.md) 相同，豁免从数据仓配置读取，不能通过工具参数临时覆盖。
 
+v1.0 开发分支 audit / inspect 的 finding 兼容增加 issues 身份数组，与 CLI 同输入一致；字段和恢复语义见[问题身份](issues.md)。工具不推进或保存问题历史，不接受客户端提供“已恢复”结论。
+
 工具执行失败使用 `isError: true`，同时提供固定消息：
 
 ```json

@@ -70,7 +70,10 @@ func prepareCDN(ctx context.Context, in *Input) error {
 			if _, exists := raw["status"]; exists && !ok {
 				return fmt.Errorf("%s: CDN status 必须是字符串", s.File)
 			}
-			area, _ := raw["area"].(string)
+			area, areaString := raw["area"].(string)
+			if _, exists := raw["area"]; exists && !areaString {
+				return fmt.Errorf("%s: CDN area 必须是字符串", s.File)
+			}
 			id := observation.IdentityOf("Resource", mapped[0].Name, mapped[0].Spec)
 			k := key{id, status, area}
 			if seen[k] {

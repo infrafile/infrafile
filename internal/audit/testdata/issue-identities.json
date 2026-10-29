@@ -1,0 +1,158 @@
+[
+  {
+    "version": "v1",
+    "fingerprint": "090687cbdb5ad88df97a367f7f80d6fb0dd2ef9d8a665e29aa2ae386fe0a1d43",
+    "scope_hash": "bad5f9af09014bce83f00c0198f1cb0e6023cf6abc9cf6445fb6b65f085a78dc",
+    "key": {
+      "rule": "cdn_drift",
+      "target": "Resource/edge",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "cdn",
+      "aspect": "origin/protocol",
+      "natural": {
+        "kind": "Resource",
+        "provider": "aliyun",
+        "resource_id": "edge-id"
+      }
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "31c0ee443c3d6fa3c86a9f4860f752e3824941813ba15f841eeb6fe716f3900e",
+    "scope_hash": "30de37162454b01250f862f0bd0075ac882575cb7c08a700bc9a3ec13d38007b",
+    "key": {
+      "rule": "orphan",
+      "target": "aliyun/home/Domain/unmanaged.example.net",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "domains",
+      "aspect": "inventory",
+      "natural": {
+        "kind": "Domain",
+        "name": "unmanaged.example.net"
+      }
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "6c8c994d1ce66fc2d3fa1be7619aa1e1ce18a82bad0c7be55ac91ec487b2e148",
+    "scope_hash": "d80c91e1eb4b589d331d591723cf03e4415c65d538af71a60e85329836c59503",
+    "key": {
+      "rule": "stale_state",
+      "target": "aliyun/old",
+      "plugin": "aliyun",
+      "instance": "old",
+      "service": "",
+      "aspect": "freshness"
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "b2663190de76265289dbb80833729874fccaff0359a2f892709c00842e94594c",
+    "scope_hash": "bad5f9af09014bce83f00c0198f1cb0e6023cf6abc9cf6445fb6b65f085a78dc",
+    "key": {
+      "rule": "cdn_drift",
+      "target": "Resource/edge",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "cdn",
+      "aspect": "origin/port",
+      "natural": {
+        "kind": "Resource",
+        "provider": "aliyun",
+        "resource_id": "edge-id"
+      }
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "b9c1a5f07cc6271ab3224f2f0e58b151ceec3ecc8bfac8fdef120af73a213896",
+    "scope_hash": "bad5f9af09014bce83f00c0198f1cb0e6023cf6abc9cf6445fb6b65f085a78dc",
+    "key": {
+      "rule": "cdn_drift",
+      "target": "Resource/edge",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "cdn",
+      "aspect": "origin/hosts",
+      "natural": {
+        "kind": "Resource",
+        "provider": "aliyun",
+        "resource_id": "edge-id"
+      }
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "c6a4b8c1ae446b8adf16c9ed326b600bc3d1687f08209843a567c83bbe87435e",
+    "scope_hash": "f493ba5864f823ca3e3f76acc3081537d374df0b099d22e10281ebcec03fa22c",
+    "key": {
+      "rule": "origin_exposure",
+      "target": "Domain/example.com",
+      "plugin": "dns",
+      "instance": "public",
+      "service": "addresses",
+      "aspect": "address/A",
+      "natural": {
+        "kind": "Domain",
+        "name": "www.example.com"
+      },
+      "related": [
+        "Server/web"
+      ]
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "cd95642123865a0618c2419b51555a1f489084f251f4445678dcd46bd7932d14",
+    "scope_hash": "d53d02bb3358f86ef5a8d0915d041e0a33c5ee92bc86f6c24ffbfbc2e43994de",
+    "key": {
+      "rule": "cdn_drift",
+      "target": "Resource/edge",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "cdn",
+      "aspect": "status",
+      "natural": {
+        "kind": "Resource",
+        "provider": "aliyun",
+        "resource_id": "edge-id"
+      }
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "df9cb58f973c0df7c5cf3cd9175cf9e76fc15a6668d69bb1575aa810feeb48f3",
+    "scope_hash": "24a7f45668e29ddf7aeb079e9ec62f6b689e8b354014a2251998b8cd54b00db1",
+    "key": {
+      "rule": "zombie",
+      "target": "Domain/old.example.net",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "domains",
+      "aspect": "inventory",
+      "natural": {
+        "kind": "Domain",
+        "name": "old.example.net"
+      }
+    }
+  },
+  {
+    "version": "v1",
+    "fingerprint": "f72e846e112a6d0645c8f46482999fba9eb68c74a5d6905ea98350252f076b37",
+    "scope_hash": "460ac0335f455b640ef0510330c7e8ff10c426bd709e1eda69a21eb8a3f54645",
+    "key": {
+      "rule": "missing",
+      "target": "Domain/example.com",
+      "plugin": "aliyun",
+      "instance": "home",
+      "service": "domains",
+      "aspect": "presence",
+      "natural": {
+        "kind": "Domain",
+        "name": "example.com"
+      }
+    }
+  }
+]

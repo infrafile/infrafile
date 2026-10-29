@@ -87,6 +87,6 @@ INFRAFILE_PREVIOUS_BINARY=/absolute/path/to/v0.3.0/infrafile \
   go test ./cmd/infrafile -run '^TestV030Compatibility$' -count=1 -v
 ```
 
-覆盖旧版产生的虚构快照、CLI 查询/审计退出码、两个实际 stdio 子进程的七个旧工具、v1 计划及坏版本/重复键/超限、存储标记对旧业务操作的拒绝，以及恢复完整旧配置后的可读性。仅排除 audit 本次 as_of 时钟差异和 Schema bundle 新增的 storageVersion / audit.not_applicable 定义，不忽略旧业务字段。NA 声明需显式 v1 标记，旧二进制拒绝；不声明时旧数据契约保持。plan 工具使用不存在目标的安全拒绝路径，成功云计划由控制回放覆盖；没有真实云写。
+覆盖旧版产生的虚构快照、含真实规则发现的虚构台账、CLI 查询/审计退出码、两个实际 stdio 子进程的七个旧工具、v1 计划及坏版本/重复键/超限、存储标记对旧业务操作的拒绝，以及恢复完整旧配置后的可读性。仅排除 audit 本次 as_of 时钟差异、新增且先逐项验证的 findings.issues 身份扩展，以及 Schema bundle 新增的 storageVersion / audit.not_applicable 定义；不忽略旧业务字段或改变 finding 数量。NA 声明需显式 v1 标记，旧二进制拒绝；不声明时旧数据契约保持。plan 工具使用不存在目标的安全拒绝路径，成功云计划由控制回放覆盖；没有真实云写。
 
 未提供旧二进制时专项测试明确 skip，普通 CI 不能替代这项证据。原生平台及版本随实现 PR 记录；T19 仍须对正式候选完成升级/恢复，T02 离线重放不替代该门槛。

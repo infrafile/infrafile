@@ -44,7 +44,27 @@ $ infrafile audit --rule cdn_drift --json
         "snapshot_file": "state/aliyun/home.yaml",
         "status": "offline"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "b7bb9c803e1bb6dbb91d68782a5af46049de95907175acc15fe2af6346eb934a",
+          "scope_hash": "f3232c7a45eca3dc06fdfb74896dd85f256d232fc23c50431834c60542ca12c5",
+          "key": {
+            "rule": "cdn_drift",
+            "target": "Resource/audit-edge",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "cdn",
+            "aspect": "status",
+            "natural": {
+              "kind": "Resource",
+              "provider": "aliyun",
+              "resource_id": "fictional-cdn-id"
+            }
+          }
+        }
+      ]
     }
   ],
   "notices": [
