@@ -75,6 +75,7 @@ func (c mcpConnection) Write(ctx context.Context, message jsonrpc.Message) error
 }
 
 type mcpArgs struct {
+	ID         string            `json:"id"`
 	Key        string            `json:"key"`
 	Labels     map[string]string `json:"labels"`
 	Kind       string            `json:"kind"`

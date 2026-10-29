@@ -1,6 +1,6 @@
 # 兼容、存储版本与恢复
 
-本文冻结 T02 的版本边界、管理记录外层和新命令退出码。现有字段继续由 [JSON 契约](json/README.md)、[插件协议](plugins.md)及内嵌 Schema 约束。问题身份/载荷已由 T08/T09 接入，编辑事务见 T13 的 [change 契约](json/change.md)，云执行记录仍由 T15 实现；当前正式 v0.3.0 不含这些新管理接口。
+本文冻结 T02 的版本边界、管理记录外层和新命令退出码。现有字段继续由 [JSON 契约](json/README.md)、[插件协议](plugins.md)及内嵌 Schema 约束。问题身份/载荷已由 T08/T09 接入，编辑事务见 T13 的 [change 契约](json/change.md)，T15 云执行记录见 [executions](json/executions.md)；当前正式 v0.3.0 不含这些新管理接口。
 
 ## 公共接口与版本
 
@@ -11,7 +11,7 @@
 | CLI JSON | 顶层 `version: v1`；允许新增字段/命令，不删除、改名或改变冻结字段/退出码；消费者忽略未知结果字段 |
 | MCP | SDK 协商传输版本；保留七个既有工具的名称、参数、annotations 和结果含义。capabilities 为新增工具，Schema bundle 可有新增定义；参数仍拒绝未知字段和重复键 |
 | 插件 | 保留 describe `protocol_version: v1`、方法名、JSON-RPC 与 Snapshot 信封。能力目录不扩展旧 describe；未声明的细节为 unknown |
-| 云计划 | 保留 `version: v1` 单动作文件。拒绝目标符号链接、目录和设备。T15 的新前提若旧格式无法表达，须使用新计划版本，不改变旧字段含义 |
+| 云计划 | 旧仓保留 `version: v1` 单动作文件/执行含义；新存储仓生成 v2（摘要、30分钟有效期）并拒绝 v1 执行，须重新生成/审阅。新旧读取均拒绝符号链接、目录和设备；v1 show 保持兼容 |
 | 管理记录 | 独立 JSON 信封 `version: v1`，须先显式启用 `storageVersion: v1`；未知版本/种类/外层字段拒绝，不猜测或自动转换 |
 
 `v1alpha1` 不表示可以任意破坏字段；破坏性变更使用新版本并提供显式迁移。Schema 校验只证明形状，不能代替大小、重复键、权限、敏感字段和业务语义校验。
@@ -52,11 +52,11 @@ id 为 64 位小写十六进制，不从用户路径直接拼接。每文件最�
 
 `.infrafile/` 保存本机恢复材料、会话和锁，后续创建入口须配置忽略，不默认提交 Git；会话秘密永不纳入历史。最终脱敏回执由使用方选择是否纳入 Git。历史可能含私有资产信息，公开仓库仅存虚构夹具，任何记录都不保存凭据值。
 
-T09 已接入 state/.sync.lock、固定输入副本/复核和单文件原子替换，严格载荷及文件/中断/并发回归独立于信封 Schema。历史上限为 512 条问题、1024 条变化、4 MiB，另受共享展开限制；没有自动裁剪。清理须核对当前完整独立导出，默认仅清理 180 天前恢复状态和变化前缀，活动/范围退出问题保留，过期游标拒绝。完整契约见 [findings](json/findings.md)。T13 的多文件恢复有独立 [change 契约](json/change.md)与故障测试；T15 执行记录仍待实现，不能从历史保证外推。
+T09 已接入 state/.sync.lock、固定输入副本/复核和单文件原子替换，严格载荷及文件/中断/并发回归独立于信封 Schema。历史上限为 512 条问题、1024 条变化、4 MiB，另受共享展开限制；没有自动裁剪。清理须核对当前完整独立导出，默认仅清理 180 天前恢复状态和变化前缀，活动/范围退出问题保留，过期游标拒绝。完整契约见 [findings](json/findings.md)。T13 的多文件恢复有独立 [change 契约](json/change.md)与故障测试。T15 的回执也独立校验，先落盘才控制；本机 advisory lock 互斥、同摘要只回读，崩溃后保留 uncertain，不推断远端结果。每回执4MiB、256条/64MiB容量及新旧计划边界见 [executions](json/executions.md)。
 
 ## 新命令退出码
 
-capabilities、doctor、inspect 和 findings 已实现，下表其余为待实现接口。audit 的原 ok 和 0/1/2 语义保持不变，unknown notice 不表示已证明无风险。
+下表接口现已实现；audit 的原 ok 和 0/1/2 语义保持不变，unknown notice 不表示已证明无风险。旧 v1 apply 保持，新 v2 apply 的退出码及重放只读规则见 [apply](json/apply.md)；executions list/show 是只读查询，0 成功，2 参数/读取/输出失败。
 
 | 命令 | 0 | 1 | 2 |
 | --- | --- | --- | --- |

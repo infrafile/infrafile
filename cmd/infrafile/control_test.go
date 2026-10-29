@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -74,10 +75,34 @@ func controlHelper() {
 		case "describe":
 			result = map[string]any{"protocol_version": "v1", "capabilities": []string{"probe", "control"}}
 		case "probe":
+			mode := os.Getenv("INFRAFILE_CONTROL_CASE")
+			if mode == "slow_probe" {
+				time.Sleep(1200 * time.Millisecond)
+			}
+			if mode == "change_binding_during_probe" {
+				files, _ := filepath.Glob("history/executions/*.json")
+				if len(files) == 1 {
+					data, err := os.ReadFile("inventory/resources/edge.yaml")
+					if err != nil || os.WriteFile("inventory/resources/edge.yaml", bytes.Replace(data, []byte("example-zone"), []byte("changed-zone"), 1), 0600) != nil {
+						os.Exit(8)
+					}
+				}
+			}
+			if mode == "prewrite_journal_fail" {
+				files, _ := filepath.Glob("history/executions/*.json")
+				if len(files) == 1 {
+					if os.Rename(files[0], files[0]+".saved") != nil || os.Mkdir(files[0], 0700) != nil {
+						os.Exit(8)
+					}
+				}
+			}
 			if os.Getenv("INFRAFILE_CONTROL_CASE") == "timeout" {
 				time.Sleep(time.Minute)
 			}
 			_, err := os.Stat("changed")
+			if mode == "readback_fail" && err == nil {
+				os.Exit(7)
+			}
 			paused := err == nil
 			if os.Getenv("INFRAFILE_CONTROL_CASE") == "mismatch" {
 				paused = false
@@ -103,6 +128,16 @@ func controlHelper() {
 			}
 			result = map[string]any{"data": state}
 		case "control":
+			if os.Getenv("INFRAFILE_CONTROL_CASE") == "require_receipt" {
+				files, _ := filepath.Glob("history/executions/*.json")
+				if len(files) != 1 {
+					os.Exit(6)
+				}
+				data, err := os.ReadFile(files[0])
+				if err != nil || !bytes.Contains(data, []byte(`"phase": "write_started"`)) || !bytes.Contains(data, []byte(`"status": "uncertain"`)) {
+					os.Exit(6)
+				}
+			}
 			if req.Params.Action == "cdn-resume" {
 				if err := os.Remove("changed"); err != nil {
 					os.Exit(5)
@@ -110,6 +145,18 @@ func controlHelper() {
 			} else {
 				if err := os.WriteFile("changed", []byte("yes"), 0600); err != nil {
 					os.Exit(5)
+				}
+			}
+			switch os.Getenv("INFRAFILE_CONTROL_CASE") {
+			case "lost_reply":
+				os.Exit(7)
+			case "hang_after_write":
+				os.WriteFile("control-child.pid", []byte(fmt.Sprint(os.Getpid())), 0600)
+				time.Sleep(time.Minute)
+			case "final_journal_fail":
+				files, _ := filepath.Glob("history/executions/*.json")
+				if len(files) != 1 || os.Rename(files[0], files[0]+".saved") != nil || os.Mkdir(files[0], 0700) != nil {
+					os.Exit(8)
 				}
 			}
 			result = map[string]any{"data": map[string]any{}}

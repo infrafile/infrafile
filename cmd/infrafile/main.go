@@ -125,6 +125,7 @@ func newRoot(now time.Time) *cobra.Command {
 		newImportCmd(opts),
 		newPlanCmd(opts),
 		newApplyCmd(opts),
+		newExecutionsCmd(opts),
 		newDNSControlCmd(opts),
 		newGatusCmd(opts),
 		newMCPCmd(opts),

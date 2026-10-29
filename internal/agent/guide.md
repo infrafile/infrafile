@@ -41,7 +41,8 @@ description: 查询 infrafile 基础设施台账、检查资产到期和引用�
 1. 使用 `infrafile_plan`，action 为 cdn-pause / cdn-resume / cdn-origin；目标使用 Resource 主键或唯一标签选择。改回源另传 `origin_key`，限定未归档 Server / Resource / Domain，从 address / endpoint / 域名解析；它必须是合法主机名。
 2. 向用户展示目标、影响范围和计划前后差异。Cloudflare 暂停／恢复作用于整个 zone；改回源只改已有 Origin Rule 的目标 host，不改 Host header、SNI 或 DNS。
 3. 返回的 `dry_run: true` 表示只读生成，尚未执行、也未保存文件。需要保存时提取 `plan` 对象，用 CLI `infrafile plan show <文件>` 审阅。线上执行另需用户明确授权并通过 CLI apply；MCP 没有 apply 工具。
-4. apply 的 stale 表示未写入；mismatch / uncertain 可能已改变远端，先回读并重新计划，不盲目重试。配置回读一致不等于公网流量、源站或 TLS 验收完成。
+4. 显式新存储仓生成 v2，摘要绑定完整计划且30分钟内有效。执行须另传 `--reviewed-digest <已审阅摘要> --authorization-ref <适用授权引用> --actor <主体说明>`；来源和主体说明不证明身份或审批。旧 v1 计划在新存储仓须重新生成，旧仓兼容路径保持。
+5. apply 的 stale 表示未写入；mismatch / uncertain 可能已改变远端。同摘要已有回执时仅回读，不重发控制请求，也不把 uncertain 自动改成成功。用 `infrafile executions list/show` 查看完整计划及写前/回读记录；无回执不表示云端没变更。配置回读一致不等于公网流量、源站或 TLS 验收完成。
 
 ## 凭据与边界
 

@@ -10,6 +10,7 @@ let view = { key: '', days: 7, issue: '' };
 const filters = { search: '', kind: '', state: '' };
 const words = { checked: '已检', unknown: '未知', not_applicable: '不适用', succeeded: '执行成功', failed: '执行失败', running: '执行中', confirmed: '已确认', confirmed_risk: '存在已确认风险', blocked: '尚未全部通过', clear: '已明确通过', open: '未恢复', recovered: '已恢复', out_of_scope: '已退出范围', opened: '首次发现', unconfirmed: '尚未确认', reopened: '再次发生', returned: '重新进入范围', waived: '已豁免', unwaived: '豁免结束', matched: '身份匹配', ambiguous: '身份不唯一', not_observed: '未观测到', incomplete: '集合不完整', identity_mismatch: '身份不匹配', unsupported: '尚不支持' };
 const fieldNames = { provider: '厂商', account: '账号引用', dns_account: 'DNS 账号引用', address: '地址', private_address: '内网地址', region: '区域', instance_id: '实例 ID', resource_id: '资源 ID', type: '资源类型', endpoint: '端点', expires_at: '到期日', enabled: '期望启用', origin: '期望回源', deployments: '部署', bindings: '绑定关系', ssh: 'SSH 设置', hardware: '硬件', url: '地址', registrar: '注册商' };
+Object.assign(words, { applied: '已回读匹配', unchanged: '无需变更', stale: '前提已变化', mismatch: '回读不符', uncertain: '结果不确定', rejected: '未执行', prepared: '已保存执行前提', write_started: '已记录写入开始', completed: '本次尝试已结束' });
 function el(tag, text, className) {
     const node = document.createElement(tag);
     if (text !== undefined)
@@ -19,8 +20,8 @@ function el(tag, text, className) {
     return node;
 }
 function badge(value) {
-    const bad = ['failed', 'confirmed', 'confirmed_risk', 'open', 'reopened'].includes(value);
-    const warn = ['unknown', 'blocked', 'out_of_scope', 'not_applicable', 'ambiguous', 'not_observed', 'incomplete', 'identity_mismatch', 'unsupported', 'unconfirmed', 'waived'].includes(value);
+    const bad = ['failed', 'confirmed', 'confirmed_risk', 'open', 'reopened', 'mismatch'].includes(value);
+    const warn = ['unknown', 'blocked', 'out_of_scope', 'not_applicable', 'ambiguous', 'not_observed', 'incomplete', 'identity_mismatch', 'unsupported', 'unconfirmed', 'waived', 'uncertain', 'stale', 'rejected'].includes(value);
     return el('span', words[value] || value, 'badge' + (bad ? ' bad' : warn ? ' warn' : ''));
 }
 function params() { return new URLSearchParams(location.hash.slice(1)); }
@@ -346,8 +347,28 @@ async function changesPage(signal) {
         }
         section.append(list);
     }
+    await cloudExecutions(signal);
+}
+
+async function cloudExecutions(signal) {
     const cloud = box('云计划与执行回执');
-    cloud.append(el('p', '受控记录尚未接入。请通过本地 CLI 审阅计划并按适用授权执行；保存台账不表示线上已经变更。'));
+    cloud.append(el('p', '这里只展示已尝试执行的计划和本地回执。原始未执行计划仍在其文件中审阅；没有回执不表示云端没有变更。执行主体和授权引用是说明，不是审批身份认证。', 'notice'));
+    if (selectedKey() && !selectedKey().startsWith('Resource/')) { empty(cloud, '当前选择不是云控制 Resource；可切换到全部范围查看回执。'); return; }
+    const data = await api('executions', selectedKey() ? { key: selectedKey() } : {}, signal);
+    if (!data.executions.length) { empty(cloud, '尚无本范围的执行回执。请通过本地 CLI 审阅和执行；保存台账不会执行云操作。'); return; }
+    for (const row of data.executions) {
+        const item = el('article');
+        item.append(el('h3', row.target + ' · ' + row.operation), badge(row.status), el('p', '阶段：' + (words[row.phase] || row.phase) + '；记录时间：' + row.updated_at), el('p', '主体说明：' + row.actor + '；授权来源：' + row.authorization_ref), el('p', '审阅摘要：' + row.id + '；计划有效至：' + row.expires_at, 'muted'));
+        if (row.status === 'uncertain') item.append(el('p', '执行结果不确定。先通过本地 CLI 回读核实；不要盲目重新发送控制请求。', 'notice'));
+        const button = el('button', '读取完整计划与回执'); button.type = 'button'; const detail = el('div');
+        button.addEventListener('click', async () => {
+            button.disabled = true;
+            try { const result = await api('execution', { id: row.id }, signal); if (!signal.aborted) detail.replaceChildren(jsonDetails('审阅计划', result.data.plan), jsonDetails('写前、写后与回读记录', result.data), el('p', '如需核实，使用本地 CLI：infrafile apply <原计划文件> --reviewed-digest ' + row.id + ' --authorization-ref <适用授权引用> --actor <主体说明>。已有摘要只回读，不重发写请求。')); }
+            catch (error) { if (!signal.aborted) detail.replaceChildren(el('p', error.message, 'notice')); }
+            finally { if (!signal.aborted) button.disabled = false; }
+        });
+        item.append(button, detail); cloud.append(item);
+    }
 }
 
 async function inventoryPanel(signal) {

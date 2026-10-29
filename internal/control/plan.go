@@ -40,10 +40,27 @@ type Action struct {
 type Plan struct {
 	Version     string   `json:"version"`
 	GeneratedAt string   `json:"generated_at"`
+	ExpiresAt   string   `json:"expires_at,omitempty"`
+	Digest      string   `json:"digest,omitempty"`
 	Actions     []Action `json:"actions"`
 }
 
+const PlanLifetime = 30 * time.Minute
+
+// Sum binds the semantic JSON, including its version and validity window, without hashing itself.
+func (p *Plan) Sum() string {
+	copy := *p
+	copy.Digest = ""
+	return plugin.Hash(copy)
+}
+
+func managed(repo *ledger.Repo) bool {
+	cfg, _ := repo.Config.Value.(map[string]any)
+	return cfg["storageVersion"] == "v1"
+}
+
 var digest = regexp.MustCompile(`^[a-f0-9]{64}$`)
+var resourceKey = regexp.MustCompile(`^Resource/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$`)
 
 const maxPlanBytes = 4 << 20
 
@@ -145,11 +162,22 @@ func sameJSON(a, b []byte) bool {
 }
 
 func (p *Plan) Validate() error {
-	if p.Version != "v1" || len(p.Actions) != 1 {
-		return fmt.Errorf("只支持 v1 且恰好包含一个动作的计划")
+	if (p.Version != "v1" && p.Version != "v2") || len(p.Actions) != 1 {
+		return fmt.Errorf("只支持 v1/v2 且恰好包含一个动作的计划")
 	}
-	if _, err := time.Parse(time.RFC3339, p.GeneratedAt); err != nil {
+	generated, err := time.Parse(time.RFC3339, p.GeneratedAt)
+	if err != nil {
 		return fmt.Errorf("计划生成时间不合法")
+	}
+	if p.Version == "v1" {
+		if p.ExpiresAt != "" || p.Digest != "" {
+			return fmt.Errorf("v1 计划不能包含 v2 执行前提")
+		}
+	} else {
+		expires, err := time.Parse(time.RFC3339, p.ExpiresAt)
+		if err != nil || !expires.Equal(generated.Add(PlanLifetime)) || !digest.MatchString(p.Digest) || p.Digest != p.Sum() {
+			return fmt.Errorf("v2 计划摘要或 30 分钟有效期不合法")
+		}
 	}
 	a := p.Actions[0]
 	if !strings.HasPrefix(a.Target, "Resource/") || len(strings.TrimPrefix(a.Target, "Resource/")) == 0 || !digest.MatchString(a.RecordHash) || !digest.MatchString(a.ConfigHash) || !digest.MatchString(a.BeforeHash) || plugin.Hash(a.Before) != a.BeforeHash {
@@ -220,6 +248,11 @@ func Generate(ctx context.Context, repo *ledger.Repo, key, operation string, par
 		return nil, err
 	}
 	p := &Plan{Version: "v1", GeneratedAt: now.UTC().Format(time.RFC3339), Actions: []Action{{Target: key, Binding: b, RecordHash: rh, ConfigHash: plugin.Hash(c), Operation: operation, Parameters: parameters, Before: before, BeforeHash: plugin.Hash(before), After: after}}}
+	if managed(repo) {
+		p.Version = "v2"
+		p.ExpiresAt = now.UTC().Truncate(time.Second).Add(PlanLifetime).Format(time.RFC3339)
+		p.Digest = p.Sum()
+	}
 	return p, p.Validate()
 }
 
@@ -241,14 +274,27 @@ func observe(ctx context.Context, client plugin.Client, p protocol.ControlParams
 }
 
 type Result struct {
-	Version string `json:"version"`
-	OK      bool   `json:"ok"`
-	Target  string `json:"target"`
-	Status  string `json:"status"`
-	Message string `json:"message,omitempty"`
+	Version      string `json:"version"`
+	OK           bool   `json:"ok"`
+	Target       string `json:"target"`
+	Status       string `json:"status"`
+	Message      string `json:"message,omitempty"`
+	Receipt      string `json:"receipt,omitempty"`
+	Replayed     bool   `json:"replayed,omitempty"`
+	Verification string `json:"verification,omitempty"`
+	ObservedHash string `json:"observed_hash,omitempty"`
+	beforeHash   string
+	afterHash    string
 }
 
 func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
+	if p.Version != "v1" || managed(repo) {
+		return Result{}, fmt.Errorf("新存储须重新生成 v2 计划，并提供审阅摘要、授权引用和主体说明")
+	}
+	return apply(ctx, repo, p, nil)
+}
+
+func apply(ctx context.Context, repo *ledger.Repo, p *Plan, beforeControl func() error) (Result, error) {
 	r := Result{Version: "v1"}
 	if err := p.Validate(); err != nil {
 		return r, err
@@ -272,6 +318,7 @@ func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
 	if err != nil {
 		return r, err
 	}
+	r.beforeHash = plugin.Hash(before)
 	if plugin.Hash(before) != a.BeforeHash {
 		r.Status = "stale"
 		r.Message = "观测状态已变化，未执行；请重新生成计划"
@@ -284,6 +331,11 @@ func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
 	}
 	if ctx.Err() != nil {
 		return r, fmt.Errorf("执行已取消")
+	}
+	if beforeControl != nil {
+		if err := beforeControl(); err != nil {
+			return r, err
+		}
 	}
 	params.ExpectedHash = a.BeforeHash
 	data, err := plugin.Invoke(ctx, client, "control", params)
@@ -307,6 +359,7 @@ func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
 		r.Message = "控制请求已发送，但回读失败；请先回读后重新计划"
 		return r, nil
 	}
+	r.afterHash = plugin.Hash(after)
 	if plugin.Hash(after) != plugin.Hash(a.After) {
 		r.Status = "mismatch"
 		r.Message = "执行后回读与计划不符；请检查远端状态"
