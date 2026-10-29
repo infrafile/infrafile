@@ -48,7 +48,7 @@ gh release edit v1.0.0-rc.1 --repo infrafile/infrafile --draft=false --prereleas
 
 RC 不更新稳定 Homebrew tap，也不替换用户现有的 v0.3.0 安装。在独立目录运行已验签的 macOS arm64 / Linux amd64 归档，供 T17 独立上手和 T19 升级/恢复验收。formula 仍作为同批签名附件生成并核对 URL/哈希，稳定 tap 等正式发布门槛通过后再更新。
 
-候选已知限制：外部非维护者独立试用、14 个真实日历日的持续运行、正式范围切换、完整客户端受控场景及候选升级/密钥恢复尚待逐项验收；Windows 的新持久执行拒绝运行，其他未做原生验收的平台仅承诺构建产物。自有台账的控制面/DNS 结果不证明 HTTP/TLS/应用健康。详细门槛仍由[验收清单](plan/v1.0-acceptance.md)及工作包 issue 维护，RC 公开不表示 v1.0 完成。
+候选已知限制：外部非维护者独立试用、14 个真实日历日的持续运行、正式范围切换及完整客户端受控场景尚待逐项验收；Windows 的新持久执行拒绝运行，其他未做原生验收的平台仅承诺构建产物。RC1 升级/恢复结果见下方完成记录。自有台账的控制面/DNS 结果不证明 HTTP/TLS/应用健康。详细门槛仍由[验收清单](plan/v1.0-acceptance.md)及工作包 issue 维护，RC 公开不表示 v1.0 完成。
 
 ## 验签
 
@@ -97,6 +97,17 @@ ifl version --json
 ```
 
 Homebrew 要求信任时，审阅配方后只信任这一 formula：`brew trust --formula infrafile/tap/infrafile`，见 [Tap Trust](https://docs.brew.sh/Tap-Trust)。升级已有安装使用 `brew update`、`brew upgrade infrafile/tap/infrafile`。最后按[快速上手](quickstart.md)跑完临时 homelab 流程，才能把“签名产物已发布”与“包管理器安装可用”两项都记为完成。
+
+## v1.0.0-rc.1 候选发布验收
+
+2026-10-30（北京时间）已公开[首个预发布候选](https://github.com/infrafile/infrafile/releases/tag/v1.0.0-rc.1)，tag 固定在 `6156a39c7c71742e0c2070abece629f25c1223be`。稳定 Latest、Homebrew tap 和本机已安装版本保持 v0.3.0。
+
+- [精确提交 CI](https://github.com/infrafile/infrafile/actions/runs/40915526690)及[正式发布工作流](https://github.com/infrafile/infrafile/actions/runs/40915885167)成功，包含完整检查、六平台构建、签名及 Linux amd64 归档内脚本 smoke。早先主分支 CI 的写后取消测试失败日志保留；[PR #33](https://github.com/infrafile/infrafile/pull/33)改为确认模拟写入后取消，未调整产品超时或削弱 uncertain/禁止盲重试断言。
+- 10 个附件均已下载。Cosign 核对 checksums 和 formula 的两份 bundle，固定 identity 为本仓 release.yml 的 RC tag、issuer 为 GitHub Actions；六个归档哈希、包内文档/示例/脚本和配方逐字节重生成一致。正式 macOS arm64 归档报告 `1.0.0-rc.1 / 6156a39`。
+- macOS arm64 与原生 Linux amd64 正式归档完成离线 smoke、v0.3.0 升级、七个旧 MCP 工具契约/调用、观测/历史/事务损坏拒绝、钩子失败后新进程恢复、外部修改保护与独立目录回退。历史恢复保留原时间和 unknown，升级后新增修改未被旧备份覆盖。Linux 仅使用虚构台账，临时目录已清理。
+- 私有历史台账的 256 条记录完成新旧二进制结果对照及独立目录恢复；404 个历史输入与 499 个保留控制候选文件不变，升级后 895 unknown / ok=false 保持。独立密钥备份在隔离默认密钥后解开恢复的密文，错误密钥拒绝，私钥和凭据明文不落盘。原始材料、脚本、哈希与初次验收脚本失败留私有环境；结果明确对应保留快照，不声明当前台账健康或正式切换。
+
+T19/AT19 针对 RC1 的完成证据汇总于[工作包 F](https://github.com/infrafile/infrafile/issues/15)。其他四个平台目标仅核对构建/归档/哈希，未做原生运行；签名配方未发布到稳定 tap。外部独立试用、14 日运行、完整客户端受控场景和正式范围切换继续开放，不能据本次候选关闭 v1.0 总任务。tag 内文档保留打标签时状态，本完成记录以后续 main 为准。
 
 ## v0.2.0 发布验收
 
