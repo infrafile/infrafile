@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>infrafile 工作台</title><link rel="stylesheet" href="/app.css"></head>
+<body><main>
+<p class="eyebrow">infrafile · 本地工作台</p>
+{{if .LoggedIn}}
+<h1>已连接工作台</h1>
+<p>当前台账：<strong>{{.Repo}}</strong></p>
+<p>会话有效至 <time>{{.Expires}}</time>。本入口提供离线只读查询，查询不会解密凭据或执行云端操作。</p>
+<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button type="submit">退出并撤销会话</button><button type="submit" formaction="/revoke-all">撤销所有设备的会话</button></form>
+{{else}}
+<h1>连接你的台账</h1>
+<p>从启动工作台的本机终端获取配对码。后台模式请读取启动时指定的私有配对文件。配对码 10 分钟内一次有效。</p>
+<form method="post" action="/pair"><input type="hidden" name="csrf" value="{{.CSRF}}"><label for="code">配对码</label><input id="code" name="code" type="password" required autocomplete="off" spellcheck="false" maxlength="64"><button type="submit">连接工作台</button></form>
+{{end}}
+</main></body></html>
