@@ -13,7 +13,7 @@ import json,os,pathlib,sys
 a=sys.argv[1:];mode=os.environ.get("FAKE_PREP_MODE","")
 if "apply" in a:raise SystemExit(9)
 if a[:2]==["change","preview"]:
- r={"Kind":"EditPreview","OK":True,"Digest":"a"*64,"Files":[{"Path":"inventory/servers/web.yaml"}]}
+ r={"kind":"EditPreview","ok":True,"digest":"a"*64,"files":[{"path":"inventory/servers/web.yaml"}]}
  pathlib.Path(a[a.index("--out")+1]).write_text(json.dumps(r))
 elif a[:2]==["plan","show"]:r=json.loads(pathlib.Path(a[2]).read_text())
 elif a[0]=="plan":

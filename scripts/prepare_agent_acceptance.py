@@ -52,9 +52,9 @@ def main():
         if args.scenario == "inventory":
             result = call("preview", "change", "preview", repo, "--request", args.request.resolve(), "--out", output / "review.json")
             stage = "inventory_scope"
-            if result.get("Kind") != "EditPreview" or result.get("OK") is not True or not result.get("Files"):
+            if result.get("kind") != "EditPreview" or result.get("ok") is not True or not result.get("files"):
                 raise ValueError("invalid inventory preview")
-            reviewed = result["Digest"]
+            reviewed = result["digest"]
         else:
             call("capabilities", "capabilities")
             call("context", "context", repo, "--key", args.key)
@@ -70,7 +70,7 @@ def main():
         if re.fullmatch(r"[a-f0-9]{64}", reviewed) is None:
             raise ValueError("invalid review digest")
         saved = json.loads((output / "review.json").read_bytes())
-        if saved.get("digest" if args.scenario == "cloud" else "Digest") != reviewed:
+        if saved.get("digest") != reviewed:
             raise ValueError("saved review digest differs")
         summary = {"version": "v1", "scenario": args.scenario, "prepared": True, "client": "local_cli_preparation", "review_digest": reviewed, "review_file": str(output / "review.json"), "executed": False, "desktop_client_verified": False}
         (output / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
