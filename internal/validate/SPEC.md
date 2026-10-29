@@ -24,4 +24,6 @@ tags: [validation]
 
 ## 边界
 
+Run 与内存 Check 共用 Schema、主键、外键、归档引用、watch、源站和明文检测。Check 要求完整配置并拒绝重复主键，供导入审阅构造完整候选；不代替加载器的文件/路径布局检查。PlaintextProblems 复用同一检测，使未选中/有冲突的候选也不反射疑似秘密。
+
 不联网、不解析引用、不执行云动作、不写 inventory 或 state。Git 基线检查可以调用本机 git。台账合法不代表引用可解密、远端可用或审计无偏差。依赖关系与待确认的长期限制见 `infrafile-architecture`。

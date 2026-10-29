@@ -102,6 +102,9 @@ func TestGolden(t *testing.T) {
 		{"import-state-json", []string{"import", "state", "--json"}, goldenImport},
 		{"import-state-write-json", []string{"import", "state", "--write", "--json"}, goldenImport},
 		{"import-state-repeat-json", []string{"import", "state", "--write", "--json"}, goldenImportWritten},
+		{"import-draft-json", []string{"import", "state", "--draft", "draft.json", "--json"}, goldenImport},
+		{"import-review", []string{"import", "review", "draft.json"}, goldenImportDraft},
+		{"import-review-json", []string{"import", "review", "draft.json", "--json"}, goldenImportDraft},
 		{"plan", []string{"plan", "cdn-pause", "Resource/edge", "-o", "plan.json"}, controlRepo},
 		{"plan-json", []string{"plan", "cdn-pause", "Resource/edge", "--json"}, controlRepo},
 		{"plan-show", []string{"plan", "show", "plan.json"}, goldenPlan},
@@ -209,6 +212,12 @@ func goldenImport(t *testing.T) {
 func goldenImportWritten(t *testing.T) {
 	goldenImport(t)
 	importCLI(t, 0, "import", "state", "--write")
+}
+
+func goldenImportDraft(t *testing.T) {
+	goldenImport(t)
+	// The observed expiry differs from the hand-maintained example.com record.
+	importCLI(t, 1, "import", "state", "--draft", "draft.json", "--json")
 }
 
 const (

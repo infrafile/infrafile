@@ -1,0 +1,10 @@
+$ infrafile import review draft.json
+[退出码 1]
+--- stdout
+1f50b695827bce81bd9020314e38f5014427def0a8a4db02adb57faed19e267c Resource/aliyun-home-cdn-static.example.com-67c01b69 [draft] 匹配= 缺口=[]
+8be4d92a21feb9870e92f7874069d95e2185e7ebd31040a7055b02935cbdf0fd Server/observed-web [draft] 匹配= 缺口=[missing-ssh.user missing-ssh.port]
+8db612b04627678a7be0fa44617c3e6db93c3baf54e5e48dd92341b45e48af34 Domain/example.org [draft] 匹配= 缺口=[]
+99a0609b19dd76379d17d494f7a04e61c30bfeb4e7b2185c0ac360b5bd60bb4f Resource/cloudflare-home-dns-zone-example.net-f2943b01 [draft] 匹配= 缺口=[]
+d7f946f36ef9d3a7c28e1f100430629449003cb9a29e7cd622e8c11fa474cf4b Domain/example.com [conflict] 匹配=Domain/example.com 缺口=[]
+state/dns/blog.yaml：跳过 [observation-only]
+--- stderr

@@ -3,6 +3,7 @@ package importer
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -175,8 +176,15 @@ func createRecord(root *os.Root, name string, record map[string]any) (bool, erro
 	if err != nil {
 		return false, err
 	}
+	return createFile(context.Background(), root, name, data, 0o644)
+}
+
+func createFile(ctx context.Context, root *os.Root, name string, data []byte, mode os.FileMode) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 	tmp := ".import-" + rand.Text()
-	f, err := root.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	f, err := root.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
 	if err != nil {
 		return false, err
 	}
@@ -189,6 +197,9 @@ func createRecord(root *os.Root, name string, record map[string]any) (bool, erro
 	if closeErr != nil {
 		return false, closeErr
 	}
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 	if err := root.Link(tmp, name); errors.Is(err, os.ErrExist) {
 		return false, nil
 	} else if err != nil {
@@ -199,17 +210,21 @@ func createRecord(root *os.Root, name string, record map[string]any) (bool, erro
 
 // ReviewPath 不允许借待审目录选项绕过 --write（包括符号链接别名）。
 func ReviewPath(repoDir, out string) (string, error) {
+	return reviewPath(repoDir, out, ledger.InventoryDir)
+}
+
+func reviewPath(repoDir, out, area string) (string, error) {
 	canonical, err := resolvePath(out)
 	if err != nil {
 		return "", err
 	}
-	inventory, err := resolvePath(filepath.Join(repoDir, ledger.InventoryDir))
+	inventory, err := resolvePath(filepath.Join(repoDir, area))
 	if err != nil {
 		return "", err
 	}
 	rel, err := filepath.Rel(inventory, canonical)
 	if err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))) {
-		return "", errors.New("待审目录不能位于 inventory/ 内；写入台账必须使用 --write")
+		return "", fmt.Errorf("待审目录不能位于 %s/ 内；写入台账必须使用 --write", area)
 	}
 	rootInfo, err := os.Stat(repoDir)
 	if err != nil {
@@ -219,13 +234,13 @@ func ReviewPath(repoDir, out string) (string, error) {
 	for current := canonical; ; current = filepath.Dir(current) {
 		info, statErr := os.Stat(current)
 		if inventoryErr == nil && statErr == nil && os.SameFile(inventoryInfo, info) {
-			return "", errors.New("待审目录不能通过路径别名指向 inventory/")
+			return "", fmt.Errorf("待审目录不能通过路径别名指向 %s/", area)
 		}
 		// inventory 尚不存在时也保留大小写变体，避免在大小写不敏感卷上创建同一目录。
-		if strings.EqualFold(filepath.Base(current), ledger.InventoryDir) {
+		if strings.EqualFold(filepath.Base(current), area) {
 			parent, parentErr := os.Stat(filepath.Dir(current))
 			if parentErr == nil && os.SameFile(rootInfo, parent) {
-				return "", errors.New("待审目录不能使用 inventory/ 的大小写变体")
+				return "", fmt.Errorf("待审目录不能使用 %s/ 的大小写变体", area)
 			}
 		}
 		if filepath.Dir(current) == current {

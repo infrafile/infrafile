@@ -69,9 +69,9 @@ func SnapshotSafe(v any) bool {
 	return true
 }
 
-// scanPlaintext 找疑似明文凭据。spec.secrets 里的值由 schema 要求必须是
+// PlaintextProblems 找疑似明文凭据。spec.secrets 里的值由 schema 要求必须是
 // 凭据引用，这里只补查合法引用里夹带的令牌特征。
-func scanPlaintext(doc *ledger.Document) []ledger.Problem {
+func PlaintextProblems(doc *ledger.Document) []ledger.Problem {
 	var problems []ledger.Problem
 	report := func(path, msg string) {
 		problems = append(problems, ledger.Problem{Code: ledger.CodePlaintext, File: doc.File,
