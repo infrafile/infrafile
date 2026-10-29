@@ -24,7 +24,7 @@ infrafile serve --dir /absolute/path/to/ledger --pair-file "$pair_dir/code"
 
 ## HTTPS 反向代理
 
-非回环监听必须同时提供 HTTPS 外部地址和单个可信代理 IP；缺一、HTTP 地址、URL 中含用户信息/路径/查询参数均拒绝启动。监听地址必须使用 IP，不通过 DNS 推断信任边界。即使后端监听回环，远程访问也须显式启用代理模式：
+非回环监听必须同时提供 HTTPS 外部地址和单个可信代理 IP；缺一、HTTP 地址、URL 中含用户信息/非根路径/查询参数均拒绝启动。监听地址必须使用 IP，不通过 DNS 推断信任边界。即使后端监听回环，远程访问也须显式启用代理模式：
 
 ```sh
 infrafile serve --dir /absolute/path/to/ledger \
@@ -59,3 +59,9 @@ infrafile serve --dir /absolute/path/to/ledger \
 所有响应 no-store，HTML 由 html/template 转义；CSP 禁止脚本、嵌入框架及外部资源。请求体最多 64 KiB、响应 JSON 最多 4 MiB、并发最多 4；查询最多 30 秒且不超过会话剩余时间。HTTP 请求头上限配置为 8 KiB，读取头/请求分别限 5/10 秒，写入限 35 秒。根目录身份变化、符号链接记录/状态及不安全动态结果会被拒绝，不暴露失败原文。
 
 错误只返回 `{version:"v1", ok:false, error:<固定状态文本>}`：400 参数/表单错误，401 未登录或会话失效，403 来源/CSRF/配对拒绝，404 未提供入口，413 请求体过大，415 媒体类型错误，422 台账/查询/结果拒绝，429 尝试/并发/会话上限，503 根目录或配对发布失败，504 查询超时/取消。不返回请求、路径、配对码、Cookie 或云端错误原文；退出 0 表示服务正常停止，不代表台账健康。
+
+## 浏览器验收
+
+HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；同时核对台账文件未变、日志无令牌和配对文件清理。
+
+验收机需预先安装 Node 22+、Playwright/Chromium 和 OpenSSL；脚本不下载依赖，不访问云账号。默认读取 `bin/infrafile` 和可解析的 `playwright` 包；可分别用 `INFRAFILE_BINARY`、`INFRAFILE_PLAYWRIGHT_MODULE`（绝对模块路径）、`INFRAFILE_BROWSER_EXECUTABLE` 显式指定。直接运行 `node scripts/test_serve_browser.cjs`，回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。

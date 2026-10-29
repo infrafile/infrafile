@@ -189,7 +189,8 @@ func webError(out http.ResponseWriter, status int) {
 
 func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	out.Header().Set("Cache-Control", "no-store")
-	out.Header().Set("Referrer-Policy", "no-referrer")
+	// no-referrer makes browser form POSTs send Origin: null, even on the same site.
+	out.Header().Set("Referrer-Policy", "same-origin")
 	out.Header().Set("X-Content-Type-Options", "nosniff")
 	out.Header().Set("X-Frame-Options", "DENY")
 	out.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
@@ -245,7 +246,7 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		w.logout(out, r)
 		return
 	}
-	if !secureEqual(csrf, r.Header.Get("X-CSRF-Token")) {
+	if len(r.Header.Values("X-CSRF-Token")) != 1 || !secureEqual(csrf, r.Header.Get("X-CSRF-Token")) {
 		webError(out, 403)
 		return
 	}
@@ -281,7 +282,12 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		webError(out, 400)
 		return
 	}
-	if _, problems, err := ledger.ParseDocument(ctx, "arguments", raw); err != nil || len(problems) != 0 {
+	_, problems, err := ledger.ParseDocument(ctx, "arguments", raw)
+	if ctx.Err() != nil {
+		webError(out, 504)
+		return
+	}
+	if err != nil || len(problems) != 0 {
 		webError(out, 400)
 		return
 	}
@@ -315,6 +321,10 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		}
 	}
 	data, err := json.Marshal(result)
+	if ctx.Err() != nil {
+		webError(out, 504)
+		return
+	}
 	if err != nil || len(data) > 4<<20 {
 		webError(out, 422)
 		return

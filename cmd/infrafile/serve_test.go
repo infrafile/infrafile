@@ -251,6 +251,7 @@ func TestWorkbenchRequestBoundary(t *testing.T) {
 		{"proxy-proto", func(r *http.Request) { r.Header.Set("X-Forwarded-Proto", "https") }, 403},
 		{"remote-peer", func(r *http.Request) { r.RemoteAddr = "192.0.2.1:1234" }, 403},
 		{"csrf", func(r *http.Request) { r.Header.Set("X-CSRF-Token", "wrong") }, 403},
+		{"duplicate-csrf", func(r *http.Request) { r.Header.Add("X-CSRF-Token", "other") }, 403},
 		{"duplicate-session", func(r *http.Request) { r.AddCookie(&http.Cookie{Name: sessionCookie, Value: f.session}) }, 401},
 		{"query-token", func(r *http.Request) { r.URL.RawQuery = "token=bad" }, 403},
 		{"encoded-path", func(r *http.Request) { r.URL.RawPath = "/api/%6cist" }, 403},
