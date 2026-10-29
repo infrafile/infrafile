@@ -184,11 +184,15 @@ func receiptBytes(root *os.Root, name string) ([]byte, error) {
 
 // receiptRoot never follows history directory symlinks, and readers never create files.
 func receiptRoot(dir string, create bool) (*os.Root, error) {
+	return recordDirs(dir, []string{"history", "executions"}, create)
+}
+
+func recordDirs(dir string, names []string, create bool) (*os.Root, error) {
 	root, err := os.OpenRoot(dir)
 	if err != nil {
 		return nil, err
 	}
-	for _, name := range []string{"history", "executions"} {
+	for _, name := range names {
 		if create {
 			if err := root.Mkdir(name, 0700); err != nil && !errors.Is(err, os.ErrExist) {
 				root.Close()
@@ -207,7 +211,7 @@ func receiptRoot(dir string, create bool) (*os.Root, error) {
 		}
 		if err != nil || !info.IsDir() || (create && info.Mode().Perm()&0077 != 0) {
 			root.Close()
-			return nil, errors.New("执行历史目录须为普通目录；写入要求 0700")
+			return nil, errors.New("执行目录须为普通目录；写入要求 0700")
 		}
 		next, err := root.OpenRoot(name)
 		if err == nil {
@@ -334,9 +338,10 @@ func ListExecutions(ctx context.Context, dir, key string) (*Executions, error) {
 }
 
 type receiptStore struct {
-	root *os.Root
-	lock *os.File
-	dir  string
+	root    *os.Root
+	private *os.Root
+	lock    *os.File
+	dir     string
 }
 
 func openReceiptStore(ctx context.Context, dir string) (*receiptStore, error) {
@@ -347,31 +352,44 @@ func openReceiptStore(ctx context.Context, dir string) (*receiptStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	lock, err := root.OpenFile(".execution.lock", os.O_CREATE|os.O_RDWR, 0600)
+	private, err := recordDirs(dir, []string{".infrafile"}, true)
 	if err != nil {
 		root.Close()
 		return nil, err
 	}
-	info, err := root.Lstat(".execution.lock")
+	if err := executionIgnore(private); err != nil {
+		private.Close()
+		root.Close()
+		return nil, err
+	}
+	lock, err := private.OpenFile("execution.lock", os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		private.Close()
+		root.Close()
+		return nil, err
+	}
+	info, err := private.Lstat("execution.lock")
 	opened, e := lock.Stat()
 	if err != nil || e != nil || !info.Mode().IsRegular() || !os.SameFile(info, opened) || info.Mode().Perm()&0077 != 0 {
 		lock.Close()
+		private.Close()
 		root.Close()
 		return nil, errors.New("执行锁不是私有普通文件")
 	}
 	if err := lockExecution(lock); err != nil {
 		lock.Close()
+		private.Close()
 		root.Close()
 		return nil, errors.New("执行正在进行或当前平台不支持持久回执写入")
 	}
-	s := &receiptStore{root, lock, dir}
+	s := &receiptStore{root: root, private: private, lock: lock, dir: dir}
 	if err := s.check(); err != nil {
 		s.close()
 		return nil, err
 	}
 	return s, nil
 }
-func (s *receiptStore) close() { s.lock.Close(); s.root.Close() }
+func (s *receiptStore) close() { s.lock.Close(); s.private.Close(); s.root.Close() }
 func (s *receiptStore) check() error {
 	current, err := receiptRoot(s.dir, false)
 	if err != nil {
@@ -381,14 +399,57 @@ func (s *receiptStore) check() error {
 		return errors.New("执行历史目录已移走")
 	}
 	defer current.Close()
+	private, err := recordDirs(s.dir, []string{".infrafile"}, false)
+	if err != nil {
+		return err
+	}
+	if private == nil {
+		return errors.New("执行锁目录已移走")
+	}
+	defer private.Close()
+	p, e1 := private.Lstat(".")
+	q, e2 := s.private.Lstat(".")
+	if e1 != nil || e2 != nil || !os.SameFile(p, q) {
+		return errors.New("执行锁目录被替换")
+	}
 	a, e1 := current.Lstat(".")
 	b, e2 := s.root.Lstat(".")
-	l, e3 := s.root.Lstat(".execution.lock")
+	l, e3 := s.private.Lstat("execution.lock")
 	held, e4 := s.lock.Stat()
 	if e1 != nil || e2 != nil || e3 != nil || e4 != nil || !os.SameFile(a, b) || !os.SameFile(l, held) {
 		return errors.New("执行历史或写锁被替换")
 	}
 	return nil
+}
+
+// A local ignore file also protects older repositories that predate init's root ignore rule.
+func executionIgnore(root *os.Root) error {
+	data, err := receiptBytes(root, ".gitignore")
+	if err != nil {
+		return err
+	}
+	if data != nil {
+		if !bytes.Equal(bytes.TrimRight(data, "\r\n"), []byte("*")) {
+			return errors.New(".infrafile/.gitignore 须忽略全部私有内容；原文件已保留")
+		}
+		return nil
+	}
+	f, err := root.OpenFile(".gitignore", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte("*\n"))
+	if err == nil {
+		err = f.Sync()
+	}
+	ce := f.Close()
+	if err != nil {
+		return err
+	}
+	if ce != nil {
+		return ce
+	}
+	return syncReceiptDir(root)
 }
 func (s *receiptStore) save(ctx context.Context, r *Receipt, old []byte) ([]byte, error) {
 	data, err := json.MarshalIndent(r, "", "  ")

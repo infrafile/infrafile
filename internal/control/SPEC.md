@@ -28,7 +28,7 @@ Cloudflare 暂停/恢复作用于整个 zone；改回源仅修改已有 Origin R
 
 旧无存储标记仓继续生成/执行 v1；显式 storageVersion: v1 仓生成 v2，拒绝 v1 执行。v2 digest 对省略自身后的 Plan 稳定 JSON 做 SHA-256，expires_at 固定 generated_at 后30分钟。Execute 接受已审阅摘要、适用授权来源和主体说明；说明不证明身份或审批。开始和发送 control 前核对时效，控制前重新加载/校验当前目标和实例配置。
 
-ExecutionReceipt v1 信封固定在 history/executions/<digest>.json，保存完整计划、说明、阶段、前提及回读哈希。每次原子保存均文件/目录 fsync，新父目录也持久化；prepared 和 write_started 阶段只能为 uncertain，后者须在控制请求前持久。后置保存失败返回 uncertain。进程崩溃后本机 advisory lock 自动释放，已有同摘要只 probe，不再次 control，也不改写原证据或推断历史成功。不同副本、同 OS 用户的恶意操作、云端请求及其他执行器不受本机锁保证。Windows v2 执行拒绝，读/审阅不受此限制。
+ExecutionReceipt v1 信封固定在 history/executions/<digest>.json，保存完整计划、说明、阶段、前提及回读哈希。每次原子保存均文件/目录 fsync，新父目录也持久化；prepared 和 write_started 阶段只能为 uncertain，后者须在控制请求前持久。后置保存失败返回 uncertain。执行锁固定 .infrafile/execution.lock，创建本地忽略规则保护私有目录，已有不符规则保留并拒绝。进程崩溃后本机 advisory lock 自动释放，已有同摘要只 probe，不再次 control，也不改写原证据或推断历史成功。不同副本、同 OS 用户的恶意操作、云端请求及其他执行器不受本机锁保证。Windows v2 执行在创建目录前拒绝，读/审阅不受此限制。
 
 读回执不依赖当前 inventory，有界严格解析且不写锁/历史、不联网。CLI list/show 和 Web 只读卡片共享读取器；没有未执行计划文件自动扫描或云执行 Web API。每文件4MiB、256回执/64MiB及目录条目/共享展开预算，损坏/超限整份失败，不自动裁剪。详细冻结字段见 docs/json/executions.md。
 
