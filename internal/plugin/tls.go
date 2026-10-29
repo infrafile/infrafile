@@ -13,19 +13,29 @@ import (
 	"time"
 )
 
-func probeTLS(ctx context.Context, config map[string]any) (any, error) {
-	var cfg struct {
-		Host string `json:"host"`
-		Port int    `json:"port"`
-	}
+type tlsConfig struct {
+	Host string `json:"host"`
+	Port int    `json:"port"`
+}
+
+func parseTLSConfig(config map[string]any) (tlsConfig, error) {
+	var cfg tlsConfig
 	if err := decodeConfig(config, &cfg); err != nil {
-		return nil, err
+		return cfg, err
 	}
 	if cfg.Port == 0 {
 		cfg.Port = 443
 	}
 	if !validHost(cfg.Host) || cfg.Port < 1 || cfg.Port > 65535 {
-		return nil, failure("config", "TLS host 或 port 无效")
+		return cfg, failure("config", "TLS host 或 port 无效")
+	}
+	return cfg, nil
+}
+
+func probeTLS(ctx context.Context, config map[string]any) (any, error) {
+	cfg, err := parseTLSConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	// 只观察证书，不发送应用数据；握手后单独验证，过期证书也能保留到期日。
 	dialer := tls.Dialer{Config: &tls.Config{ServerName: cfg.Host, InsecureSkipVerify: true, MinVersion: tls.VersionTLS12}}

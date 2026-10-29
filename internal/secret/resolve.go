@@ -27,6 +27,17 @@ func (r Resolver) Check(ctx context.Context, ref string) error {
 	return err
 }
 
+// CheckOffline never executes credential helpers; op field access remains unknown.
+func (r Resolver) CheckOffline(ctx context.Context, ref string) error {
+	if strings.HasPrefix(ref, "op://") {
+		if err := checkOPRef(ref); err != nil {
+			return err
+		}
+		return &Error{"online-required", "1Password 字段可访问性需要显式在线检查"}
+	}
+	return r.Check(ctx, ref)
+}
+
 // Resolve 在内存中解析值，供子进程环境使用。
 func (r Resolver) Resolve(ctx context.Context, ref string) (string, error) {
 	value, err := r.read(ctx, ref, true)

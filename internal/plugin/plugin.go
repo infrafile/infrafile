@@ -15,10 +15,14 @@ type Client interface {
 	Close()
 }
 
-type Error struct{ Code, Message string }
+type Error struct {
+	Code, Message string
+	HTTPStatus    int
+	Unreachable   bool
+}
 
 func (e *Error) Error() string           { return e.Message }
-func failure(code, message string) error { return &Error{code, message} }
+func failure(code, message string) error { return &Error{Code: code, Message: message} }
 
 // Sync 先握手，再校验 sync 能力和结果。内外插件均经过这里。
 func Sync(ctx context.Context, client Client, params protocol.SyncParams) (data json.RawMessage, err error) {

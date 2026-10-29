@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 
 	"github.com/infrafile/infrafile/internal/secret"
@@ -118,6 +120,12 @@ func (b *builtin) credential(ctx context.Context, ref string) (string, error) {
 
 // 固定服务地址、不跟随重定向；响应只在内存中解析，错误不带请求或响应原文。
 func requestJSON(ctx context.Context, method, endpoint string, headers http.Header, body []byte, result any) error {
+	if budget, ok := ctx.Value(doctorBudgetKey{}).(*int); ok {
+		if *budget <= 0 {
+			return failure("budget", "在线预检达到请求上限")
+		}
+		*budget--
+	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return failure("http", "无法创建云 API 请求")
@@ -126,11 +134,13 @@ func requestJSON(ctx context.Context, method, endpoint string, headers http.Head
 	client := http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, err := client.Do(req)
 	if err != nil {
-		return failure("http", "云 API 请求失败")
+		var op *net.OpError
+		var dns *net.DNSError
+		return &Error{Code: "http", Message: "云 API 请求失败", Unreachable: errors.As(err, &op) || errors.As(err, &dns)}
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return failure("http", fmt.Sprintf("云 API 返回 HTTP %d", response.StatusCode))
+		return &Error{Code: "http", Message: fmt.Sprintf("云 API 返回 HTTP %d", response.StatusCode), HTTPStatus: response.StatusCode}
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, (4<<20)+1))
 	if err != nil || len(data) > 4<<20 {
