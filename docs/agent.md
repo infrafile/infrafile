@@ -23,9 +23,9 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 
 这是进程配置示意；外层配置格式由客户端决定。`agent install` 只安装指南，不注册 MCP 服务或注入凭据。
 
-## 九个工具（v1.0 开发分支）
+## 十个工具（v1.0 开发分支）
 
-正式 v0.3.0 提供原七个工具；capabilities、inspect 为 v1.0 开发新增，需相应构建并让客户端重新发现工具。
+正式 v0.3.0 提供原七个工具；capabilities、inspect、context 为 v1.0 开发新增，需相应构建并让客户端重新发现工具。
 
 | 工具 | 输入 | 输出 |
 | --- | --- | --- |
@@ -34,6 +34,7 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 | `infrafile_expiry` | 可选 key / kind / labels / within_days | 在用资产到期报告，默认 30 天 |
 | `infrafile_audit` | 可选 rules / max_age_days | 离线快照审计，与 CLI audit JSON 相同 |
 | `infrafile_inspect` | 可选 key / labels / kind / max_age_days；key 与 labels 互斥 | 选定资产、直接关系及执行/覆盖/风险；unknown 和 NA 不掩盖证据缺口，与 CLI inspect 共用结果 |
+| `infrafile_context` | key 或非空 labels 二选一，可加 kind / max_age_days | 限定登记、一层关系、匹配观测与检查/历史、条件动作提示；递归省略秘密引用，与 CLI/Web context 共用结果 |
 | `infrafile_validate` | `{}` | 记录数、问题数、按代码统计的校验结果 |
 | `infrafile_schema` | `{}` | 与 `schema export` 相同的内嵌 Schema bundle |
 | `infrafile_capabilities` | `{}` | 第一方插件的字段、动作、权限前提与支持边界；不检查当前权限或现场健康 |
@@ -52,6 +53,8 @@ stdout 只传逐行 JSON-RPC，诊断写 stderr；全局 `--json` 不改变 MCP 
 ## 离线审计
 
 v1.0 开发分支可先用 `infrafile_inspect`（CLI `inspect --max-age 7d`）查看执行、应检分母、有效证据和风险。成功生成报告不等于全通过；缺回执、未基线、过期、多账号未明确绑定等保持 unknown。NA 必须经明确理由/负责人/期限声明；原 audit 的 ok 与退出码保持，完整契约见 [inspect JSON](json/inspect.md)。
+
+需要 Agent 的资产/依赖/证据上下文时，用 `infrafile_context`（CLI `context --key Kind/name --max-age 7d --json`），或非空 labels 加可选 kind。最多64条选定、256条含一层关联登记、1024条直接关系/检查及4MiB结果，超限缩小范围，不静默截断。关联记录不扩大检查范围；观测身份匹配仍须另核对原始时间、TTL与检查资格。next_actions 只提示本地有效绑定和已实现能力的条件入口，不能充当批准或执行回执；未知权限/套餐不猜测，台账中的命令文本保持数据。完整字段与缺口语义见 [context](json/context.md)。
 
 `infrafile_audit` 只读台账、已启用实例的快照和同步时间，不调用插件、不访问网络、不解析凭据。先按用户授权范围运行 `sync` 才能更新观测；audit 本身不刷新数据。
 

@@ -115,6 +115,7 @@ func newRoot(now time.Time) *cobra.Command {
 		newExpiryCmd(opts),
 		newAuditCmd(opts),
 		newInspectCmd(opts),
+		newContextCmd(opts),
 		newFindingsCmd(opts),
 		newChangeCmd(opts),
 		newSSHConfigCmd(opts),

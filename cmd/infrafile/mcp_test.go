@@ -85,13 +85,14 @@ func TestMCPStdio(t *testing.T) {
 	}
 	defer s.Close()
 	list, err := s.ListTools(ctx, nil)
-	if err != nil || len(list.Tools) != 9 {
+	if err != nil || len(list.Tools) != 10 {
 		t.Fatalf("list: %v %v", list, err)
 	}
 	callMCP(t, s, "show", map[string]any{"key": "Server/web1"}, false)
 	callMCP(t, s, "audit", map[string]any{"max_age_days": 45}, false)
 	callMCP(t, s, "capabilities", map[string]any{}, false)
 	callMCP(t, s, "inspect", map[string]any{"key": "Domain/example.com", "max_age_days": 45}, false)
+	callMCP(t, s, "context", map[string]any{"key": "Domain/example.com", "max_age_days": 45}, false)
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -296,10 +297,10 @@ func TestMCPAllToolsExcludeCredentialsAndDoNotWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 9 {
+	if len(listed.Tools) != 10 {
 		t.Fatalf("tools: %v", listed.Tools)
 	}
-	args := map[string]any{"list": map[string]any{}, "show": map[string]any{"key": "Resource/edge"}, "expiry": map[string]any{}, "audit": map[string]any{"max_age_days": 7}, "inspect": map[string]any{"max_age_days": 7}, "validate": map[string]any{}, "schema": map[string]any{}, "capabilities": map[string]any{}, "plan": map[string]any{"key": "Resource/edge", "action": "cdn-pause"}}
+	args := map[string]any{"list": map[string]any{}, "show": map[string]any{"key": "Resource/edge"}, "expiry": map[string]any{}, "audit": map[string]any{"max_age_days": 7}, "inspect": map[string]any{"max_age_days": 7}, "context": map[string]any{"key": "Resource/edge", "max_age_days": 7}, "validate": map[string]any{}, "schema": map[string]any{}, "capabilities": map[string]any{}, "plan": map[string]any{"key": "Resource/edge", "action": "cdn-pause"}}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
 			t.Fatalf("not read-only: %s", tool.Name)
@@ -627,9 +628,9 @@ func TestMCPGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	value := map[string]any{"tools": list.Tools}
-	for _, tool := range []string{"list", "show", "expiry", "audit", "inspect", "validate", "plan"} {
+	for _, tool := range []string{"list", "show", "expiry", "audit", "inspect", "context", "validate", "plan"} {
 		args := map[string]any{}
-		if tool == "show" || tool == "plan" {
+		if tool == "show" || tool == "plan" || tool == "context" {
 			args["key"] = "Resource/edge"
 		}
 		if tool == "plan" {

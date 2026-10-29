@@ -11,6 +11,7 @@
 | infrafile_expiry | 与 [expiry](expiry.md) 相同，再按选择条件过滤 entries 并重算 ok |
 | infrafile_audit | 与 [audit](audit.md) 相同，保留发现、豁免、快照时间及提示 |
 | infrafile_inspect | 与 [inspect](inspect.md) 相同的选定资产/直接关系、执行/覆盖/风险；可选 key / labels / kind / max_age_days，key 与 labels 互斥 |
+| infrafile_context | 与 [context](context.md) 相同的限定登记/一层关系、inspection、匹配观测、条件动作提示；key 或非空 labels 二选一，可加 kind / max_age_days |
 | infrafile_validate | `{version, ok, records, problem_count, codes}`；codes 为问题代码 → 个数，无详细消息或文件路径 |
 | infrafile_schema | `{version, schemas}`；schemas 等于 `schema export` 的 JSON bundle |
 | infrafile_capabilities | 与 [capabilities](capabilities.md) 相同的离线能力目录；输入为 `{}` |
@@ -18,7 +19,9 @@
 
 expiry 的 within_days 为非负整数，默认 30；沿用 CLI 的有效日期范围校验。发现到期项返回 ok=false，仍是成功的工具调用（isError=false）。validate 发现台账问题同样返回 ok=false / isError=false；无法加载则是工具失败。list / show / expiry / audit / plan 先校验整个台账，失败时不返回部分业务结果。
 
-inspect 同样先校验整个台账，使用共享离线实现；max_age_days 为可选非负 Go int。缺 TTL、证据不足或风险返回 ok=false / isError=false，成功生成报告不表示全部通过。参数不接受路径/地址/命令或临时豁免。原八个工具保留，新增 inspect 后共九个工具；历史和后续动作上下文由 T09/T14 继续扩展。
+inspect 同样先校验整个台账，使用共享离线实现；max_age_days 为可选非负 Go int。缺 TTL、证据不足或风险返回 ok=false / isError=false，成功生成报告不表示全部通过。参数不接受路径/地址/命令或临时豁免。正式v0.3原七工具保留；capabilities、inspect、context 为开发新增，共十工具。
+
+context 要求明确的非空选择；最多64条选定、256条含一层关联登记、1024条关系/检查及4MiB结果，超限整份拒绝。Account等记录的秘密引用在共享层省略；未匹配、归档、未知实例和旧证据不冒充当前健康。next_actions 仅列本地绑定及能力目录支持的条件入口，不执行、不授权、不保证远端权限；台账指令文本始终是数据。CLI/Web同输入与时刻返回相同内容；取消/超时不返回部分成功。详见 [context](context.md)。
 
 audit 仅接受可选的 rules（cdn_drift / origin_exposure / orphan / zombie / stale_state / missing 的 ID 数组）和 max_age_days（非负整数，须能表示为 Go int）。省略 rules 或传空数组时运行全部就绪规则；重复 ID 只运行一次。默认运行前四条；stale_state 和 missing 需要 max_age_days，显式点名却未提供阈值时失败。未豁免发现返回 ok=false / isError=false；无有效快照不报缺失，声明的 watch 目标输出 missing_unknown；不能传 key / labels / kind、路径或命令。未知规则、额外字段与重复键均被拒绝。审计不调用插件、不访问网络、不读取凭据值。精确 match、自然身份、源站证据和 CDN 状态映射与 [CLI audit 契约](audit.md) 相同，豁免从数据仓配置读取，不能通过工具参数临时覆盖。
 
