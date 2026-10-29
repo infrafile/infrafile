@@ -29,6 +29,128 @@
     "version": "v1",
     "within_days": 30
   },
+  "inspect": {
+    "as_of": "2026-12-01T12:00:00Z",
+    "assets": [
+      {
+        "archived": false,
+        "file": "inventory/resources/edge.yaml",
+        "key": "Resource/edge"
+      }
+    ],
+    "coverage": {
+      "checked": 0,
+      "checks": [
+        {
+          "aspect": "origin",
+          "code": "not_configured",
+          "evidence": [],
+          "id": "c7f6a89914f614b3ee91ab7f2edd3dcf60e342b34aacaee991209263a505d061",
+          "instance": "",
+          "message": "CDN 检查需要 audit.watch 显式绑定实例",
+          "not_applicable": null,
+          "plugin": "",
+          "rule": "cdn_drift",
+          "service": "",
+          "status": "unknown",
+          "target": "Resource/edge"
+        },
+        {
+          "aspect": "status",
+          "code": "not_configured",
+          "evidence": [],
+          "id": "7f4ca13d538c1d0df7946992e748b1ef6c6094ca698f1d64c864b58156f6b1c7",
+          "instance": "",
+          "message": "CDN 检查需要 audit.watch 显式绑定实例",
+          "not_applicable": null,
+          "plugin": "",
+          "rule": "cdn_drift",
+          "service": "",
+          "status": "unknown",
+          "target": "Resource/edge"
+        },
+        {
+          "aspect": "presence",
+          "code": "unsupported",
+          "evidence": [],
+          "id": "630aa357e4aa8ab53c44e778f859439a424b587cbd2adddeb451ddeb82d585dd",
+          "instance": "",
+          "message": "此类 Resource 没有 missing 检查契约；原运维流程继续负责",
+          "not_applicable": null,
+          "plugin": "",
+          "rule": "missing",
+          "service": "",
+          "status": "unknown",
+          "target": "Resource/edge"
+        },
+        {
+          "aspect": "checks",
+          "code": "unsupported",
+          "evidence": [
+            {
+              "file": "",
+              "max_age_days": null,
+              "observed_at": null
+            }
+          ],
+          "id": "cf1531aa7d632f5afdde80d0dc76e6c421b15ef73b191a645b72c5c94d2b8cbf",
+          "instance": "home",
+          "message": "实例没有已实现的资产清单检查契约",
+          "not_applicable": null,
+          "plugin": "aaa",
+          "rule": "coverage",
+          "service": "",
+          "status": "unknown",
+          "target": "aaa/home"
+        },
+        {
+          "aspect": "freshness",
+          "code": "unverified",
+          "evidence": [
+            {
+              "file": "",
+              "max_age_days": null,
+              "observed_at": null
+            }
+          ],
+          "id": "7e457f74a2e0c48d88a2ffb33c7c86c288e7528af57891cca7bfedf0d677f551",
+          "instance": "home",
+          "message": "执行回执缺失或不匹配当前配置",
+          "not_applicable": null,
+          "plugin": "aaa",
+          "rule": "stale_state",
+          "service": "",
+          "status": "unknown",
+          "target": "aaa/home"
+        }
+      ],
+      "expected": 5,
+      "not_applicable": 0,
+      "unknown": 5
+    },
+    "execution": [
+      {
+        "code": "unverified",
+        "instance": "home",
+        "observed_at": null,
+        "plugin": "aaa",
+        "receipt_file": "state/.sync-status.yaml",
+        "snapshot_file": "",
+        "status": "unknown"
+      }
+    ],
+    "max_age_days": null,
+    "notices": [],
+    "ok": false,
+    "relations": [],
+    "risk": {
+      "confirmed": 0,
+      "findings": [],
+      "unknown": 0,
+      "waived": 0
+    },
+    "version": "v1"
+  },
   "list": {
     "records": [
       {
@@ -183,6 +305,57 @@
         "type": "object"
       },
       "name": "infrafile_expiry"
+    },
+    {
+      "annotations": {
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "离线聚合选定资产的直接关系、执行/覆盖/风险；无新鲜证据保持 unknown，不写历史、不联网或解析凭据。",
+      "inputSchema": {
+        "additionalProperties": false,
+        "not": {
+          "required": [
+            "key",
+            "labels"
+          ]
+        },
+        "properties": {
+          "key": {
+            "description": "台账主键 Kind/name；必须已登记。",
+            "pattern": "^(Server|App|Domain|Account|Resource|Repo)/[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "Server",
+              "App",
+              "Domain",
+              "Account",
+              "Resource",
+              "Repo"
+            ],
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": false,
+            "minProperties": 1,
+            "patternProperties": {
+              "^[A-Za-z0-9]([A-Za-z0-9._/-]*[A-Za-z0-9])?$": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "max_age_days": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "infrafile_inspect"
     },
     {
       "annotations": {

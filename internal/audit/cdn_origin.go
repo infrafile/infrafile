@@ -13,6 +13,7 @@ import (
 )
 
 func prepareCDNOrigins(ctx context.Context, in *Input) error {
+	in.cdnOriginCoverage = map[string]map[string]bool{}
 	watches, problems := observation.Watches(in.Repo)
 	if len(problems) != 0 {
 		return errors.New("audit.watch 检查范围无效，请先校验台账")
@@ -119,6 +120,7 @@ func prepareCDNOrigins(ctx context.Context, in *Input) error {
 		}
 		slices.Sort(hosts)
 		hosts = slices.Compact(hosts)
+		in.cdnOriginCoverage[target] = map[string]bool{"hosts": true, "port": portKnown, "protocol": protocolKnown}
 		differences, unknown := []string{}, []string{}
 		if !slices.Equal(hosts, expected.Hosts) {
 			differences = append(differences, "hosts")

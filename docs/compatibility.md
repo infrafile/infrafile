@@ -56,7 +56,7 @@ T09/T13/T15 实现锁、原子替换、写前记录和恢复，不能用信封 S
 
 ## 新命令退出码
 
-capabilities 和 doctor 已实现，下表其余为待实现接口。audit 的原 ok 和 0/1/2 语义保持不变，unknown notice 不表示已证明无风险。
+capabilities、doctor 和 inspect 已实现，下表其余为待实现接口。audit 的原 ok 和 0/1/2 语义保持不变，unknown notice 不表示已证明无风险。
 
 | 命令 | 0 | 1 | 2 |
 | --- | --- | --- | --- |
@@ -87,6 +87,6 @@ INFRAFILE_PREVIOUS_BINARY=/absolute/path/to/v0.3.0/infrafile \
   go test ./cmd/infrafile -run '^TestV030Compatibility$' -count=1 -v
 ```
 
-覆盖旧版产生的虚构快照、CLI 查询/审计退出码、两个实际 stdio 子进程的七个旧工具、v1 计划及坏版本/重复键/超限、存储标记对旧业务操作的拒绝，以及恢复完整旧配置后的可读性。仅排除 audit 本次 as_of 时钟差异和 Schema bundle 新增的 storageVersion 定义，不忽略业务字段。plan 工具使用不存在目标的安全拒绝路径，成功云计划由控制回放覆盖；没有真实云写。
+覆盖旧版产生的虚构快照、CLI 查询/审计退出码、两个实际 stdio 子进程的七个旧工具、v1 计划及坏版本/重复键/超限、存储标记对旧业务操作的拒绝，以及恢复完整旧配置后的可读性。仅排除 audit 本次 as_of 时钟差异和 Schema bundle 新增的 storageVersion / audit.not_applicable 定义，不忽略旧业务字段。NA 声明需显式 v1 标记，旧二进制拒绝；不声明时旧数据契约保持。plan 工具使用不存在目标的安全拒绝路径，成功云计划由控制回放覆盖；没有真实云写。
 
 未提供旧二进制时专项测试明确 skip，普通 CI 不能替代这项证据。原生平台及版本随实现 PR 记录；T19 仍须对正式候选完成升级/恢复，T02 离线重放不替代该门槛。

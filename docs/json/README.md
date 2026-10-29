@@ -20,6 +20,7 @@ CLI 命令可以加全局选项 `--json`，把结果以 JSON 输出到标准输�
 | `infrafile show` | [show.md](show.md) |
 | `infrafile expiry` | [expiry.md](expiry.md) |
 | `infrafile audit` | [audit.md](audit.md) |
+| `infrafile inspect` | [inspect.md](inspect.md) |
 | `infrafile ssh-config` | [ssh-config.md](ssh-config.md) |
 | `infrafile secret check` | [secret.md](secret.md) |
 | `infrafile run` | [run.md](run.md) |

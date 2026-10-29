@@ -135,6 +135,9 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 		"rules":        map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": ruleIDs}},
 		"max_age_days": map[string]any{"type": "integer", "minimum": 0},
 	}}
+	inspectSchema := selector(false)
+	inspectSchema["properties"].(map[string]any)["max_age_days"] = map[string]any{"type": "integer", "minimum": 0}
+	inspectSchema["not"] = map[string]any{"required": []string{"key", "labels"}}
 	planSchema := selector(true)
 	props := planSchema["properties"].(map[string]any)
 	props["action"] = map[string]any{"enum": []string{"cdn-pause", "cdn-resume", "cdn-origin"}}
@@ -152,6 +155,7 @@ func newMCPServer(ctx context.Context, dir string, timeout time.Duration, now fu
 		{"show", "读取唯一记录和引用关系，省略凭据字段。" + strings.Join(descriptions, "；"), selector(true)},
 		{"expiry", "检查在用资产到期日，默认30天，含已过期及边界当天。", expirySchema},
 		{"audit", "离线审计已启用实例的快照，不访问网络或解析凭据。默认运行就绪规则；stale_state 和 missing 需要 max_age_days。", auditSchema},
+		{"inspect", "离线聚合选定资产的直接关系、执行/覆盖/风险；无新鲜证据保持 unknown，不写历史、不联网或解析凭据。", inspectSchema},
 		{"validate", "只读校验当前数据仓，返回问题代码与数量；详细诊断用 CLI validate。", empty},
 		{"schema", "返回与 CLI 校验相同的内嵌 JSON Schema。", empty},
 		{"capabilities", "离线返回第一方插件的字段、动作、权限前提和支持边界；不检查当前账号或现场健康，外部插件细节未知。", empty},
@@ -250,6 +254,19 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 		return nil, fmt.Errorf("未找到目标")
 	}
 	switch tool {
+	case "inspect":
+		var keys []string
+		if args.Key != "" || args.Kind != "" || len(args.Labels) > 0 {
+			keys = []string{}
+			for _, r := range matches {
+				keys = append(keys, r.Kind+"/"+r.Name)
+			}
+		}
+		report, err := audit.Inspect(ctx, repo, audit.InspectOptions{Now: now, MaxAgeDays: args.MaxAgeDays, Keys: keys})
+		if err != nil {
+			return nil, err
+		}
+		return inspectionValue(report)
 	case "list":
 		records := []any{}
 		for _, r := range matches {

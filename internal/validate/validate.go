@@ -61,6 +61,7 @@ func check(ctx context.Context, repo *ledger.Repo, problems []ledger.Problem, op
 	if repo.Config != nil {
 		problems = append(problems, schemaProblems(repo.Config, schemas.Validate(ledger.ConfigKind, repo.Config.Value))...)
 		problems = append(problems, PlaintextProblems(repo.Config)...)
+		problems = append(problems, checkNA(repo.Config)...)
 	}
 	for _, r := range repo.Records {
 		if err := ctx.Err(); err != nil {
@@ -96,6 +97,24 @@ func check(ctx context.Context, repo *ledger.Repo, problems []ledger.Problem, op
 	}
 	ledger.SortProblems(problems)
 	return &Result{Repo: repo, Records: len(repo.Records), Problems: problems}, nil
+}
+
+func checkNA(doc *ledger.Document) []ledger.Problem {
+	value, _ := doc.Value.(map[string]any)
+	audit, _ := value["audit"].(map[string]any)
+	items, _ := audit["not_applicable"].([]any)
+	seen := map[string]bool{}
+	var problems []ledger.Problem
+	for index, item := range items {
+		m, _ := item.(map[string]any)
+		id, _ := m["check"].(string)
+		if seen[id] || value["storageVersion"] != "v1" {
+			path := fmt.Sprintf("audit.not_applicable[%d]", index)
+			problems = append(problems, ledger.Problem{Code: ledger.CodeSchema, File: doc.File, Path: path, Line: doc.Line(path), Message: "NA 检查项不能重复，且必须显式启用 storageVersion: v1"})
+		}
+		seen[id] = true
+	}
+	return problems
 }
 
 func checkOrigin(r *ledger.Record) []ledger.Problem {
