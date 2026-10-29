@@ -414,3 +414,16 @@ func TestImportDraftSaveRejectsPlaintext(t *testing.T) {
 		t.Fatal("unsafe save changed filesystem")
 	}
 }
+
+func TestImportDraftKeepsIDAndEndpointIdentitiesSeparate(t *testing.T) {
+	emptyRepo(t)
+	if err := os.MkdirAll("inventory/resources", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeImportFile(t, "inventory/resources/custom.yaml", "apiVersion: infrafile/v1alpha1\nkind: Resource\nmetadata: {name: custom}\nspec: {provider: aliyun, type: id, endpoint: shared-id}\n")
+	importSnapshot(t, "aliyun", "home", "cdn: [{name: cdn.example.com, id: shared-id}]\n")
+	r := draftCLI(t, 0, "state", "--draft", "draft.json")
+	if len(r.Records) != 1 || r.Records[0].Status != "draft" {
+		t.Fatal(r)
+	}
+}

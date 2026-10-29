@@ -52,18 +52,18 @@ func reviewAgainst(ctx context.Context, repo *ledger.Repo, d, fresh *Draft, noti
 		return nil, err
 	}
 	byKey := map[string]*ledger.Record{}
-	byIdentity := map[string][]*ledger.Record{}
+	byIdentity := map[observation.Identity][]*ledger.Record{}
 	for _, record := range repo.Records {
 		byKey[record.Kind+"/"+record.Name] = record
 		spec := record.Value.(map[string]any)["spec"].(map[string]any)
 		id := observation.IdentityOf(record.Kind, record.Name, spec)
 		if record.Kind == "Domain" || record.Kind == "Server" || record.Kind == "Resource" {
-			byIdentity[id.String()] = append(byIdentity[id.String()], record)
+			byIdentity[id] = append(byIdentity[id], record)
 		}
 	}
 	virtual := *repo
 	virtual.Records = append([]*ledger.Record{}, repo.Records...)
-	batchKeys, batchIdentity := map[string]int{}, map[string][]int{}
+	batchKeys, batchIdentity := map[string]int{}, map[observation.Identity][]int{}
 	seen := map[string]bool{}
 	codes := map[string]bool{}
 	for _, c := range d.Candidates {
@@ -116,7 +116,7 @@ func reviewAgainst(ctx context.Context, repo *ledger.Repo, d, fresh *Draft, noti
 				entry.Status = "conflict"
 			}
 		} else {
-			for _, old := range byIdentity[id.String()] {
+			for _, old := range byIdentity[id] {
 				oldSpec := old.Value.(map[string]any)["spec"].(map[string]any)
 				// Different declared accounts are distinct; an absent account cannot prove scope.
 				if kind == "Resource" && spec["account"] != nil && oldSpec["account"] != nil && spec["account"] != oldSpec["account"] {
@@ -139,7 +139,7 @@ func reviewAgainst(ctx context.Context, repo *ledger.Repo, d, fresh *Draft, noti
 					r.Records[previous].Status = "conflict"
 				}
 			} else {
-				for _, previous := range batchIdentity[id.String()] {
+				for _, previous := range batchIdentity[id] {
 					old := d.Candidates[previous].Record["spec"].(map[string]any)
 					if kind == "Resource" && spec["account"] != nil && old["account"] != nil && spec["account"] != old["account"] {
 						continue
@@ -148,7 +148,7 @@ func reviewAgainst(ctx context.Context, repo *ledger.Repo, d, fresh *Draft, noti
 					r.Records[previous].Status = "conflict"
 				}
 				batchKeys[entry.Key] = len(r.Records)
-				batchIdentity[id.String()] = append(batchIdentity[id.String()], len(r.Records))
+				batchIdentity[id] = append(batchIdentity[id], len(r.Records))
 			}
 			if entry.Status == "draft" {
 				k, _ := ledger.KindByName(kind)
