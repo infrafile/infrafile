@@ -1,6 +1,6 @@
 # 问题身份与恢复规则（v1.0 开发）
 
-T08 为现行六条审计规则提供稳定身份和纯状态转换。`audit` / `inspect` / MCP 查询仍然只读，不创建或更新问题历史；T09 负责显式 `findings refresh`、锁、保存与变化查询。旧 findings 的数量、原字段、豁免及退出码保持。
+T08 为现行六条审计规则提供稳定身份和纯状态转换。`audit` / `inspect` / MCP 查询仍然只读，不创建或更新问题历史；T09 的显式 `findings refresh`、锁、保存与变化查询见 [findings.md](findings.md)。旧 findings 的数量、原字段、豁免及退出码保持。
 
 ## findings 的兼容扩展
 
@@ -72,4 +72,4 @@ T08 为现行六条审计规则提供稳定身份和纯状态转换。`audit` / 
 
 `recovered_at` 保存最近一次有证据的恢复时刻；复发或范围退出时不改写这一历史事实，当前状态由 lifecycle 判断。first_seen 保留，last_confirmed 仅在本次确认时更新，last_checked 记录本次显式状态推进。复发保留同一条范围历史；范围变化保留旧条目并单列新范围。
 
-纯函数 `AdvanceIssues` 返回新状态及 opened / unconfirmed / confirmed / recovered / reopened / out_of_scope / returned / unknown / clear / waived / unwaived 变化，不写文件。相同评估和时刻幂等，正常持续确认不生成重复 opened；重复身份/评估、未知版本、矛盾结果、非法时间顺序、时钟倒退、发生次数溢出或取消均拒绝。记录 payload、容量、导出与磁盘失败保证由 T09 实现，不以本状态机代替持久化验收。
+纯函数 `AdvanceIssues` 返回新状态及 opened / unconfirmed / confirmed / recovered / reopened / out_of_scope / returned / unknown / clear / waived / unwaived 变化，不写文件。相同评估和时刻幂等，正常持续确认不生成重复 opened；重复身份/评估、未知版本、矛盾结果、非法时间顺序、时钟倒退、发生次数溢出或取消均拒绝。记录 payload、容量、导出与磁盘失败保证由 T09 的文件存取单独验证，不以本状态机代替持久化验收。

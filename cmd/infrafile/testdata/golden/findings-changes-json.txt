@@ -1,0 +1,11 @@
+$ infrafile findings changes --after 0 --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "present": true,
+  "last_sequence": 0,
+  "pruned_through": 0,
+  "changes": []
+}
+--- stderr

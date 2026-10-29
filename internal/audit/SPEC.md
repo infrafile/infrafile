@@ -36,7 +36,15 @@ Inspect 与 audit 共用规则、自然身份、missing 的资格判断和 CDN �
 
 各 finding 兼容增加 issues，按规则/目标/实例/服务/方面、区域及结构化自然身份/关联源站生成 v1 指纹；回源按 hosts/port/protocol 分面，不改变旧 finding 数量。scope_hash 独立绑定配置/TTL/身份/期望/关系；备注、时间、观测值、豁免/NA 不参与。不同范围历史单列，范围变化不生成恢复。
 
-EvaluateIssues 从同一次 inspect 的证据和当前/已知问题并集产生 confirmed/clear/unknown、in_scope、found 与独立豁免。AdvanceIssues 为纯函数，保留首次发现、确认/检查/最近恢复时间和发生次数；同范围复发沿用历史，未知/失败/过期/NA/有效豁免不制造恢复，移出范围保留离开前状态。重复/矛盾身份、未知版本、时间倒退和计数溢出拒绝。T09 另接显式保存与查询；本实现不写历史。逐规则 key、状态表和精确 JSON 见 docs/json/issues.md、issue-identities 黄金与真实规则/快照转换回归。
+EvaluateIssues 从同一次 inspect 的证据和当前/已知问题并集产生 confirmed/clear/unknown、in_scope、found 与独立豁免。AdvanceIssues 为纯函数，保留首次发现、确认/检查/最近恢复时间和发生次数；同范围复发沿用历史，未知/失败/过期/NA/有效豁免不制造恢复，移出范围保留离开前状态。重复/矛盾身份、未知版本、时间倒退和计数溢出拒绝。逐规则 key、状态表和精确 JSON 见 docs/json/issues.md、issue-identities 黄金与实际规则/快照转换回归。显式保存另见下节，普通查询仍不写历史。
+
+## 显式问题历史
+
+RefreshHistory 必须显式启用 storageVersion: v1 并提供 TTL。沿用 state/.sync.lock 与采集/其他写入互斥，在私有固定副本上完成完整验证和求值，写前复核原输入清单/字节、原历史及目录/锁身份；同目录临时文件 fsync 后原子替换 state/.findings.json，再同步目录。相同输入和时刻不写盘、不重复事件；损坏、输入冲突、时钟倒退或超限保留原历史；替换后目录持久化失败明确未确认。
+
+管理信封和身份版本独立校验，未知/缺失字段、重复/矛盾状态、摘要/时间/连续序号错误均拒绝。只读历史查询和精确导出不创建目录、不写盘；audit/inspect 可选携带最近显式状态，当前风险与旧历史分开。新数据不反向解析凭据或历史清单路径。
+
+最多 512 个问题范围、1024 个事件、4 MiB 及共享解析预算；超限拒绝，活动问题不裁掉。无自动清理，显式清理须核对独立当前完整导出，默认 180 天，只删旧恢复状态和旧变化前缀；out_of_scope 保留。单调游标不重置，旧游标被清理时拒绝。完整接口/限制见 docs/json/findings.md；故障、并发、容量与实际规则转换回归独立覆盖。
 
 ## 边界
 

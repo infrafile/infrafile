@@ -346,20 +346,21 @@ func originIssueScope(in *Input, key IssueKey, r *ledger.Record) (any, any, bool
 	return nil, nil, false
 }
 
-// Validate rejects unknown versions and noncanonical keys before a history consumer uses them.
-func (id IssueIdentity) Validate() error {
-	validDigest := func(value string) bool {
-		if len(value) != 64 {
+func validIssueDigest(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	for _, c := range value {
+		if c < '0' || c > '9' && c < 'a' || c > 'f' {
 			return false
 		}
-		for _, c := range value {
-			if c < '0' || c > '9' && c < 'a' || c > 'f' {
-				return false
-			}
-		}
-		return true
 	}
-	if id.Version != IssueVersion || !validDigest(id.ScopeHash) || id.Fingerprint != issueFingerprint(id.Key) || !slices.ContainsFunc(Rules(), func(r Rule) bool { return r.ID == id.Key.Rule }) || id.Key.Target == "" || id.Key.Aspect == "" {
+	return true
+}
+
+// Validate rejects unknown versions and noncanonical keys before a history consumer uses them.
+func (id IssueIdentity) Validate() error {
+	if id.Version != IssueVersion || !validIssueDigest(id.ScopeHash) || id.Fingerprint != issueFingerprint(id.Key) || !slices.ContainsFunc(Rules(), func(r Rule) bool { return r.ID == id.Key.Rule }) || id.Key.Target == "" || id.Key.Aspect == "" {
 		return fmt.Errorf("invalid issue identity or version")
 	}
 	key := id.Key

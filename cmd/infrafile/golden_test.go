@@ -37,6 +37,11 @@ func TestGolden(t *testing.T) {
 		{"doctor-json", []string{"doctor", "--json"}, emptyRepo},
 		{"doctor-example-json", []string{"doctor", "--json"}, goldenSync},
 		{"inspect-empty-json", []string{"inspect", "--json"}, emptyRepo},
+		{"findings-empty-json", []string{"findings", "list", "--json"}, emptyRepo},
+		{"findings-refresh-json", []string{"findings", "refresh", "--max-age", "7d", "--json"}, goldenHistoryConfig},
+		{"findings-repeat-json", []string{"findings", "refresh", "--max-age", "7d", "--json"}, goldenHistory},
+		{"findings-changes-json", []string{"findings", "changes", "--after", "0", "--json"}, goldenHistory},
+		{"findings-export", []string{"findings", "export"}, goldenHistory},
 		{"inspect-domain-json", []string{"inspect", homelab, "--key", "Domain/example.com", "--max-age", "7d", "--json"}, nil},
 		{"inspect-domain", []string{"inspect", homelab, "--key", "Domain/example.com", "--max-age", "7d"}, nil},
 		{"agent-guide", []string{"agent", "guide"}, nil},
@@ -283,6 +288,18 @@ func emptyRepo(t *testing.T) {
 	if err := os.WriteFile("infrafile.yaml", []byte("apiVersion: infrafile/v1alpha1\nkind: Config\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func goldenHistoryConfig(t *testing.T) {
+	emptyRepo(t)
+	if err := os.WriteFile("infrafile.yaml", []byte("apiVersion: infrafile/v1alpha1\nkind: Config\nstorageVersion: v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func goldenHistory(t *testing.T) {
+	goldenHistoryConfig(t)
+	findingsCLI(t, time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC), "findings", "refresh", "--max-age", "7d")
 }
 
 func secretRepo(t *testing.T) {

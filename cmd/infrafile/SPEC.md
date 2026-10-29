@@ -30,6 +30,8 @@ CLI inspect 与 MCP inspect 共用离线执行/覆盖/风险报告，默认全�
 
 ## 进程与安全边界
 
+CLI findings refresh 为显式本地写入口，必须启用 v1 标记和 max-age，在完整固定范围推进版本化问题历史；list/changes/export 只读，prune 核对独立完整导出后才清理。退出 0 表示命令完成，可以仍有活动问题；失败/冲突/超限为 2。audit/inspect 在历史存在时附带最近显式状态，读损坏拒绝；MCP 不增加刷新或清理工具。契约见 docs/json/findings.md。
+
 run 全部凭据解析成功才启动子命令，直接传参并只覆盖子进程环境；管道输出经过完整值遮盖。macOS/Linux 使用进程组，Windows 使用 Job Object 清理受管后代；没有 PTY，逃离进程组的后代不保证清理。MCP 单行输入和工具数据结果限制为 4 MiB，调用超时/取消传递到底层。
 
 ## 模块边界与验证限制
