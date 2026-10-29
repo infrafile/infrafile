@@ -17,9 +17,6 @@ func (b *builtin) ctyun(ctx context.Context, config map[string]any) (any, error)
 	if err != nil {
 		return nil, err
 	}
-	if auth.Token != "" {
-		return nil, failure("config", "天翼 CDN 暂不支持 session_token")
-	}
 	all := []cdnEntry{}
 	seen := map[string]bool{}
 	for _, scope := range []int{1, 2, 3} {

@@ -198,6 +198,34 @@ func TestSOPSRejectsPlaintextAndEscapingSymlinks(t *testing.T) {
 	}
 }
 
+func TestSOPSOfflineRejectsLinksAndOversizedFiles(t *testing.T) {
+	for _, name := range []string{"symlink", "oversized"} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			ref, _, _ := testutil.EncryptedFile(t, dir)
+			if name == "symlink" {
+				if err := os.Symlink("secrets.enc.yaml", filepath.Join(dir, "link.enc.yaml")); err != nil {
+					t.Skip("symlinks unavailable")
+				}
+				ref = "sops://link.enc.yaml#database.password"
+			} else {
+				file := filepath.Join(dir, "secrets.enc.yaml")
+				data, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				data = append(data, []byte("\n#"+strings.Repeat("x", 4<<20)+"\n")...)
+				if err := os.WriteFile(file, data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := (secret.Resolver{Dir: dir}).CheckOffline(context.Background(), ref); err == nil {
+				t.Fatal("accepted unbounded or linked credential file")
+			}
+		})
+	}
+}
+
 func TestSOPSRejectsCaseInsensitiveKMSMetadata(t *testing.T) {
 	dir := t.TempDir()
 	ref, _, _ := testutil.EncryptedFile(t, dir)

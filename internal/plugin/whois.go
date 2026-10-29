@@ -10,16 +10,36 @@ import (
 	"time"
 )
 
-func probeWHOIS(ctx context.Context, config map[string]any) (any, error) {
-	var cfg struct {
-		Domain string `json:"domain"`
-		Server string `json:"server"`
-	}
+type whoisConfig struct {
+	Domain string `json:"domain"`
+	Server string `json:"server"`
+}
+
+func parseWHOISConfig(config map[string]any) (whoisConfig, error) {
+	var cfg whoisConfig
 	if err := decodeConfig(config, &cfg); err != nil {
-		return nil, err
+		return cfg, err
 	}
 	if !validHost(cfg.Domain) || net.ParseIP(cfg.Domain) != nil {
-		return nil, failure("config", "WHOIS domain 必须是 ASCII 域名")
+		return cfg, failure("config", "WHOIS domain 必须是 ASCII 域名")
+	}
+	if cfg.Server != "" {
+		host, port, err := net.SplitHostPort(cfg.Server)
+		if err != nil {
+			host, port = cfg.Server, "43"
+		}
+		n, err := strconv.Atoi(port)
+		if !validHost(host) || err != nil || n < 1 || n > 65535 {
+			return cfg, failure("config", "WHOIS server 必须是主机名或主机名:端口")
+		}
+	}
+	return cfg, nil
+}
+
+func probeWHOIS(ctx context.Context, config map[string]any) (any, error) {
+	cfg, err := parseWHOISConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	domain := strings.TrimSuffix(strings.ToLower(cfg.Domain), ".")
 	server := cfg.Server

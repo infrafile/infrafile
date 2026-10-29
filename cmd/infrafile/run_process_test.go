@@ -25,7 +25,11 @@ func TestRunTreeChild(t *testing.T) {
 	if mode == "leaf" {
 		os.WriteFile(pulse+".leaf", []byte(strconv.Itoa(os.Getpid())), 0600)
 		for i := 0; i < 1000; i++ {
-			if err := os.WriteFile(pulse, []byte(strconv.Itoa(i)), 0600); err != nil {
+			// A kill between truncate/write must not erase the last complete heartbeat.
+			if err := os.WriteFile(pulse+".next", []byte(strconv.Itoa(i)), 0600); err != nil {
+				os.Exit(10)
+			}
+			if err := os.Rename(pulse+".next", pulse); err != nil {
 				os.Exit(10)
 			}
 			time.Sleep(20 * time.Millisecond)
@@ -115,7 +119,7 @@ func TestRunCleansDescendants(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 			after, _ := os.ReadFile(pulse)
 			if len(before) == 0 || !bytes.Equal(before, after) {
-				t.Fatal("descendant still running after command completion")
+				t.Fatalf("descendant still running after command completion: before=%q after=%q", before, after)
 			}
 			if strings.Contains(fmt.Sprint(&out, &stderr), "synthetic-tree-value") {
 				t.Fatal("secret leaked")

@@ -22,26 +22,37 @@ type cloudConfig struct {
 	CollectOrigin bool     `json:"collect_origin"`
 }
 
-func (b *builtin) cloudConfig(ctx context.Context, config map[string]any, defaults []string) (cloudAuth, []string, error) {
+func parseCloudConfig(name string, config map[string]any, defaults []string) (cloudConfig, error) {
 	var cfg cloudConfig
 	if err := decodeConfig(config, &cfg); err != nil {
-		return cloudAuth{}, nil, err
+		return cfg, err
 	}
 	if cfg.Services == nil {
 		cfg.Services = defaults
 	}
 	if len(cfg.Services) == 0 {
-		return cloudAuth{}, nil, failure("config", "services 不能为空")
+		return cfg, failure("config", "services 不能为空")
 	}
 	seen := map[string]bool{}
 	for _, service := range cfg.Services {
 		if !slices.Contains(defaults, service) || seen[service] {
-			return cloudAuth{}, nil, failure("config", "services 含未支持或重复的服务")
+			return cfg, failure("config", "services 含未支持或重复的服务")
 		}
 		seen[service] = true
 	}
 	if cfg.CollectOrigin && !seen["cdn"] {
-		return cloudAuth{}, nil, failure("config", "collect_origin 需要启用 cdn 服务")
+		return cfg, failure("config", "collect_origin 需要启用 cdn 服务")
+	}
+	if name == "ctyun" && cfg.Token != "" {
+		return cfg, failure("config", "天翼 CDN 暂不支持 session_token")
+	}
+	return cfg, nil
+}
+
+func (b *builtin) cloudConfig(ctx context.Context, config map[string]any, defaults []string) (cloudAuth, []string, error) {
+	cfg, err := parseCloudConfig(b.name, config, defaults)
+	if err != nil {
+		return cloudAuth{}, nil, err
 	}
 	id, err := b.credential(ctx, cfg.ID)
 	if err != nil {

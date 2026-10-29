@@ -56,7 +56,7 @@ T09/T13/T15 实现锁、原子替换、写前记录和恢复，不能用信封 S
 
 ## 新命令退出码
 
-除 capabilities 外，下表均为待实现接口。audit 的原 ok 和 0/1/2 语义保持不变，unknown notice 不表示已证明无风险。
+capabilities 和 doctor 已实现，下表其余为待实现接口。audit 的原 ok 和 0/1/2 语义保持不变，unknown notice 不表示已证明无风险。
 
 | 命令 | 0 | 1 | 2 |
 | --- | --- | --- | --- |

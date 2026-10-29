@@ -1,0 +1,25 @@
+$ infrafile doctor --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "ok": true,
+  "online": false,
+  "checks": [
+    {
+      "check": "repository",
+      "status": "passed",
+      "code": "valid",
+      "message": "布局、结构、外键及明文凭据检查通过"
+    },
+    {
+      "check": "instance",
+      "plugin": "example",
+      "instance": "home",
+      "status": "passed",
+      "code": "offline-ready",
+      "message": "配置和引用通过；未验证连接、权限或业务健康"
+    }
+  ]
+}
+--- stderr

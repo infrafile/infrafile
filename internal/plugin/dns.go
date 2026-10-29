@@ -26,15 +26,25 @@ func validHost(host string) bool {
 	return true
 }
 
-func probeDNS(ctx context.Context, config map[string]any) (any, error) {
-	var cfg struct {
-		Host string `json:"host"`
-	}
+type dnsConfig struct {
+	Host string `json:"host"`
+}
+
+func parseDNSConfig(config map[string]any) (dnsConfig, error) {
+	var cfg dnsConfig
 	if err := decodeConfig(config, &cfg); err != nil {
-		return nil, err
+		return cfg, err
 	}
 	if !validHost(cfg.Host) || net.ParseIP(cfg.Host) != nil {
-		return nil, failure("config", "DNS host 必须是 ASCII 域名")
+		return cfg, failure("config", "DNS host 必须是 ASCII 域名")
+	}
+	return cfg, nil
+}
+
+func probeDNS(ctx context.Context, config map[string]any) (any, error) {
+	cfg, err := parseDNSConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	host := strings.TrimSuffix(strings.ToLower(cfg.Host), ".")
 	addresses, err := net.DefaultResolver.LookupIPAddr(ctx, host+".")

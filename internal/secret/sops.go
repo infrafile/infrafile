@@ -50,9 +50,28 @@ func (r Resolver) sops(ctx context.Context, ref string, resolve bool) (string, e
 		return "", &Error{"unavailable", "无法打开数据仓目录"}
 	}
 	defer root.Close()
-	data, err := root.ReadFile(file)
+	info, err := root.Lstat(file)
 	if err != nil {
 		return "", &Error{"unavailable", "无法读取仓内密文文件（可能不存在或路径越界）"}
+	}
+	if !info.Mode().IsRegular() || info.Size() > 4<<20 {
+		return "", &Error{"invalid-file", "SOPS 密文必须是最多 4 MiB 的普通文件，不能是符号链接"}
+	}
+	f, err := root.Open(file)
+	if err != nil {
+		return "", &Error{"unavailable", "无法读取仓内密文文件"}
+	}
+	defer f.Close()
+	opened, err := f.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return "", &Error{"invalid-file", "SOPS 文件在读取时发生变化"}
+	}
+	data, err := io.ReadAll(io.LimitReader(f, (4<<20)+1))
+	if err != nil || len(data) > 4<<20 {
+		return "", &Error{"invalid-file", "SOPS 密文读取失败或超过 4 MiB"}
+	}
+	if ctx.Err() != nil {
+		return "", &Error{"cancelled", "凭据操作已取消"}
 	}
 	doc, err := secretDocument(data)
 	if err != nil {

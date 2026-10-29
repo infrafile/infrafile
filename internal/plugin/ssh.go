@@ -14,19 +14,34 @@ import (
 
 var sshUser = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]*$`)
 
-func (b *builtin) probeSSH(ctx context.Context, config map[string]any) (any, error) {
-	var cfg struct {
-		Host           string `json:"host"`
-		User           string `json:"user"`
-		Port           int    `json:"port"`
-		IdentityFile   string `json:"identity_file"`
-		KnownHostsFile string `json:"known_hosts_file"`
-	}
+type sshConfig struct {
+	Host           string `json:"host"`
+	User           string `json:"user"`
+	Port           int    `json:"port"`
+	IdentityFile   string `json:"identity_file"`
+	KnownHostsFile string `json:"known_hosts_file"`
+}
+
+func parseSSHConfig(config map[string]any) (sshConfig, error) {
+	var cfg sshConfig
 	if err := decodeConfig(config, &cfg); err != nil {
-		return nil, err
+		return cfg, err
 	}
 	if !validHost(cfg.Host) || (cfg.User != "" && !sshUser.MatchString(cfg.User)) || cfg.Port < 0 || cfg.Port > 65535 {
-		return nil, failure("config", "SSH host、user 或 port 无效")
+		return cfg, failure("config", "SSH host、user 或 port 无效")
+	}
+	for _, file := range []string{cfg.IdentityFile, cfg.KnownHostsFile} {
+		if strings.ContainsAny(file, "\r\n\x00") {
+			return cfg, failure("config", "SSH 文件路径不能包含控制字符")
+		}
+	}
+	return cfg, nil
+}
+
+func (b *builtin) probeSSH(ctx context.Context, config map[string]any) (any, error) {
+	cfg, err := parseSSHConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	args := []string{"-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "UpdateHostKeys=no", "-o", "PermitLocalCommand=no", "-o", "RemoteCommand=none", "-o", "ClearAllForwardings=yes", "-o", "ForwardAgent=no", "-o", "ForwardX11=no", "-o", "ControlPath=none", "-o", "ControlMaster=no", "-o", "ControlPersist=no", "-o", "ConnectionAttempts=1", "-o", "ConnectTimeout=10"}
 	if cfg.User != "" {
@@ -34,11 +49,6 @@ func (b *builtin) probeSSH(ctx context.Context, config map[string]any) (any, err
 	}
 	if cfg.Port != 0 {
 		args = append(args, "-p", strconv.Itoa(cfg.Port))
-	}
-	for _, file := range []string{cfg.IdentityFile, cfg.KnownHostsFile} {
-		if strings.ContainsAny(file, "\r\n\x00") {
-			return nil, failure("config", "SSH 文件路径不能包含控制字符")
-		}
 	}
 	if cfg.IdentityFile != "" {
 		args = append(args, "-i", repoPath(b.dir, cfg.IdentityFile))

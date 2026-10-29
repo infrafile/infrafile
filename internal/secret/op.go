@@ -9,14 +9,8 @@ import (
 )
 
 func readOP(ctx context.Context, ref string, value bool) (string, error) {
-	parts := strings.Split(strings.TrimPrefix(ref, "op://"), "/")
-	if len(parts) < 3 || len(parts) > 4 || strings.ContainsAny(ref, "?#") || strings.ContainsFunc(ref, unicode.IsControl) {
-		return "", &Error{"invalid-ref", "op 引用必须是 op://vault/item/[section/]field，不带查询参数"}
-	}
-	for _, part := range parts {
-		if strings.TrimSpace(part) == "" {
-			return "", &Error{"invalid-ref", "op 引用中的名称不能为空"}
-		}
+	if err := checkOPRef(ref); err != nil {
+		return "", err
 	}
 	if !value {
 		ref += "?attribute=id"
@@ -38,4 +32,17 @@ func readOP(ctx context.Context, ref string, value bool) (string, error) {
 		return "", nil
 	}
 	return string(data), nil
+}
+
+func checkOPRef(ref string) error {
+	parts := strings.Split(strings.TrimPrefix(ref, "op://"), "/")
+	if len(parts) < 3 || len(parts) > 4 || strings.ContainsAny(ref, "?#") || strings.ContainsFunc(ref, unicode.IsControl) {
+		return &Error{"invalid-ref", "op 引用必须是 op://vault/item/[section/]field，不带查询参数"}
+	}
+	for _, part := range parts {
+		if strings.TrimSpace(part) == "" {
+			return &Error{"invalid-ref", "op 引用中的名称不能为空"}
+		}
+	}
+	return nil
 }

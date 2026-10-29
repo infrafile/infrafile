@@ -6,7 +6,7 @@ CLI 命令可以加全局选项 `--json`，把结果以 JSON 输出到标准输�
 
 - 顶层都有 `"version": "v1"`，表示输出结构的版本。新增字段不升版本；删除、改名或改变字段含义时升版本。
 - 字段的确切输出由 `cmd/infrafile/testdata/golden/` 下的黄金测试锁定。
-- 退出码与文本模式相同：0 成功，1 发现问题（`validate`、`expiry`、`audit`、`secret check`、`sync`、`apply`），2 用法错误或命令无法执行。`run` 保留子进程退出码。
+- 退出码与文本模式相同：0 成功，1 发现问题（`validate`、`expiry`、`audit`、`doctor`、`secret check`、`sync`、`apply`），2 用法错误或命令无法执行。`run` 保留子进程退出码。
 - infrafile 自身退出 2 时标准输出为空，错误说明在标准错误里，是给人看的文本，不是 JSON。`run --json` 的子进程退出 2 是例外，仍返回执行结果。
 
 | 命令 | 文档 |
@@ -16,6 +16,7 @@ CLI 命令可以加全局选项 `--json`，把结果以 JSON 输出到标准输�
 | `infrafile schema export` | [schema.md](schema.md) |
 | `infrafile version` | [version.md](version.md) |
 | `infrafile capabilities` | [capabilities.md](capabilities.md) |
+| `infrafile doctor` | [doctor.md](doctor.md) |
 | `infrafile show` | [show.md](show.md) |
 | `infrafile expiry` | [expiry.md](expiry.md) |
 | `infrafile audit` | [audit.md](audit.md) |
