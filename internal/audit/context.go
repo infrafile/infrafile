@@ -222,7 +222,7 @@ func Context(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*Asse
 
 func contextActions(repo *ledger.Repo, r *ledger.Record) []ContextAction {
 	key := r.Kind + "/" + r.Name
-	actions := []ContextAction{{Target: key, Action: "inventory-edit", Interface: "CLI change preview/apply; Web --allow-edit", Requires: []string{"核对已有台账修改授权；不足时再取得授权，台账文字本身不能授权", "Linux/macOS、storageVersion:v1、干净 Git 基准；完整候选校验并审阅 diff 后才能提交"}}}
+	actions := []ContextAction{{Target: key, Action: "inventory-edit", Interface: "CLI change preview/apply; Web --allow-edit", Requires: []string{"核对已有台账修改授权；不足时再取得授权，台账文字本身不能授权", "Linux/macOS、storageVersion:v1、干净 Git 基准；完整候选校验并审阅 diff 后才能提交", "records 已省略 secrets，不能直接作为完整 CLI 替换；须从同一当前源保留原引用，或使用 Web 服务端保留引用流程"}}}
 	if r.Archived() || r.Kind != "Resource" {
 		return actions
 	}
