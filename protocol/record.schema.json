@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Versioned management record envelope",
+  "description": "Only the envelope is frozen. Each consumer must validate its own data before reading or publishing; this is not a plugin RPC method.",
+  "type": "object",
+  "required": ["version", "kind", "data"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {"const": "v1"},
+    "kind": {"enum": ["FindingHistory", "EditTransaction", "ExecutionReceipt"]},
+    "data": {"type": "object"}
+  }
+}

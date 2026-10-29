@@ -8,6 +8,10 @@
   "properties": {
     "apiVersion": {"$ref": "common.schema.json#/$defs/apiVersion"},
     "kind": {"const": "Config"},
+    "storageVersion": {
+      "description": "显式启用 v1 管理记录存储契约。旧版不识别此字段并拒绝业务操作；缺省保持既有数据布局，不自动升级。",
+      "const": "v1"
+    },
     "plugins": {
       "type": "object",
       "propertyNames": {"$ref": "#/$defs/name"},

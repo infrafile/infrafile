@@ -29,6 +29,22 @@ func TestPlanApplyUnchanged(t *testing.T) {
 	}
 }
 
+func TestPlanAndApplyRejectSymlink(t *testing.T) {
+	goldenPlan(t)
+	if err := os.Symlink("plan.json", "linked.json"); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	for _, args := range [][]string{{"plan", "show", "linked.json", "--json"}, {"apply", "linked.json", "--json"}} {
+		var out, stderr bytes.Buffer
+		if code := run(args, &out, &stderr); code != 2 || out.Len() != 0 || !strings.Contains(stderr.String(), "计划必须是普通文件") {
+			t.Fatalf("%v: exit=%d stdout=%s stderr=%s", args, code, &out, &stderr)
+		}
+	}
+	if _, err := os.Stat("changed"); !os.IsNotExist(err) {
+		t.Fatal("rejected symlink reached plugin control")
+	}
+}
+
 func controlRepo(t *testing.T) {
 	fixturePlugin(t)
 	t.Setenv("INFRAFILE_PLUGIN_MODE", "control")

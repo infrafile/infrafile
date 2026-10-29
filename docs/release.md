@@ -2,6 +2,8 @@
 
 发布入口是 `.github/workflows/release.yml`。`v*` 标签触发测试、离线快速上手、GoReleaser 六个平台构建，以及基于 GitHub OIDC 的 Cosign keyless 签名。工作流先创建草稿 Release，验收后公开并更新 Homebrew tap。以下以 v0.3.0 为例。
 
+涉及新存储时，先按[兼容与恢复策略](compatibility.md)确认显式标记、旧正式二进制重放和完整恢复点；仅更换程序不构成数据降级。RC/正式版仍须完成 T19 对应候选的升级与恢复验收。
+
 ## 构建与发布约定
 
 - GoReleaser 固定 v2.19.0，Cosign 固定 v3.1.4；Go 版本来自 go.mod。

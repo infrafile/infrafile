@@ -69,11 +69,22 @@ func (p *Plan) Encode(ctx context.Context) ([]byte, error) {
 }
 
 func Read(ctx context.Context, path string) (*Plan, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("计划必须是普通文件，不能是符号链接")
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
+	opened, err := f.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return nil, fmt.Errorf("计划文件在打开时发生变化")
+	}
 	data, err := io.ReadAll(io.LimitReader(f, maxPlanBytes+1))
 	if err != nil || len(data) > maxPlanBytes {
 		return nil, fmt.Errorf("计划读取失败或超过 4 MiB")

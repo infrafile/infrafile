@@ -51,6 +51,8 @@ infrafile plan cdn-origin Resource/edge --dir ./my-infra \
 
 计划记录格式版本、UTC 生成时间、台账主键、插件绑定、Resource 内容哈希、实例配置哈希、动作参数、变更前状态及 SHA-256、预期变更后状态。不会把实例配置或凭据值写进计划。哈希使用 Go `encoding/json` 的稳定对象键顺序，数字保留 JSON 精度。
 
+计划文件必须是普通文件；show 和 apply 共用读取器，拒绝目标符号链接、目录、设备和打开时被替换的文件。v1 格式与升级/恢复边界见[兼容策略](compatibility.md)。
+
 `plan show` 校验结构、哈希、敏感字段和动作与预期结果的一致性后展示前后状态；JSON 输出保留完整计划。`apply` 接收这一份计划，并且：
 
 1. 检查 Resource、绑定和实例配置没有变化，目标仍未归档。

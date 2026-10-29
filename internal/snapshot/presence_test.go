@@ -12,6 +12,7 @@ func TestPresenceBoundary(t *testing.T) {
 	good := "apiVersion: infrafile/v1alpha1\nkind: Presence\nspec:\n  Domain/example.com:\n    binding_hash: " + strings.Repeat("a", 64) + "\n    last_seen: '2026-12-01T10:00:00Z'\n"
 	for name, content := range map[string]string{
 		"empty": "", "envelope": strings.Replace(good, "Presence", "Snapshot", 1),
+		"version":   strings.Replace(good, "infrafile/v1alpha1", "infrafile/v2", 1),
 		"unknown":   good + "    secret: synthetic-private-presence-value\n",
 		"duplicate": good + "    last_seen: '2026-12-02T10:00:00Z'\n",
 		"multiple":  good + "---\n{}\n", "time": strings.Replace(good, "2026-12-01T10:00:00Z", "yesterday", 1),
