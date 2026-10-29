@@ -50,7 +50,29 @@ $ infrafile audit ../../examples/homelab --json
         "reason": "只做跳转，迁到 CDN 前先直连 web1",
         "until": "2027-06-30",
         "source": "inventory/domains/example.net.yaml"
-      }
+      },
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "6e3f6a3b692b8c83aa0dbebc78038980d11dbc4dfc28e869bb96af5cfca6d77b",
+          "scope_hash": "07759b61250145b75f34f451fe6bdb1b39d4b06cbf34b57740aac40743358add",
+          "key": {
+            "rule": "origin_exposure",
+            "target": "Domain/example.net",
+            "plugin": "cloudflare",
+            "instance": "home",
+            "service": "zones.dns_records",
+            "aspect": "address/A",
+            "natural": {
+              "kind": "Domain",
+              "name": "example.net"
+            },
+            "related": [
+              "Server/web1"
+            ]
+          }
+        }
+      ]
     },
     {
       "rule": "orphan",
@@ -67,7 +89,26 @@ $ infrafile audit ../../examples/homelab --json
         "plugin": "aliyun",
         "snapshot_file": "state/aliyun/home.yaml"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "eabed6c11d6b7fea3573789d2b40b5467e66351891cad46ce893f2acc991add9",
+          "scope_hash": "394c99801103c78b86cef6992f3aeb1ce95b5e9df67814229d278d23dd80390c",
+          "key": {
+            "rule": "orphan",
+            "target": "aliyun/home/Domain/example.org",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "domains",
+            "aspect": "inventory",
+            "natural": {
+              "kind": "Domain",
+              "name": "example.org"
+            }
+          }
+        }
+      ]
     },
     {
       "rule": "orphan",
@@ -85,7 +126,27 @@ $ infrafile audit ../../examples/homelab --json
         "plugin": "aliyun",
         "snapshot_file": "state/aliyun/home.yaml"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "e513e973bc9e7478683f7329f4e1c859cef1f2a0fde671afb353c69738f7e6ae",
+          "scope_hash": "394c99801103c78b86cef6992f3aeb1ce95b5e9df67814229d278d23dd80390c",
+          "key": {
+            "rule": "orphan",
+            "target": "aliyun/home/Resource/aliyun/id/fictional-cdn-id",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "cdn",
+            "aspect": "inventory",
+            "natural": {
+              "kind": "Resource",
+              "provider": "aliyun",
+              "resource_id": "fictional-cdn-id"
+            }
+          }
+        }
+      ]
     }
   ],
   "notices": [

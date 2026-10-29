@@ -35,7 +35,7 @@ v1.0 开发接口：`infrafile inspect [目录] --max-age 7d --json`。只读离
 
 每个 `checks[]` 包含 `{id, rule, target, plugin, instance, service, aspect, status, code, message, evidence, not_applicable}`。`coverage` 是报告内部的检查契约名，不新增 `audit --rule`。空实例字段表示尚无明确绑定，不猜账号。绑定方面使用 hostname 与引用的主键，不使用数组位置或观测值，重复声明同一检查只计一次。
 
-id 是按顺序序列化 `{rule,target,plugin,instance,service,aspect}` 的 SHA-256 小写十六进制。没有时间、消息、文件路径或观测值；不同账号/方面不合并。它是检查项的身份，不代表 T08 的 finding fingerprint 已实现。
+id 是按顺序序列化 `{rule,target,plugin,instance,service,aspect}` 的 SHA-256 小写十六进制。没有时间、消息、文件路径或观测值；不同账号/方面不合并。它是覆盖检查项的身份。T08 的 finding 指纹另见[问题身份与恢复规则](issues.md)，不与覆盖检查 id 混用。
 
 `status` 为 checked / unknown / not_applicable；`code` 说明资格，例如 checked、failed、running、unverified、future、stale、ttl_unset、incomplete、not_baselined、baseline_future、not_configured、ambiguous_scope、missing_relationship、address_unknown、identity_mismatch、not_observed、observation_unknown、unsupported。`evidence[]` 返回来源文件、原始观测时间与 TTL，不改写旧时间。
 

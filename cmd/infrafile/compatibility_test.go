@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/infrafile/infrafile/internal/audit"
 	"github.com/infrafile/infrafile/internal/control"
 	"github.com/infrafile/infrafile/internal/plugin"
 	"github.com/infrafile/infrafile/protocol"
@@ -56,6 +57,10 @@ func TestV030Compatibility(t *testing.T) {
 		t.Fatalf("expected official v0.3.0, got %+v", release)
 	}
 	t.Logf("previous binary: version=%s commit=%s", release.Build.Version, release.Build.Commit)
+	legacyFixture, err := filepath.Abs(homelab)
+	if err != nil {
+		t.Fatal(err)
+	}
 	goldenImport(t)
 	oldCLI(0, "sync", "example", "--json")
 	before := mcpFiles(t)
@@ -70,6 +75,7 @@ func TestV030Compatibility(t *testing.T) {
 	for _, args := range [][]string{
 		{"validate", "--json"}, {"show", "Server/web1", "--json"},
 		{"expiry", "--json"}, {"audit", "--max-age", "7d", "--json"},
+		{"audit", legacyFixture, "--max-age", "7d", "--json"},
 	} {
 		var out, stderr bytes.Buffer
 		code := run(args, &out, &stderr)
@@ -80,6 +86,7 @@ func TestV030Compatibility(t *testing.T) {
 		if args[0] == "audit" {
 			delete(old, "as_of")
 			delete(current, "as_of")
+			stripIssueExtension(t, current)
 		}
 		if !reflect.DeepEqual(old, current) {
 			t.Fatalf("CLI %v differs: previous=%v current=%v", args, old, current)
@@ -135,6 +142,7 @@ func TestV030Compatibility(t *testing.T) {
 		if tc.name == "audit" {
 			delete(old, "as_of")
 			delete(current, "as_of")
+			stripIssueExtension(t, current)
 		}
 		if tc.name == "schema" {
 			delete(current["schemas"].(map[string]any)["config.schema.json"].(map[string]any)["properties"].(map[string]any), "storageVersion")
@@ -188,4 +196,24 @@ func TestV030Compatibility(t *testing.T) {
 	}
 	writeImportFile(t, "infrafile.yaml", string(config))
 	oldCLI(0, "validate", "--json")
+}
+
+// Only the documented additive field is excluded; its contents are validated first.
+func stripIssueExtension(t *testing.T, value map[string]any) {
+	t.Helper()
+	for _, entry := range value["findings"].([]any) {
+		finding := entry.(map[string]any)
+		issues, ok := finding["issues"].([]any)
+		if !ok || len(issues) == 0 {
+			t.Fatal("missing issue identity extension")
+		}
+		for _, raw := range issues {
+			data, _ := json.Marshal(raw)
+			var id audit.IssueIdentity
+			if json.Unmarshal(data, &id) != nil || id.Validate() != nil {
+				t.Fatal("invalid identity extension")
+			}
+		}
+		delete(finding, "issues")
+	}
 }

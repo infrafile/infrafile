@@ -38,7 +38,27 @@ $ infrafile audit --rule missing --max-age 7d --json
         "service": "zones",
         "snapshot_file": "state/cloudflare/home.yaml"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "95529546f10680f1f274aea741b7c7b9686753f18dd07aa9b06788cb6b5839c4",
+          "scope_hash": "6cfbffbe64829dac102fa42a1a40798f268768ac7fc6da0c913145457cba110a",
+          "key": {
+            "rule": "missing",
+            "target": "Resource/edge",
+            "plugin": "cloudflare",
+            "instance": "home",
+            "service": "zones",
+            "aspect": "presence",
+            "natural": {
+              "kind": "Resource",
+              "provider": "cloudflare",
+              "resource_id": "zone"
+            }
+          }
+        }
+      ]
     }
   ],
   "notices": []

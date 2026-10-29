@@ -63,12 +63,13 @@ type Rule struct {
 
 // Finding 是一条偏差；Target 为 Kind/name 或 plugin/instance。
 type Finding struct {
-	Rule             string         `json:"rule"`
-	Target           string         `json:"target"`
-	File             string         `json:"file"`
-	Message          string         `json:"message"`
-	Evidence         map[string]any `json:"evidence"`
-	Waiver           *Waiver        `json:"waiver"`
+	Rule             string          `json:"rule"`
+	Target           string          `json:"target"`
+	File             string          `json:"file"`
+	Message          string          `json:"message"`
+	Evidence         map[string]any  `json:"evidence"`
+	Waiver           *Waiver         `json:"waiver"`
+	Issues           []IssueIdentity `json:"issues,omitempty"`
 	identity         *observation.Identity
 	plugin, instance string
 }
@@ -212,6 +213,9 @@ func Run(in *Input, rules []Rule) ([]Finding, []Notice) {
 	for _, r := range rules {
 		ran[r.ID] = true
 		findings = append(findings, r.Eval(in)...)
+	}
+	for index := range findings {
+		findings[index].Issues = issueIdentities(in, findings[index])
 	}
 	sort.SliceStable(findings, func(i, j int) bool {
 		if findings[i].Rule != findings[j].Rule {

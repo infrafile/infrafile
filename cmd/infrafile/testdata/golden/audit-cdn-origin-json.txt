@@ -56,7 +56,27 @@ $ infrafile audit --rule cdn_drift --max-age 7d --json
         "service": "zones",
         "snapshot_file": "state/cloudflare/home.yaml"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "f2e07bb39475f40f557ea6f824bef55fb76b98854cbcb3c85f9f487094bb3d40",
+          "scope_hash": "5c296fd0864ec9b7aa99bbfb5a31c5cd7b3a53776413563f6dbe0846733024d8",
+          "key": {
+            "rule": "cdn_drift",
+            "target": "Resource/edge",
+            "plugin": "cloudflare",
+            "instance": "home",
+            "service": "zones",
+            "aspect": "origin/hosts",
+            "natural": {
+              "kind": "Resource",
+              "provider": "cloudflare",
+              "resource_id": "zone"
+            }
+          }
+        }
+      ]
     }
   ],
   "notices": []

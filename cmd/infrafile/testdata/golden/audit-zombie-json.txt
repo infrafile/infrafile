@@ -34,7 +34,26 @@ $ infrafile audit ../../examples/homelab/lifecycle --rule zombie --json
         "plugin": "aliyun",
         "snapshot_file": "state/aliyun/home.yaml"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "7ddd062c3a88489c3c2596bbcde51b5fcf583f6959ca821861092fa40db3347d",
+          "scope_hash": "d02e0f3af4ed7100d854b465eea4847782a3228218d3d32eee79024341a1cfcf",
+          "key": {
+            "rule": "zombie",
+            "target": "Domain/old.example.com",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "domains",
+            "aspect": "inventory",
+            "natural": {
+              "kind": "Domain",
+              "name": "old.example.com"
+            }
+          }
+        }
+      ]
     },
     {
       "rule": "zombie",
@@ -55,7 +74,26 @@ $ infrafile audit ../../examples/homelab/lifecycle --rule zombie --json
         "reason": "迁移窗口保留到年底",
         "until": "2026-12-31",
         "source": "inventory/domains/waived.example.com.yaml"
-      }
+      },
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "0f68e312e86d4772acc6a4e0920814ff6be21aede8008a100ca372e503d80c63",
+          "scope_hash": "6d7c010492fd581c7c0f9f94c5d55fad6d87329443d9be1be7b8804dfcb4e513",
+          "key": {
+            "rule": "zombie",
+            "target": "Domain/waived.example.com",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "domains",
+            "aspect": "inventory",
+            "natural": {
+              "kind": "Domain",
+              "name": "waived.example.com"
+            }
+          }
+        }
+      ]
     }
   ],
   "notices": []

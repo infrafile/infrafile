@@ -38,7 +38,26 @@ $ infrafile audit ../../examples/homelab/lifecycle --rule orphan --json
         "reason": "独立团队维护的演示域名",
         "until": "2026-12-31",
         "source": "infrafile.yaml"
-      }
+      },
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "f84bbfa2d48bccac59d8dbf4a447bc590c51b8cdd0ab67889edea3ac142e362e",
+          "scope_hash": "46aa255ec1fa761b0041726405ec43c09047d064e4b54483b86d4dfd18dfb3f7",
+          "key": {
+            "rule": "orphan",
+            "target": "aliyun/home/Domain/ignored.example.net",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "domains",
+            "aspect": "inventory",
+            "natural": {
+              "kind": "Domain",
+              "name": "ignored.example.net"
+            }
+          }
+        }
+      ]
     },
     {
       "rule": "orphan",
@@ -55,7 +74,26 @@ $ infrafile audit ../../examples/homelab/lifecycle --rule orphan --json
         "plugin": "aliyun",
         "snapshot_file": "state/aliyun/home.yaml"
       },
-      "waiver": null
+      "waiver": null,
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "e01507332f9e399bc5c42dd575165b466502c7e002eaac3737f9d13a5bf6dd9b",
+          "scope_hash": "46aa255ec1fa761b0041726405ec43c09047d064e4b54483b86d4dfd18dfb3f7",
+          "key": {
+            "rule": "orphan",
+            "target": "aliyun/home/Domain/orphan.example.net",
+            "plugin": "aliyun",
+            "instance": "home",
+            "service": "domains",
+            "aspect": "inventory",
+            "natural": {
+              "kind": "Domain",
+              "name": "orphan.example.net"
+            }
+          }
+        }
+      ]
     }
   ],
   "notices": []

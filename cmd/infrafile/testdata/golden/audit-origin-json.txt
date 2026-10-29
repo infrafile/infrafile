@@ -47,7 +47,29 @@ $ infrafile audit ../../examples/homelab --rule origin_exposure --json
         "reason": "只做跳转，迁到 CDN 前先直连 web1",
         "until": "2027-06-30",
         "source": "inventory/domains/example.net.yaml"
-      }
+      },
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "6e3f6a3b692b8c83aa0dbebc78038980d11dbc4dfc28e869bb96af5cfca6d77b",
+          "scope_hash": "07759b61250145b75f34f451fe6bdb1b39d4b06cbf34b57740aac40743358add",
+          "key": {
+            "rule": "origin_exposure",
+            "target": "Domain/example.net",
+            "plugin": "cloudflare",
+            "instance": "home",
+            "service": "zones.dns_records",
+            "aspect": "address/A",
+            "natural": {
+              "kind": "Domain",
+              "name": "example.net"
+            },
+            "related": [
+              "Server/web1"
+            ]
+          }
+        }
+      ]
     }
   ],
   "notices": [

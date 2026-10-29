@@ -40,7 +40,22 @@ $ infrafile audit --rule stale_state --max-age 45d --json
         "reason": "每季度手动同步一次",
         "until": "2026-12-31",
         "source": "infrafile.yaml"
-      }
+      },
+      "issues": [
+        {
+          "version": "v1",
+          "fingerprint": "88c67cfca0271b4bd85935ac10a97429c9af082f440572164833a8050db3ca90",
+          "scope_hash": "38cd81e21236cde3cd1303b8e78ccb3e64591f9546a775a5b87cd676c84a4e37",
+          "key": {
+            "rule": "stale_state",
+            "target": "cloudflare/home",
+            "plugin": "cloudflare",
+            "instance": "home",
+            "service": "",
+            "aspect": "freshness"
+          }
+        }
+      ]
     }
   ],
   "notices": [
