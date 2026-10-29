@@ -207,7 +207,7 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 		if err != nil {
 			return nil, err
 		}
-		return inspectionValue(report)
+		return queryValue(report)
 	case "list":
 		records := []any{}
 		for _, r := range matches {

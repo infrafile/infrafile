@@ -54,7 +54,7 @@ func newInspectCmd(opts *globalOpts) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		value, err := inspectionValue(report)
+		value, err := queryValue(report)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func newInspectCmd(opts *globalOpts) *cobra.Command {
 	return cmd
 }
 
-func inspectionValue(report *audit.Inspection) (map[string]any, error) {
+func queryValue(report any) (map[string]any, error) {
 	data, err := json.Marshal(report)
 	if err != nil {
 		return nil, err

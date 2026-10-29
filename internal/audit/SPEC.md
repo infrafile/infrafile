@@ -34,6 +34,8 @@ Inspect 与 audit 共用规则、自然身份、missing 的资格判断和 CDN �
 
 ## 问题身份和状态转换
 
+Context 复用同一次 inspect 与已保存历史，仅接受一个已登记资产。根据检查范围和自然身份提取对应实例/服务的保存观测，Cloudflare DNS 限于显式 watch 的 zone；重复身份、不匹配 host、其他实例及不支持服务不冒充对应事实。返回的 match 与当前证据资格分开，旧值不会使 unknown/failed/stale 转为通过；不读取任意客户端路径、解析凭据或写历史。
+
 各 finding 兼容增加 issues，按规则/目标/实例/服务/方面、区域及结构化自然身份/关联源站生成 v1 指纹；回源按 hosts/port/protocol 分面，不改变旧 finding 数量。scope_hash 独立绑定配置/TTL/身份/期望/关系；备注、时间、观测值、豁免/NA 不参与。不同范围历史单列，范围变化不生成恢复。
 
 EvaluateIssues 从同一次 inspect 的证据和当前/已知问题并集产生 confirmed/clear/unknown、in_scope、found 与独立豁免。AdvanceIssues 为纯函数，保留首次发现、确认/检查/最近恢复时间和发生次数；同范围复发沿用历史，未知/失败/过期/NA/有效豁免不制造恢复，移出范围保留离开前状态。重复/矛盾身份、未知版本、时间倒退和计数溢出拒绝。逐规则 key、状态表和精确 JSON 见 docs/json/issues.md、issue-identities 黄金与实际规则/快照转换回归。显式保存另见下节，普通查询仍不写历史。
