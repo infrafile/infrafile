@@ -23,6 +23,7 @@ v1.0 开发分支的 finding 指纹、适用范围和纯状态转换见[问题�
 | `infrafile expiry` | [expiry.md](expiry.md) |
 | `infrafile audit` | [audit.md](audit.md) |
 | `infrafile inspect` | [inspect.md](inspect.md) |
+| `infrafile context` | [context.md](context.md) |
 | `infrafile findings refresh/list/changes/export/prune` | [findings.md](findings.md) |
 | `infrafile change preview/apply/status/recover` | [change.md](change.md) |
 | `infrafile ssh-config` | [ssh-config.md](ssh-config.md) |

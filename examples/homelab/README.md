@@ -91,6 +91,8 @@ infrafile agent guide
 
 `infrafile_audit` 传 `{"rules":["stale_state"],"max_age_days":45}` 可体验同一份离线审计；结果随检查日期变化。未豁免偏差返回 ok=false，工具调用仍成功。
 
-安装体验请在临时项目目录运行 `infrafile agent install codex --dir <临时目录>` 或 `claude`；安装内容与 `agent guide` 一致，重复运行不改文件。具体接入与七个工具契约见[Agent 指南](../../docs/agent.md)。
+v1.0 开发构建还可用 `infrafile_context` 传 `{"key":"Server/web1","max_age_days":7}` 或 `{"labels":{"role":"web"},"kind":"Server","max_age_days":7}`；CLI 等价为 `infrafile context examples/homelab --key Server/web1 --max-age 7d --json`。登记/一层关系、旧观测时间、unknown 和条件动作提示分别返回，不执行台账描述中的文本；缺少示例密钥不影响上下文读取，秘密引用省略。
+
+安装体验请在临时项目目录运行 `infrafile agent install codex --dir <临时目录>` 或 `claude`；安装内容与 `agent guide` 一致，重复运行不改文件。正式v0.3原七工具与开发版十工具的接入契约见[Agent 指南](../../docs/agent.md)。
 
 约定：只用文档保留地址段（`192.0.2.0/24`、`198.51.100.0/24`、`203.0.113.0/24`）、私有地址和 `example.com` 系列域名。

@@ -61,10 +61,10 @@ infrafile serve --dir /absolute/path/to/ledger \
 | validate | `{}` | 记录数、问题数与代码计数，无敏感诊断原文 |
 | schema | `{}` | 内嵌 JSON Schema bundle |
 | capabilities | `{}` | 离线支持能力目录 |
-| context | 必须 key，可选 max_age_days | `{version,inspection,observations}`；inspection 与相同输入 CLI inspect 一致，observations 含 check/plugin/instance/service/file/observed_at/match/values |
+| context | key 或非空 labels 二选一，可加 kind / max_age_days | [共享 context](json/context.md)：`{version,records,inspection,observations,next_actions}`；observations 含 target/check/plugin/instance/service/file/observed_at/match/values |
 | changes | `{}` | `{version,present,last_sequence,pruned_through,changes}`；相当于 findings changes 从 pruned_through 读取全部保留事件，不接受任意游标或路径 |
 
-原八个查询结果与 MCP structuredContent 一致；context/changes 为工作台新增只读入口，MCP 九工具保持。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes 沿用历史救援契约，只严格读取已保存历史，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
+原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具，changes 仍为工作台只读历史入口。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes 沿用历史救援契约，只严格读取已保存历史，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
 
 ## 台账编辑（显式启用）
 

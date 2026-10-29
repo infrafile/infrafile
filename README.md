@@ -41,6 +41,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [离线能力查询与支持边界](docs/json/capabilities.md)
 - [离线预检与显式在线诊断](docs/doctor.md)
 - [执行、覆盖与风险报告（v1.0 开发）](docs/json/inspect.md)
+- [Agent 资产、关系、证据与条件动作上下文（v1.0 开发）](docs/json/context.md)
 - [显式问题历史、变化与导出（v1.0 开发）](docs/json/findings.md)
 - [资产、巡检、变更工作台与只读 API（v1.0 开发）](docs/serve.md)
 - [台账变更预览、Git 提交与失败恢复（v1.0 开发）](docs/json/change.md)

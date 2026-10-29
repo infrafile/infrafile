@@ -172,7 +172,8 @@ func (p *Plan) Validate() error {
 	return err
 }
 
-func resolve(repo *ledger.Repo, key string) (Binding, map[string]any, string, error) {
+// Resolve checks the local binding only; it never opens a plugin or resolves credentials.
+func Resolve(repo *ledger.Repo, key string) (Binding, map[string]any, string, error) {
 	var record *ledger.Record
 	for _, r := range repo.Records {
 		if r.Kind+"/"+r.Name == key {
@@ -200,7 +201,7 @@ func resolve(repo *ledger.Repo, key string) (Binding, map[string]any, string, er
 }
 
 func Generate(ctx context.Context, repo *ledger.Repo, key, operation string, parameters map[string]any, now time.Time) (*Plan, error) {
-	b, c, rh, err := resolve(repo, key)
+	b, c, rh, err := Resolve(repo, key)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +255,7 @@ func Apply(ctx context.Context, repo *ledger.Repo, p *Plan) (Result, error) {
 	}
 	a := p.Actions[0]
 	r.Target = a.Target
-	b, c, rh, err := resolve(repo, a.Target)
+	b, c, rh, err := Resolve(repo, a.Target)
 	if err != nil {
 		return r, err
 	}
