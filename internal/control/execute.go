@@ -33,6 +33,15 @@ func freshBinding(ctx context.Context, dir string, p *Plan) (*ledger.Repo, error
 	if err != nil || b != a.Binding || rh != a.RecordHash || plugin.Hash(c) != a.ConfigHash {
 		return nil, errors.New("台账目标或插件配置已变化，请重新生成计划")
 	}
+	if p.Scope != nil {
+		scope, err := planScope(ctx, v.Repo, a)
+		if err != nil {
+			return nil, err
+		}
+		if plugin.Hash(scope) != plugin.Hash(p.Scope) {
+			return nil, errors.New("计划关联登记或作用范围已变化，请重新生成并审阅")
+		}
+	}
 	return v.Repo, nil
 }
 

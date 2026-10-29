@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/infrafile/infrafile/internal/control"
@@ -82,6 +83,26 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 		a := p.Actions[0]
 		if p.Version == "v2" {
 			fmt.Fprintf(cmd.OutOrStdout(), "审阅摘要：%s\n有效至：%s（30 分钟）\n", p.Digest, p.ExpiresAt)
+			if p.Scope == nil {
+				fmt.Fprintln(cmd.OutOrStdout(), "作用范围：此旧v2计划未保存关联范围，需另行核对；真实场景请重新生成计划")
+			} else {
+				level := map[string]string{"zone": "整个 Cloudflare zone", "origin_rule": "已有 Origin Rule 的回源 host", "plugin_target": "外部插件目标，实际作用范围未知"}[p.Scope.Level]
+				fmt.Fprintf(cmd.OutOrStdout(), "作用范围：%s；zone_id=%q\n", level, a.Binding.ZoneID)
+				if p.Scope.ZoneName != "" {
+					fmt.Fprintf(cmd.OutOrStdout(), "观测 zone 名称：%s\n", p.Scope.ZoneName)
+				}
+				if p.Scope.Level == "origin_rule" {
+					fmt.Fprintf(cmd.OutOrStdout(), "规则：ruleset_id=%q rule_id=%q；匹配表达式=%q\n", a.Binding.RulesetID, a.Binding.RuleID, p.Scope.RuleExpression)
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "已登记的可能关联（不代表确定受影响）：")
+				if len(p.Scope.Related) == 0 {
+					fmt.Fprintln(cmd.OutOrStdout(), "  未找到已登记关联；不表示没有影响")
+				}
+				for _, asset := range p.Scope.Related {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %s [%s]\n", asset.Key, strings.Join(asset.Via, ", "))
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "未知影响：云端资产/DNS委派及台账外关联未完整核对，传递依赖、执行权限/套餐和实际流量/源站/TLS/业务效果未验收；详见JSON scope.unknown")
+			}
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "计划 %s · %s\n目标：%s\n插件：%s/%s\n动作：%s\n观测哈希：%s\n变更前：\n", p.Version, p.GeneratedAt, a.Target, a.Binding.Plugin, a.Binding.Instance, a.Operation, a.BeforeHash)
 		if err := writeJSON(cmd.OutOrStdout(), a.Before); err != nil {

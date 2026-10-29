@@ -26,6 +26,8 @@ Cloudflare 暂停/恢复作用于整个 zone；改回源仅修改已有 Origin R
 
 ## v2 审阅绑定与持久执行
 
+新生成的v2 scope绑定实际zone/Origin Rule范围、在用登记的主机名匹配及一层关联哈希，明确保留台账外对象、DNS委派、传递依赖、流量/业务与权限/套餐未知。关联不等于必然影响，不从外部插件推断Cloudflare语义。上限256关联、超限/取消整份拒绝；不解析DNS或复制凭据引用。执行开始及控制前重算带scope计划的关联，变化即拒绝。旧v2缺scope仍沿用原前提并显示未知，真实T16重新生成；v1不接受scope。详细字段见 docs/json/plan.md，操作轨迹与两条场景见 docs/agent-acceptance.md。
+
 旧无存储标记仓继续生成/执行 v1；显式 storageVersion: v1 仓生成 v2，拒绝 v1 执行。v2 digest 对省略自身后的 Plan 稳定 JSON 做 SHA-256，expires_at 固定 generated_at 后30分钟。Execute 接受已审阅摘要、适用授权来源和主体说明；说明不证明身份或审批。开始和发送 control 前核对时效，控制前重新加载/校验当前目标和实例配置。
 
 ExecutionReceipt v1 信封固定在 history/executions/<digest>.json，保存完整计划、说明、阶段、前提及回读哈希。每次原子保存均文件/目录 fsync，新父目录也持久化；prepared 和 write_started 阶段只能为 uncertain，后者须在控制请求前持久。后置保存失败返回 uncertain。执行锁固定 .infrafile/execution.lock，创建本地忽略规则保护私有目录，已有不符规则保留并拒绝。进程崩溃后本机 advisory lock 自动释放，已有同摘要只 probe，不再次 control，也不改写原证据或推断历史成功。不同副本、同 OS 用户的恶意操作、云端请求及其他执行器不受本机锁保证。Windows v2 执行在创建目录前拒绝，读/审阅不受此限制。
