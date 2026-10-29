@@ -388,6 +388,57 @@ func TestManagedExecutionPreservesExistingPrivateIgnoreRules(t *testing.T) {
 	}
 }
 
+func TestManagedScopeBindsRelatedRegistrationsAndAllowsUnrelatedEdits(t *testing.T) {
+	for _, mode := range []string{"related", "suppressed_scope", "unrelated"} {
+		t.Run(mode, func(t *testing.T) {
+			managedControlRepo(t)
+			if err := os.MkdirAll("inventory/apps", 0700); err != nil {
+				t.Fatal(err)
+			}
+			file := "inventory/apps/consumer.yaml"
+			record := "apiVersion: infrafile/v1alpha1\nkind: App\nmetadata: {name: consumer}\nspec: {resources: [edge]}\n"
+			writeImportFile(t, file, record)
+			p := managedPlan(t)
+			if p.Scope == nil || len(p.Scope.Related) != 1 || p.Scope.Related[0].Key != "App/consumer" {
+				t.Fatal("missing associated consumer", p.Scope)
+			}
+			switch mode {
+			case "related":
+				writeImportFile(t, file, strings.Replace(record, "name: consumer", "name: consumer, description: edited", 1))
+			case "suppressed_scope":
+				p.Scope.Related = []control.ScopeAsset{}
+				p.Digest = p.Sum()
+				data, _ := p.Encode(context.Background())
+				writeImportFile(t, "plan.json", string(data))
+			case "unrelated":
+				os.MkdirAll("inventory/servers", 0700)
+				writeImportFile(t, "inventory/servers/other.yaml", "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata: {name: other}\nspec: {address: 192.0.2.10}\n")
+			}
+			if mode == "unrelated" {
+				importCLI(t, 0, applyManaged(p)...)
+			} else {
+				importCLI(t, 2, applyManaged(p)...)
+				if _, err := os.Stat("changed"); !os.IsNotExist(err) {
+					t.Fatal("changed association reached control")
+				}
+			}
+		})
+	}
+}
+
+func TestManagedPlanShowExplainsUnknownScopeAndOmitsReferences(t *testing.T) {
+	managedControlRepo(t)
+	p := managedPlan(t)
+	out := importCLI(t, 0, "plan", "show", "plan.json")
+	if !bytes.Contains(out, []byte("实际作用范围未知")) || !bytes.Contains(out, []byte("不表示没有影响")) || !bytes.Contains(out, []byte("未知影响")) {
+		t.Fatal("scope or unknown hidden", string(out))
+	}
+	data, _ := p.Encode(context.Background())
+	if bytes.Contains(data, []byte("env://")) {
+		t.Fatal("scope copied credential references")
+	}
+}
+
 func TestManagedStorageRefusesLegacyExecutionWithoutRewritingPlan(t *testing.T) {
 	controlRepo(t)
 	importCLI(t, 0, "plan", "cdn-pause", "Resource/edge", "-o", "plan.json")

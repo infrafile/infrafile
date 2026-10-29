@@ -42,6 +42,7 @@ type Plan struct {
 	GeneratedAt string   `json:"generated_at"`
 	ExpiresAt   string   `json:"expires_at,omitempty"`
 	Digest      string   `json:"digest,omitempty"`
+	Scope       *Scope   `json:"scope,omitempty"`
 	Actions     []Action `json:"actions"`
 }
 
@@ -170,7 +171,7 @@ func (p *Plan) Validate() error {
 		return fmt.Errorf("计划生成时间不合法")
 	}
 	if p.Version == "v1" {
-		if p.ExpiresAt != "" || p.Digest != "" {
+		if p.ExpiresAt != "" || p.Digest != "" || p.Scope != nil {
 			return fmt.Errorf("v1 计划不能包含 v2 执行前提")
 		}
 	} else {
@@ -180,6 +181,11 @@ func (p *Plan) Validate() error {
 		}
 	}
 	a := p.Actions[0]
+	if p.Scope != nil {
+		if err := p.Scope.validate(a); err != nil {
+			return err
+		}
+	}
 	if !strings.HasPrefix(a.Target, "Resource/") || len(strings.TrimPrefix(a.Target, "Resource/")) == 0 || !digest.MatchString(a.RecordHash) || !digest.MatchString(a.ConfigHash) || !digest.MatchString(a.BeforeHash) || plugin.Hash(a.Before) != a.BeforeHash {
 		return fmt.Errorf("计划目标或状态哈希不合法")
 	}
@@ -251,6 +257,10 @@ func Generate(ctx context.Context, repo *ledger.Repo, key, operation string, par
 	if managed(repo) {
 		p.Version = "v2"
 		p.ExpiresAt = now.UTC().Truncate(time.Second).Add(PlanLifetime).Format(time.RFC3339)
+		p.Scope, err = planScope(ctx, repo, p.Actions[0])
+		if err != nil {
+			return nil, err
+		}
 		p.Digest = p.Sum()
 	}
 	return p, p.Validate()
