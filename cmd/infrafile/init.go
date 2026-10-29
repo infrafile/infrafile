@@ -54,7 +54,7 @@ func initRepo(dir string) ([]string, error) {
 		return nil, err
 	}
 
-	files := []string{ledger.ConfigFile}
+	files := []string{ledger.ConfigFile, ".gitignore"}
 	for _, k := range ledger.Kinds {
 		files = append(files, path.Join(ledger.InventoryDir, k.Dir, ".gitkeep"))
 	}
@@ -67,6 +67,9 @@ func initRepo(dir string) ([]string, error) {
 		content := ""
 		if f == ledger.ConfigFile {
 			content = configTemplate
+		}
+		if f == ".gitignore" {
+			content = "/.infrafile/\n"
 		}
 		fh, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 		if errors.Is(err, fs.ErrExist) {

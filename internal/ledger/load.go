@@ -70,6 +70,9 @@ func Load(ctx context.Context, dir string) (*Repo, []Problem, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
+	if err := CheckEdit(dir); err != nil {
+		return nil, nil, err
+	}
 	info, err := os.Lstat(filepath.Join(dir, ConfigFile))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {

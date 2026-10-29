@@ -22,6 +22,7 @@ import (
 type serveOptions struct {
 	dir, listen, externalURL, trustedProxy, pairFile string
 	sessionTTL                                       time.Duration
+	allowEdit                                        bool
 }
 
 type serveAddress struct {
@@ -48,7 +49,7 @@ func (o serveOptions) address() (serveAddress, error) {
 
 func newServeCmd(global *globalOpts) *cobra.Command {
 	o := serveOptions{}
-	cmd := &cobra.Command{Use: "serve", Short: "启动单仓单用户工作台（只读）", Args: maxArgs(0), RunE: func(cmd *cobra.Command, _ []string) error {
+	cmd := &cobra.Command{Use: "serve", Short: "启动单仓单用户工作台，默认只读", Args: maxArgs(0), RunE: func(cmd *cobra.Command, _ []string) error {
 		if global.json {
 			return fmt.Errorf("serve 不支持 --json；只读 API 返回 JSON")
 		}
@@ -75,6 +76,7 @@ func newServeCmd(global *globalOpts) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		app.allowEdit = o.allowEdit
 		listener, err := net.Listen("tcp", o.listen)
 		if err != nil {
 			return fmt.Errorf("工作台监听失败")
@@ -112,6 +114,7 @@ func newServeCmd(global *globalOpts) *cobra.Command {
 	cmd.Flags().StringVar(&o.trustedProxy, "trusted-proxy", "", "远程模式的单个可信代理 IP")
 	cmd.Flags().StringVar(&o.pairFile, "pair-file", "", "后台启动时将配对码写入仓外新建的 0600 文件；退出时删除")
 	cmd.Flags().DurationVar(&o.sessionTTL, "session-ttl", 8*time.Hour, "会话固定有效期，最长 24h")
+	cmd.Flags().BoolVar(&o.allowEdit, "allow-edit", false, "显式启用台账预览、Git 提交和恢复；不写云、不 push")
 	return cmd
 }
 

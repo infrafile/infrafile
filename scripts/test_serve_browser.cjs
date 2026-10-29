@@ -191,6 +191,65 @@ async function views(page, entry) {
     assert(failures.length === 0, 'browser script failed');
     return { keyboard_asset_relationship_evidence_issue_changes: true, narrow_layout: true, description_escaped: true, cli_inspection_equal: true, failed_and_stale_visible: true, missing_and_corrupt_history_visible: true, large_cursor_lossless: true, old_request_cancellation: true };
 }
+async function editViews(browser) {
+    const editRepo = path.join(base, 'edit-ledger');
+    execFileSync(binary, ['init', editRepo], { stdio: 'pipe' });
+    fs.appendFileSync(path.join(editRepo, 'infrafile.yaml'), 'storageVersion: v1\n');
+    const record = { apiVersion: 'infrafile/v1alpha1', kind: 'Server', metadata: { name: 'web' }, spec: { address: '192.0.2.10' } };
+    const file = path.join(editRepo, 'inventory/servers/web.yaml');
+    fs.writeFileSync(file, JSON.stringify(record));
+    const git = args => execFileSync('git', ['-C', editRepo, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    git(['init', '-b', 'main']);
+    for (const [key, value] of Object.entries({ 'user.name': 'Infrafile Browser', 'user.email': 'infrafile@example.com', 'commit.gpgSign': 'false', 'core.hooksPath': path.join(editRepo, '.git/hooks') })) git(['config', key, value]);
+    git(['add', '.']); git(['commit', '-m', 'fixture']);
+    const original = git(['rev-parse', 'HEAD']);
+    let app = await start('edit', ['--dir', editRepo, '--allow-edit']);
+    const first = await browser.newContext(), second = await browser.newContext();
+    const a = await first.newPage(), b = await second.newPage();
+    await pair(a, app); await pair(b, app);
+    async function prepare(page, address) {
+        const target = app.origin + '/changes#key=Server%2Fweb';
+        if (page.url() === target) await page.getByRole('button', { name: '检查事务状态并读取最新台账', exact: true }).click();
+        else await page.goto(target);
+        const editor = page.getByLabel('完整记录 JSON', { exact: true }); await editor.waitFor();
+        const replacement = JSON.parse(await editor.inputValue()); replacement.spec.address = address;
+        await editor.fill(JSON.stringify(replacement, null, 2));
+        const response = page.waitForResponse(r => r.url() === app.origin + '/api/change/preview');
+        await page.getByRole('button', { name: '校验并预览变更', exact: true }).click();
+        const result = await response; assert(result.ok(), 'browser preview failed');
+        await page.getByText('预览摘要：', { exact: false }).waitFor();
+        return { value: await result.json(), replacement };
+    }
+    async function save(page) {
+        await page.getByLabel('我已核对修改前后的完整内容', { exact: true }).check();
+        await page.getByRole('button', { name: '确认并提交到 Git', exact: true }).press('Enter');
+    }
+    const p = await prepare(a, '192.0.2.11'); await prepare(b, '192.0.2.12');
+    const requestFile = path.join(base, 'edit-request.json');
+    fs.writeFileSync(requestFile, JSON.stringify({ version: 'v1', records: [p.replacement] }), { mode: 0o600 });
+    const cli = JSON.parse(execFileSync(binary, ['change', 'preview', editRepo, '--request', requestFile, '--json'], { encoding: 'utf8' }));
+    assert(cli.files[0].before_hash === p.value.files[0].before_hash && cli.files[0].after_hash === p.value.files[0].after_hash, 'CLI and Web differ in reviewed bytes');
+    await a.setViewportSize({ width: 390, height: 844 });
+    await a.screenshot({ path: path.join(base, 'edit-preview-narrow.png'), fullPage: true });
+    assert(await a.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'edit preview overflows narrow viewport');
+    await save(a); await a.getByText('已提交到本地 Git', { exact: true }).waitFor();
+    await save(b); await b.getByText('变更被拒绝，请重新预览', { exact: true }).waitFor();
+    assert(git(['rev-parse', 'HEAD^']) === original && git(['status', '--porcelain']) === '', 'browser commit included extra files');
+    assert(fs.readFileSync(file, 'utf8').includes('192.0.2.11'), 'stale browser replaced the first commit');
+    await prepare(a, '192.0.2.13');
+    fs.writeFileSync(path.join(editRepo, '.git/hooks/pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o700 });
+    await save(a); await a.getByText('事务未完成，需要恢复', { exact: true }).waitFor();
+    await stop(app); app = await start('edit-restart', ['--dir', editRepo, '--allow-edit']);
+    await pair(a, app); await a.goto(app.origin + '/changes');
+    await a.getByRole('button', { name: '恢复此事务', exact: true }).click();
+    await a.getByText('已恢复原文件', { exact: true }).waitFor();
+    await a.getByRole('button', { name: '检查事务状态并读取最新台账', exact: true }).click();
+    await a.getByLabel('完整记录 JSON', { exact: true }).waitFor();
+    assert(fs.readFileSync(file, 'utf8').includes('192.0.2.11') && git(['status', '--porcelain']) === '', 'browser restart recovery changed committed state');
+    await a.screenshot({ path: path.join(base, 'edit-recovered.png'), fullPage: true });
+    await first.close(); await second.close(); await stop(app);
+    return { cli_web_byte_diff_equal: true, explicit_review_and_commit: true, stale_second_session_refused: true, hook_failure_restart_recovery: true, narrow_keyboard_flow: true };
+}
 async function main() {
     for (const args of [[], ['--listen', '0.0.0.0:0'], ['--pair-file', path.join(repo, 'code')]]) {
         const r = spawnSync(binary, ['serve', '--dir', repo, ...args], { encoding: 'utf8', timeout: 3000 });
@@ -292,6 +351,7 @@ async function main() {
         fs.unlinkSync(cert);
         await first.close();
         await second.close();
+        report.checks.inventory_edit = await editViews(browser);
     }
     finally {
         await browser.close();

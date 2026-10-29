@@ -1,6 +1,6 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定读取一个数据仓，提供配对登录、资产/巡检/变更三个只读页面和十个离线 API；页面、样式和浏览器脚本嵌入发行二进制，无需 Node。台账变更预览/保存及云计划/执行回执索引仍由 T13/T15 接入，T12 的这些集成验收继续开放。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。页面、样式和浏览器脚本嵌入二进制，无需 Node。云计划/执行回执索引仍待 T15，T12 相应集成验收保持开放。当前正式 v0.3.0 尚无此命令。
 
 ## 本机启动
 
@@ -43,7 +43,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 `/inspections` 分开展示最近执行、固定覆盖分母、当前风险和最近一次显式保存的问题历史。可筛选已检/未知/不适用，不将零 findings、豁免或空历史显示为健康。点击问题可以在 `/changes` 查看同一 fingerprint/scope_hash 的保留变化；退出范围和 unknown 不显示为恢复。
 
-`/changes` 当前交付问题变化时间线。已清理前缀显式标注，返回现存保留事件；大于 JavaScript 安全整数的游标按原始数字文本显示，不取整。缺历史与损坏分别显示空态/失败，不保留上一次成功内容冒充当前结果。台账 diff/保存及云计划/执行回执卡片待共享服务接入；页面保留现有 Git 与本地受控 CLI 的职责说明，这些集成完成后才关闭 T12。
+`/changes` 交付问题变化时间线和台账修改。已清理前缀显式标注，返回现存保留事件；大于 JavaScript 安全整数的游标按原始数字文本显示，不取整。缺历史与损坏分别显示空态/失败，不保留上一次成功内容冒充当前结果。云计划/执行回执卡片待 T15，这部分完成后才关闭 T12。
 
 页面支持键盘操作、明确标签、跳过导航、状态文字和窄屏。筛选范围与 TTL 放在 URL fragment（key/days/issue），配对/会话令牌始终不进 URL。默认视图证据有效期 7 天，可显式调整；切换页面保留范围，切换资产会取消旧查询。失效会话或读取失败时清空当前数据并显示重连/重选入口。
 
@@ -64,7 +64,17 @@ infrafile serve --dir /absolute/path/to/ledger \
 | context | 必须 key，可选 max_age_days | `{version,inspection,observations}`；inspection 与相同输入 CLI inspect 一致，observations 含 check/plugin/instance/service/file/observed_at/match/values |
 | changes | `{}` | `{version,present,last_sequence,pruned_through,changes}`；相当于 findings changes 从 pruned_through 读取全部保留事件，不接受任意游标或路径 |
 
-原八个查询结果与 MCP structuredContent 一致；context/changes 为工作台新增只读入口，MCP 九工具保持。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes 沿用历史救援契约，只严格读取已保存历史，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有 plan、apply、sync、import、run、secret 或任意文件下载 API；这不是远程云端执行入口。
+原八个查询结果与 MCP structuredContent 一致；context/changes 为工作台新增只读入口，MCP 九工具保持。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes 沿用历史救援契约，只严格读取已保存历史，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
+
+## 台账编辑（显式启用）
+
+先按 [change 契约](json/change.md)启用 `storageVersion: v1`、提交 `/.infrafile/` 忽略规则，并让数据 Git 仓处于干净普通分支；然后启动 `infrafile serve --dir /absolute/path/to/ledger --allow-edit`。重启仍需重新配对。未完成事务不阻止重启工作台，但会阻止台账查询；变更页显示恢复入口。
+
+选中资产后进入变更页，会载入省略 secrets 的完整记录 JSON；也可填写新记录或记录数组，同批调整引用。先校验并查看修改前后字段，勾选已审阅后再确认提交。服务端绑定完整内容/HEAD/索引/配置摘要，双设备使用旧预览时拒绝保存。保存重新序列化完整记录，注释与排版会变化；Web 展示字段差异和绑定摘要，需看原始字节 diff 时使用 CLI。超出浏览器安全整数精度的编辑须用 CLI。
+
+`/api/change/status` 接受 `{}`，返回 `{version,enabled,transaction}`；默认 `enabled=false`。启用后另有同源 POST `preview`（v1 records 请求）、`apply`（`{request,digest}`）、`recover`（`{id}`），共享认证、CSRF、64 KiB 输入、超时和并发限制。预览返回 `{version,ok,head,digest,problems,files}`，每文件含 key/path/existed、前后内容 SHA-256 及已省略 secrets 的 before/after 对象；不回传原始字节或本机绝对路径。浏览器禁止提交秘密字段，已有引用由服务端保留，修改引用须走 CLI。
+
+保存与恢复返回 [change 结果](json/change.md)。HTTP 200 可能是 rejected 或 recovery_required，必须核对 status。请求中断或超时后先检查事务状态，不盲目重试；恢复仅触及匹配本事务哈希的文件，外部修改会使恢复停止。工作台不做云端执行或自动 push，仓库原有提交钩子仍运行。
 
 `POST /logout` 和 `/revoke-all` 使用页面表单的会话 CSRF，分别撤销当前/全部设备。`POST /pair` 使用登录表单独立的 CSRF 与配对 Cookie；两者都要求同源 Origin。配对码每分钟最多尝试 5 次，不按 IP 建立无限增长状态。Cookie 或表单过期后重新打开登录页。
 
@@ -74,6 +84,6 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 ## 浏览器验收
 
-HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；同时核对台账文件未变、日志无令牌和配对文件清理。
+HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；只读数据逐文件不变。另建虚构 Git 仓验收 CLI/Web 字节哈希一致、审阅后提交、第二设备旧预览拒绝、钩子失败后的重启恢复及窄屏键盘操作。两部分均核对日志无令牌和配对文件清理。
 
 验收机需预先安装 Node 22+、Playwright/Chromium 和 OpenSSL；脚本不下载依赖，不访问云账号。默认读取 `bin/infrafile` 和可解析的 `playwright` 包；可分别用 `INFRAFILE_BINARY`、`INFRAFILE_PLAYWRIGHT_MODULE`（绝对模块路径）、`INFRAFILE_BROWSER_EXECUTABLE` 显式指定。直接运行 `node scripts/test_serve_browser.cjs`，回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。

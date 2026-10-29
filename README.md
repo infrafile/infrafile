@@ -43,6 +43,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [执行、覆盖与风险报告（v1.0 开发）](docs/json/inspect.md)
 - [显式问题历史、变化与导出（v1.0 开发）](docs/json/findings.md)
 - [资产、巡检、变更工作台与只读 API（v1.0 开发）](docs/serve.md)
+- [台账变更预览、Git 提交与失败恢复（v1.0 开发）](docs/json/change.md)
 - [导入草稿与只建不覆盖](docs/import.md)
 - [受控写与 DNSControl](docs/control.md)
 - [Agent 接口、MCP 与指南安装](docs/agent.md)
