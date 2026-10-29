@@ -47,6 +47,21 @@ infrafile plan cdn-origin Resource/edge --dir ./my-infra \
   --host origin.example.net -o origin.json
 ```
 
+以上旧仓路径保持兼容。显式启用 `storageVersion: v1` 后生成的是 v2 计划，必须审阅其完整摘要，并提供适用授权的来源与主体说明：
+
+```sh
+infrafile plan show pause.json
+infrafile apply pause.json --dir ./my-infra \
+  --reviewed-digest <已审阅的digest> \
+  --authorization-ref chat:approved-message --actor operator --json
+infrafile executions list --dir ./my-infra --json
+infrafile executions show <digest> --dir ./my-infra --json
+```
+
+v2 摘要绑定完整单动作、时间、目标、配置与前后状态，有效期固定 30 分钟；开始和控制请求前检查时效，写前重新校验当前绑定。新存储仓拒绝旧 v1 计划执行，须重新生成。授权引用与主体是调用者说明，不是身份认证；摘要不是审批签名。命令参数不要放凭据。
+
+新执行先持久化 prepared/uncertain 回执，再持久化 write_started/uncertain 后才调用 control；读回结束保存最终结果。写前落盘失败不写云，写后崩溃或回执保存不能确认都保留不确定性。同摘要已有回执时只实时 probe，不重发控制、不改写原证据；到期计划仍可用于这次核实。原 uncertain 不会因当前状态匹配而宣称原请求成功。修改继续前先核实，再生成和授权新计划。完整阶段、容量、平台与本地互斥边界见[回执契约](json/executions.md)。
+
 每份 v1 计划包含一个动作，最终 JSON 上限为 4 MiB；还须满足共享解析器的 100 层嵌套、100,000 个展开节点及 16 MiB 展开字段路径与标量上限，生成和读取使用相同限制。超出时在输出或创建文件前拒绝。省略 `-o` 时输出可保存的 JSON；`-o` 只创建新文件，权限为 0600，不覆盖已有路径。生成计划会实时读取云端，不使用可能过期的 state 快照；不会调用写 API。`--timeout` 默认 30s，是整个命令的插件调用总时限。
 
 计划记录格式版本、UTC 生成时间、台账主键、插件绑定、Resource 内容哈希、实例配置哈希、动作参数、变更前状态及 SHA-256、预期变更后状态。不会把实例配置或凭据值写进计划。哈希使用 Go `encoding/json` 的稳定对象键顺序，数字保留 JSON 精度。
@@ -60,7 +75,7 @@ infrafile plan cdn-origin Resource/edge --dir ./my-infra \
 3. 状态已等于计划目标时返回 `unchanged`；否则调用插件 `control`。
 4. 再回读，只有与预期状态一致才返回 `applied`。不符为 `mismatch`；请求或回读失败为 `uncertain`，可能已经产生远端变更，应先回读并重新计划。
 
-Cloudflare 插件在 PATCH 前也重读并校验 `expected_hash`。这不是服务端原子 compare-and-swap：最后一次 GET 与 PATCH 之间仍可能有并发变更。没有自动重试写请求、回滚、审批签名或跨动作事务；显式运行 apply 即执行当前文件中的计划，请先审阅。完整计划本身可被编辑，哈希用于漂移检查，不是身份认证。
+Cloudflare 插件在 PATCH 前也重读并校验 `expected_hash`。这不是服务端原子 compare-and-swap：最后一次 GET 与 PATCH 之间仍可能有并发变更。没有自动重试写请求、回滚、审批签名或跨动作事务；旧仓 v1 的显式 apply 执行当前文件，请先审阅。新仓 v2 另核对已审阅摘要、时效和持久记录；这些也不是身份认证或云端 exactly-once。
 
 zone 动作的观测范围是 zone ID、名称及 paused；Origin Rule 动作还比较整个有序规则列表，忽略 Cloudflare 的版本号和更新时间。这样目标规则、其他规则或顺序变化都会使原计划失效。
 

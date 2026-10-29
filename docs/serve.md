@@ -1,6 +1,6 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。页面、样式和浏览器脚本嵌入二进制，无需 Node。云计划/执行回执索引仍待 T15，T12 相应集成验收保持开放。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十二个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。页面、样式和浏览器脚本嵌入二进制，无需 Node。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
 
 ## 本机启动
 
@@ -43,7 +43,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 `/inspections` 分开展示最近执行、固定覆盖分母、当前风险和最近一次显式保存的问题历史。可筛选已检/未知/不适用，不将零 findings、豁免或空历史显示为健康。点击问题可以在 `/changes` 查看同一 fingerprint/scope_hash 的保留变化；退出范围和 unknown 不显示为恢复。
 
-`/changes` 交付问题变化时间线和台账修改。已清理前缀显式标注，返回现存保留事件；大于 JavaScript 安全整数的游标按原始数字文本显示，不取整。缺历史与损坏分别显示空态/失败，不保留上一次成功内容冒充当前结果。云计划/执行回执卡片待 T15，这部分完成后才关闭 T12。
+`/changes` 交付问题变化时间线、台账修改和云计划/执行回执卡片。已清理前缀显式标注，返回现存保留事件；大于 JavaScript 安全整数的游标按原始数字文本显示，不取整。缺历史与损坏分别显示空态/失败，不保留上一次成功内容冒充当前结果。云卡片按 Resource 范围列出已尝试执行的计划、摘要/有效期、主体和授权说明、阶段/结果；详情读取完整计划和写前/回读证据。uncertain 明确提示先核实，不因浏览或状态匹配推断原请求成功；没有回执不表示没有云操作。
 
 页面支持键盘操作、明确标签、跳过导航、状态文字和窄屏。筛选范围与 TTL 放在 URL fragment（key/days/issue），配对/会话令牌始终不进 URL。默认视图证据有效期 7 天，可显式调整；切换页面保留范围，切换资产会取消旧查询。失效会话或读取失败时清空当前数据并显示重连/重选入口。
 
@@ -63,8 +63,10 @@ infrafile serve --dir /absolute/path/to/ledger \
 | capabilities | `{}` | 离线支持能力目录 |
 | context | key 或非空 labels 二选一，可加 kind / max_age_days | [共享 context](json/context.md)：`{version,records,inspection,observations,next_actions}`；observations 含 target/check/plugin/instance/service/file/observed_at/match/values |
 | changes | `{}` | `{version,present,last_sequence,pruned_through,changes}`；相当于 findings changes 从 pruned_through 读取全部保留事件，不接受任意游标或路径 |
+| executions | 可选 key，仅 Resource 主键 | [executions list](json/executions.md) 的有界索引，不扫描任意计划文件 |
+| execution | id，64位小写十六进制 | [完整执行回执](json/executions.md)及所绑定计划；没有该 ID 返回失败，不接受路径 |
 
-原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具，changes 仍为工作台只读历史入口。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes 沿用历史救援契约，只严格读取已保存历史，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
+原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具。changes 和两个执行回执入口只在工作台提供，复用 CLI 严格读取器。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes/executions/execution 沿用历史救援契约，严格读取保存记录，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
 
 ## 台账编辑（显式启用）
 
@@ -84,6 +86,6 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 ## 浏览器验收
 
-HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；只读数据逐文件不变。另建虚构 Git 仓验收 CLI/Web 字节哈希一致、审阅后提交、第二设备旧预览拒绝、钩子失败后的重启恢复及窄屏键盘操作。两部分均核对日志无令牌和配对文件清理。
+HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；只读数据逐文件不变。另建虚构 Git 仓验收 CLI/Web 字节哈希一致、审阅后提交、第二设备旧预览拒绝、钩子失败后的重启恢复及窄屏键盘操作。执行卡片使用虚构本地插件实际生成/审阅/执行两份计划，验证写前记录、丢失响应保持 uncertain、重复只回读、CLI 计划详情相同、说明文本转义、范围空态和浏览不写文件；不访问云账号。全部核对日志无令牌和配对文件清理。
 
 验收机需预先安装 Node 22+、Playwright/Chromium 和 OpenSSL；脚本不下载依赖，不访问云账号。默认读取 `bin/infrafile` 和可解析的 `playwright` 包；可分别用 `INFRAFILE_BINARY`、`INFRAFILE_PLAYWRIGHT_MODULE`（绝对模块路径）、`INFRAFILE_BROWSER_EXECUTABLE` 显式指定。直接运行 `node scripts/test_serve_browser.cjs`，回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。

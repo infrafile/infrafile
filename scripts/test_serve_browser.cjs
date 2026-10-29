@@ -250,6 +250,61 @@ async function editViews(browser) {
     await first.close(); await second.close(); await stop(app);
     return { cli_web_byte_diff_equal: true, explicit_review_and_commit: true, stale_second_session_refused: true, hook_failure_restart_recovery: true, narrow_keyboard_flow: true };
 }
+async function executionViews(browser) {
+    const executionRepo = path.join(base, 'execution-ledger'), pluginDir = path.join(base, 'plugins');
+    execFileSync(binary, ['init', executionRepo], { stdio: 'pipe' }); fs.mkdirSync(pluginDir, { mode: 0o700 });
+    fs.writeFileSync(path.join(executionRepo, 'infrafile.yaml'), 'apiVersion: infrafile/v1alpha1\nkind: Config\nstorageVersion: v1\nplugins:\n  browser-control:\n    instances:\n      home: {}\n');
+    fs.writeFileSync(path.join(executionRepo, 'inventory/resources/edge.yaml'), JSON.stringify({ apiVersion: 'infrafile/v1alpha1', kind: 'Resource', metadata: { name: 'edge' }, spec: { provider: 'browser-control', type: 'cdn', control: { plugin: 'browser-control', instance: 'home', zone_id: 'example-zone' } } }));
+    const fake = `#!${process.execPath}
+const fs=require('node:fs'),readline=require('node:readline');
+readline.createInterface({input:process.stdin}).on('line',line=>{
+ const r=JSON.parse(line);let data={};
+ if(r.method==='describe')data={protocol_version:'v1',capabilities:['probe','control']};
+ else if(r.method==='probe')data={data:{paused:fs.existsSync('remote-paused')}};
+ else if(r.method==='control'){
+  const files=fs.readdirSync('history/executions').filter(n=>n.endsWith('.json'));
+  if(!files.some(n=>{const r=JSON.parse(fs.readFileSync('history/executions/'+n));return r.data.phase==='write_started'&&r.data.result.status==='uncertain'}))process.exit(8);
+  if(r.params.action==='cdn-pause')fs.writeFileSync('remote-paused','yes');else fs.unlinkSync('remote-paused');
+  fs.appendFileSync('control.log',r.params.action+'\\n');
+  if(process.env.INFRAFILE_BROWSER_CONTROL_CASE==='lost_reply')process.exit(7);
+  data={data:{}};
+ }
+ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:r.id,result:data})+'\\n');
+});
+`;
+    fs.writeFileSync(path.join(pluginDir, 'infrafile-plugin-browser-control'), fake, { mode: 0o700 });
+    const env = { ...process.env, PATH: pluginDir + path.delimiter + process.env.PATH };
+    const cli = (args, extra = {}) => execFileSync(binary, args, { cwd: executionRepo, env: { ...env, ...extra }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    const actor = 'reviewer <img src=x onerror=alert(1)>';
+    const first = JSON.parse(cli(['plan', 'cdn-pause', 'Resource/edge', '-o', 'pause.json', '--json']));
+    const flags = p => ['--reviewed-digest', p.digest, '--authorization-ref', 'chat:browser-reviewed', '--actor', actor, '--json'];
+    const applied = JSON.parse(cli(['apply', 'pause.json', ...flags(first)]));
+    assert(applied.status === 'applied', 'native control did not produce an applied receipt');
+    const second = JSON.parse(cli(['plan', 'cdn-resume', 'Resource/edge', '-o', 'resume.json', '--json']));
+    const failed = spawnSync(binary, ['apply', 'resume.json', ...flags(second)], { cwd: executionRepo, env: { ...env, INFRAFILE_BROWSER_CONTROL_CASE: 'lost_reply' }, encoding: 'utf8' });
+    assert(failed.status === 1 && JSON.parse(failed.stdout).status === 'uncertain', 'lost native reply did not remain uncertain');
+    const replay = spawnSync(binary, ['apply', 'resume.json', ...flags(second)], { cwd: executionRepo, env, encoding: 'utf8' });
+    assert(replay.status === 1 && JSON.parse(replay.stdout).verification === 'matches_expected', 'uncertain retry was not a readonly verification');
+    assert(fs.readFileSync(path.join(executionRepo, 'control.log'), 'utf8').trim().split('\n').length === 2, 'retry sent another control request');
+    const before = files(executionRepo), app = await start('executions', ['--dir', executionRepo]);
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } }), page = await context.newPage();
+    await pair(page, app); await page.goto(app.origin + '/changes#key=Resource%2Fedge');
+    await page.getByText('已回读匹配', { exact: true }).waitFor();
+    await page.getByText('结果不确定', { exact: true }).waitFor();
+    assert(await page.locator('#content img').count() === 0, 'receipt metadata became HTML');
+    const uncertain = page.locator('article').filter({ hasText: second.digest });
+    await uncertain.getByRole('button', { name: '读取完整计划与回执', exact: true }).press('Enter');
+    await uncertain.getByText('审阅计划', { exact: true }).waitFor();
+    const plan = JSON.parse(await uncertain.locator('pre').first().textContent());
+    assert(isDeepStrictEqual(plan, second), 'browser did not display the reviewed native plan');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'execution cards overflow narrow viewport');
+    await page.screenshot({ path: path.join(base, 'execution-receipts-narrow.png'), fullPage: true });
+    await page.goto(app.origin + '/changes#key=Resource%2Fabsent');
+    await page.getByText('尚无本范围的执行回执。请通过本地 CLI 审阅和执行；保存台账不会执行云操作。', { exact: true }).waitFor();
+    assert(isDeepStrictEqual(before, files(executionRepo)), 'browser changed native receipts or fixture data');
+    await context.close(); await stop(app);
+    return { native_plan_and_reviewed_control: true, write_ahead_receipt: true, lost_reply_uncertain: true, retry_probe_only: true, plan_detail_matches_cli: true, attribution_escaped: true, narrow_keyboard_flow: true, filtered_empty_visible: true, files_unchanged_on_read: true };
+}
 async function main() {
     for (const args of [[], ['--listen', '0.0.0.0:0'], ['--pair-file', path.join(repo, 'code')]]) {
         const r = spawnSync(binary, ['serve', '--dir', repo, ...args], { encoding: 'utf8', timeout: 3000 });
@@ -352,6 +407,7 @@ async function main() {
         await first.close();
         await second.close();
         report.checks.inventory_edit = await editViews(browser);
+        report.checks.execution_receipts = await executionViews(browser);
     }
     finally {
         await browser.close();

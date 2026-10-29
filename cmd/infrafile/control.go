@@ -80,6 +80,9 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 			return err
 		}
 		a := p.Actions[0]
+		if p.Version == "v2" {
+			fmt.Fprintf(cmd.OutOrStdout(), "审阅摘要：%s\n有效至：%s（30 分钟）\n", p.Digest, p.ExpiresAt)
+		}
 		fmt.Fprintf(cmd.OutOrStdout(), "计划 %s · %s\n目标：%s\n插件：%s/%s\n动作：%s\n观测哈希：%s\n变更前：\n", p.Version, p.GeneratedAt, a.Target, a.Binding.Plugin, a.Binding.Instance, a.Operation, a.BeforeHash)
 		if err := writeJSON(cmd.OutOrStdout(), a.Before); err != nil {
 			return err
@@ -92,6 +95,7 @@ func newPlanCmd(opts *globalOpts) *cobra.Command {
 
 func newApplyCmd(opts *globalOpts) *cobra.Command {
 	var dir string
+	var reviewed, authorizationRef, actor string
 	var timeout time.Duration
 	cmd := &cobra.Command{Use: "apply <计划文件>", Short: "回读确认后执行计划，并再次回读验证", Args: exactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		if timeout <= 0 {
@@ -107,7 +111,15 @@ func newApplyCmd(opts *globalOpts) *cobra.Command {
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
 		defer cancel()
-		r, err := control.Apply(ctx, repo, p)
+		var r control.Result
+		if p.Version == "v2" {
+			r, err = control.Execute(ctx, repo, p, control.ExecutionOptions{ReviewedDigest: reviewed, AuthorizationRef: authorizationRef, Actor: actor, Now: opts.now})
+		} else {
+			if reviewed != "" || authorizationRef != "" || actor != "" {
+				return usageError(cmd, "旧 v1 计划不支持新执行前提；请先显式启用新存储并重新生成 v2 计划")
+			}
+			r, err = control.Apply(ctx, repo, p)
+		}
 		if err != nil {
 			return err
 		}
@@ -125,6 +137,9 @@ func newApplyCmd(opts *globalOpts) *cobra.Command {
 		return nil
 	}}
 	cmd.Flags().StringVar(&dir, "dir", ".", "数据仓目录")
+	cmd.Flags().StringVar(&reviewed, "reviewed-digest", "", "已审阅的 v2 计划完整摘要")
+	cmd.Flags().StringVar(&authorizationRef, "authorization-ref", "", "适用授权的来源引用（不填凭据）")
+	cmd.Flags().StringVar(&actor, "actor", "", "本次执行主体说明（不构成身份认证）")
 	cmd.Flags().DurationVar(&timeout, "timeout", 30*time.Second, "插件握手、回读与执行的总时限")
 	return cmd
 }

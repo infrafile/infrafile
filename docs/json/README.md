@@ -33,6 +33,7 @@ v1.0 开发分支的 finding 指纹、适用范围和纯状态转换见[问题�
 | `infrafile import ssh-config` / `import state` | [import.md](import.md) |
 | `infrafile plan` / `plan show` | [plan.md](plan.md) |
 | `infrafile apply` | [apply.md](apply.md) |
+| `infrafile executions list/show` | [executions.md](executions.md) |
 | `infrafile dnscontrol` | [dnscontrol.md](dnscontrol.md) |
 | `infrafile gatus` | [gatus.md](gatus.md) |
 | `infrafile agent guide` / `agent install` | [agent.md](agent.md) |

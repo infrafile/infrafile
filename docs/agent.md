@@ -80,6 +80,8 @@ origin_exposure 检查显式 Server 或仅 App 绑定的全部在用部署地址
 
 返回计划中的 host 是生成时解析出的值；不会把主键解释为动态指针。先向用户展示 zone / rule 和前后差异，需要保存时仅保存返回的 `plan` 对象，再用 `infrafile plan show <文件>` 审阅。线上执行需另行授权，通过 `infrafile apply <文件> --dir <台账>` 执行。MCP 没有 apply、sync、import、run、secret 或文件写入工具。
 
+显式新存储仓生成 v2 计划，有完整摘要及30分钟有效期；执行必须另传 `--reviewed-digest <已审阅摘要> --authorization-ref <适用授权来源> --actor <主体说明>`。旧仓 v1 路径保持，但新存储仓须重新生成 v2，不能把旧计划补字段当成迁移。`infrafile executions list/show` 查询所绑定计划和写前/回读记录；同摘要已有回执时 apply 仅回读、不再控制，历史 uncertain 不会因当前状态匹配而升级为成功。来源及主体说明不证明身份或审批，回执不是云端 exactly-once 保证。
+
 ## 凭据与信任边界
 
 查询不读取凭据值，show 省略凭据字段。动态结果复用敏感字段与常见 token 检测；参数、插件错误和校验问题不原样反射给客户端。validate 只返回问题代码和计数，定位问题用 CLI。Schema 是程序内嵌的静态定义，包含凭据引用格式的说明，不包含账号数据。
