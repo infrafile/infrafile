@@ -126,6 +126,7 @@ func newRoot(now time.Time) *cobra.Command {
 		newDNSControlCmd(opts),
 		newGatusCmd(opts),
 		newMCPCmd(opts),
+		newServeCmd(opts),
 		newAgentCmd(opts),
 	)
 	root.SetHelpCommand(&cobra.Command{
