@@ -185,3 +185,6 @@ audit:
 每条提示另有 `file`、`target`、`message`；豁免提示还有 `rule`。提示本身不影响退出码；未豁免发现退出 1，其余可完成的审计退出 0。
 
 MCP 的 `infrafile_audit` 复用同一结果对象，以 `rules` 数组和 `max_age_days` 整数替代 CLI 选项。偏差返回 `ok: false`、`isError: false`；参数或读取失败使用 [MCP 错误信封](mcp.md)。
+
+
+存在显式保存的问题历史时，兼容增加可选 `history`，记录最近一次显式检查时间、输入摘要、保存状态和变化游标。缺历史时省略；查询不推进历史，损坏则拒绝。保存状态与本次观测结果分开，详情见 [findings.md](findings.md)。

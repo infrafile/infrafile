@@ -33,6 +33,7 @@ type Inspection struct {
 	Coverage   InspectCoverage    `json:"coverage"`
 	Risk       InspectRisk        `json:"risk"`
 	Notices    []Notice           `json:"notices"`
+	History    *HistoryView       `json:"history,omitempty"`
 }
 
 type InspectAsset struct {
@@ -131,6 +132,14 @@ type inspector struct {
 // The caller validates the ledger first. This function never invokes a collector or resolves secrets.
 func Inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*Inspection, error) {
 	i, err := inspect(ctx, repo, opts)
+	if err != nil {
+		return nil, err
+	}
+	var checks []Check
+	if opts.Keys != nil {
+		checks = i.report.Coverage.Checks
+	}
+	i.report.History, err = ReadHistoryView(ctx, repo.Dir, checks)
 	if err != nil {
 		return nil, err
 	}

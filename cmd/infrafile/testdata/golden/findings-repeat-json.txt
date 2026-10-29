@@ -1,0 +1,33 @@
+$ infrafile findings refresh --max-age 7d --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "written": false,
+  "history": {
+    "version": "v1",
+    "kind": "FindingHistory",
+    "data": {
+      "identity_version": "v1",
+      "input_hash": "cde1a29d58b9de577d4d91024142051bd846ddf86186da9fb3dc2624c91a2039",
+      "inputs": [
+        {
+          "path": "infrafile.yaml",
+          "hash": "41500d350ed8ce1422746da3d4d35893baf6a05b7ffac7791eb4348b79be7a51"
+        },
+        {
+          "path": "state/",
+          "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "max_age_days": 7,
+      "checked_at": "2026-12-01T12:00:00Z",
+      "issues": [],
+      "changes": [],
+      "last_sequence": 0,
+      "pruned_through": 0
+    }
+  },
+  "changes": []
+}
+--- stderr

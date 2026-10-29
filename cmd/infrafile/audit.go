@@ -59,6 +59,10 @@ metadata.waivers 和 infrafile.yaml 的 audit.ignore 可以豁免偏差，过期
 				return err
 			}
 			findings, more := audit.Run(in, rules)
+			history, err := audit.ReadHistoryView(cmd.Context(), in.Repo.Dir, nil)
+			if err != nil {
+				return err
+			}
 			notices = append(notices, more...)
 			open := 0
 			for _, f := range findings {
@@ -82,15 +86,16 @@ metadata.waivers 和 infrafile.yaml 的 audit.ignore 可以豁免偏差，过期
 					snaps = append(snaps, snap)
 				}
 				err = writeJSON(out, struct {
-					Version    string          `json:"version"`
-					OK         bool            `json:"ok"`
-					AsOf       string          `json:"as_of"`
-					MaxAgeDays *int            `json:"max_age_days"`
-					Rules      []string        `json:"rules"`
-					Snapshots  []auditSnapshot `json:"snapshots"`
-					Findings   []audit.Finding `json:"findings"`
-					Notices    []audit.Notice  `json:"notices"`
-				}{jsonVersion, open == 0, in.Now.UTC().Format(time.RFC3339), in.MaxAge, ids, snaps, findings, notices})
+					Version    string             `json:"version"`
+					OK         bool               `json:"ok"`
+					AsOf       string             `json:"as_of"`
+					MaxAgeDays *int               `json:"max_age_days"`
+					Rules      []string           `json:"rules"`
+					Snapshots  []auditSnapshot    `json:"snapshots"`
+					Findings   []audit.Finding    `json:"findings"`
+					Notices    []audit.Notice     `json:"notices"`
+					History    *audit.HistoryView `json:"history,omitempty"`
+				}{jsonVersion, open == 0, in.Now.UTC().Format(time.RFC3339), in.MaxAge, ids, snaps, findings, notices, history})
 			} else {
 				var buf strings.Builder
 				limit := "未设观测上限"
@@ -141,6 +146,9 @@ metadata.waivers 和 infrafile.yaml 的 audit.ignore 可以豁免偏差，过期
 					}
 				}
 				fmt.Fprintf(&buf, "发现 %d 条偏差，%d 条已豁免\n", open, len(findings)-open)
+				if history != nil {
+					fmt.Fprintf(&buf, "已保存历史：%s 检查，%d 条问题（本次查询未推进）\n", history.CheckedAt, len(history.Issues))
+				}
 				_, err = fmt.Fprint(out, buf.String())
 			}
 			if err != nil {

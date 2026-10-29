@@ -85,6 +85,9 @@ func newInspectCmd(opts *globalOpts) *cobra.Command {
 			fmt.Fprintf(out, "提示 %s %s：%s\n", n.Code, n.Target, n.Message)
 		}
 		fmt.Fprintf(out, "全部通过：%t（命令成功只表示报告已生成）\n", report.OK)
+		if report.History != nil {
+			fmt.Fprintf(out, "已保存历史：%s 检查，%d 条问题（本次查询未推进）\n", report.History.CheckedAt, len(report.History.Issues))
+		}
 		return nil
 	}}
 	cmd.Flags().StringVar(&key, "key", "", "已登记的 Kind/name")
