@@ -23,6 +23,7 @@ type Snapshot struct {
 	ObservedAt *time.Time
 	Spec       map[string]any
 	verified   bool
+	hash       string
 }
 
 // AgeDays 返回观测距 now 的整天数；没有同步记录时返回 nil。
@@ -36,18 +37,19 @@ func (s Snapshot) AgeDays(now time.Time) *int {
 
 // Input 是规则求值所需的全部输入。MaxAge 为观测时间上限（天），未设置时为 nil。
 type Input struct {
-	Repo            *ledger.Repo
-	Snapshots       []Snapshot
-	Now             time.Time
-	MaxAge          *int
-	lifecycle       *lifecycleInput
-	origins         map[string][]originEvidence
-	originFindings  []Finding
-	originNotices   []Notice
-	cdnFindings     []Finding
-	cdnNotices      []Notice
-	missingFindings []Finding
-	missingNotices  []Notice
+	Repo              *ledger.Repo
+	Snapshots         []Snapshot
+	Now               time.Time
+	MaxAge            *int
+	lifecycle         *lifecycleInput
+	origins           map[string][]originEvidence
+	originFindings    []Finding
+	originNotices     []Notice
+	cdnFindings       []Finding
+	cdnNotices        []Notice
+	cdnOriginCoverage map[string]map[string]bool
+	missingFindings   []Finding
+	missingNotices    []Notice
 }
 
 // Rule 是一条审计规则。Ready 检查所需观测和参数是否齐备，Eval 只读地求值。
@@ -149,7 +151,7 @@ func ReadSnapshots(ctx context.Context, repo *ledger.Repo) ([]Snapshot, []Notice
 				Message: "插件实例未在 infrafile.yaml 启用，已忽略此快照"})
 			continue
 		}
-		snap := Snapshot{Plugin: s.Plugin, Instance: s.Instance, File: s.File, Spec: s.Spec, verified: verified[s.Plugin+"/"+s.Instance]}
+		snap := Snapshot{Plugin: s.Plugin, Instance: s.Instance, File: s.File, Spec: s.Spec, verified: verified[s.Plugin+"/"+s.Instance], hash: s.Hash}
 		if at, ok := stamps[s.Plugin][s.Instance]; ok {
 			snap.ObservedAt = &at
 		}

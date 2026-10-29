@@ -138,6 +138,7 @@ func TestV030Compatibility(t *testing.T) {
 		}
 		if tc.name == "schema" {
 			delete(current["schemas"].(map[string]any)["config.schema.json"].(map[string]any)["properties"].(map[string]any), "storageVersion")
+			delete(current["schemas"].(map[string]any)["config.schema.json"].(map[string]any)["properties"].(map[string]any)["audit"].(map[string]any)["properties"].(map[string]any), "not_applicable")
 		}
 		if !reflect.DeepEqual(old, current) {
 			t.Fatalf("MCP %s differs: previous=%v current=%v", tc.name, old, current)

@@ -1,0 +1,27 @@
+$ infrafile inspect --json
+[退出码 0]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "as_of": "2026-12-01T12:00:00Z",
+  "max_age_days": null,
+  "assets": [],
+  "relations": [],
+  "execution": [],
+  "coverage": {
+    "expected": 0,
+    "checked": 0,
+    "unknown": 0,
+    "not_applicable": 0,
+    "checks": []
+  },
+  "risk": {
+    "confirmed": 0,
+    "unknown": 0,
+    "waived": 0,
+    "findings": []
+  },
+  "notices": []
+}
+--- stderr

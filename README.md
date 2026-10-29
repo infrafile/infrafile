@@ -40,6 +40,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [第一方插件配置、观测字段与限制](docs/first-party-plugins.md)
 - [离线能力查询与支持边界](docs/json/capabilities.md)
 - [离线预检与显式在线诊断](docs/doctor.md)
+- [执行、覆盖与风险报告（v1.0 开发）](docs/json/inspect.md)
 - [导入草稿与只建不覆盖](docs/import.md)
 - [受控写与 DNSControl](docs/control.md)
 - [Agent 接口、MCP 与指南安装](docs/agent.md)

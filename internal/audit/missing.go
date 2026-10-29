@@ -60,22 +60,7 @@ func prepareMissing(ctx context.Context, in *Input) error {
 			collections[key] = c
 		}
 		base := baselines[w.Target]
-		lastSeen, _ := time.Parse(time.RFC3339, base.LastSeen)
-		message := ""
-		switch {
-		case !s.verified || s.ObservedAt == nil:
-			message = "没有与当前配置、时间、快照对应的成功回执"
-		case s.ObservedAt.After(in.Now):
-			message = "观测时间在未来"
-		case *s.AgeDays(in.Now) > *in.MaxAge || *s.AgeDays(in.Now) == *in.MaxAge && in.Now.Sub(*s.ObservedAt)%(24*time.Hour) > 0:
-			message = "观测时间超过 --max-age"
-		case !c.complete:
-			message = "快照没有返回声明服务的完整集合"
-		case base.BindingHash != plugin.Hash(w):
-			message = "当前身份、范围和配置尚未建立正向存在基线"
-		case lastSeen.After(*s.ObservedAt):
-			message = "正向基线晚于本次观测，不能核对证据顺序"
-		}
+		_, message := missingQualification(in, w, s, c.complete, base)
 		if message != "" {
 			in.missingNotices = append(in.missingNotices, Notice{Code: "missing_unknown", Rule: "missing", Target: w.Target, File: w.Record.File,
 				Message: message + "（" + key + "）；不能判断查询范围内是否缺失"})
@@ -90,4 +75,24 @@ func prepareMissing(ctx context.Context, in *Input) error {
 				"snapshot_file": s.File, "observed_at": s.ObservedAt.UTC().Format(time.RFC3339), "last_seen": base.LastSeen, "max_age_days": *in.MaxAge}})
 	}
 	return nil
+}
+
+// missingQualification is shared by audit and inspect; a negative result never proves absence.
+func missingQualification(in *Input, w observation.Watch, s Snapshot, complete bool, base snapshot.PresenceEntry) (string, string) {
+	lastSeen, _ := time.Parse(time.RFC3339, base.LastSeen)
+	switch {
+	case !s.verified || s.ObservedAt == nil:
+		return "unverified", "没有与当前配置、时间、快照对应的成功回执"
+	case s.ObservedAt.After(in.Now):
+		return "future", "观测时间在未来"
+	case *s.AgeDays(in.Now) > *in.MaxAge || *s.AgeDays(in.Now) == *in.MaxAge && in.Now.Sub(*s.ObservedAt)%(24*time.Hour) > 0:
+		return "stale", "观测时间超过 --max-age"
+	case !complete:
+		return "incomplete", "快照没有返回声明服务的完整集合"
+	case base.BindingHash != plugin.Hash(w):
+		return "not_baselined", "当前身份、范围和配置尚未建立正向存在基线"
+	case lastSeen.After(*s.ObservedAt):
+		return "baseline_future", "正向基线晚于本次观测，不能核对证据顺序"
+	}
+	return "checked", ""
 }

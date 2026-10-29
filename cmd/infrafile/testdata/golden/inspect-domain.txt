@@ -1,0 +1,17 @@
+$ infrafile inspect ../../examples/homelab --key Domain/example.com --max-age 7d
+[退出码 0]
+--- stdout
+截至 2026-12-01T12:00:00Z
+资产 1 条，直接关系 6 条
+覆盖：应检 4，已检 0，未知 4，NA 0
+  missing Domain/example.com presence：unknown [ambiguous_scope] 存在多个可能的账号/实例；必须显式声明 audit.watch，未自动合并
+    check: 62d895251e7747ff05bd5d3f2af73359a31121ad58951adef532302e472d60dc
+  origin_exposure Domain/example.com binding/server//app//resource/assets-cdn/assets.example.com：unknown [unsupported] Resource 绑定未展开为 Server 源站；保留原 CDN/路由检查职责
+    check: 94ceeb98be24151cffb4eed78d9c88d12fbaca68660bc139cf8fc549ef5573f1
+  origin_exposure Domain/example.com binding/server/web1/app/blog/resource//example.com：unknown [not_configured] 未配置此 hostname 的 DNS 实例或明确绑定的 Cloudflare 观测
+    check: c9d9f1b7b5c42970d4a4bc3fbb0c7379dee542b7ac2d2277dd5eb7a16b1de6a7
+  origin_exposure Domain/example.com binding/server/web1/app/wiki/resource//wiki.example.com：unknown [not_configured] 未配置此 hostname 的 DNS 实例或明确绑定的 Cloudflare 观测
+    check: bb3866c13e8343c1197f28cda14401e4df1448dcc1ea48ee110e0d52c1dc056f
+风险：确认 0，历史/未知 0，已豁免 0
+全部通过：false（命令成功只表示报告已生成）
+--- stderr

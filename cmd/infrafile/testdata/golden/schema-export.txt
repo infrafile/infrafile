@@ -287,6 +287,37 @@ $ infrafile schema export
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "not_applicable": {
+              "description": "inspect 检查项的显式 NA；不删除分母、不豁免风险或执行失败。需 storageVersion: v1。",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "check",
+                  "reason",
+                  "owner",
+                  "review_by"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "check": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "owner": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "review_by": {
+                    "$ref": "common.schema.json#/$defs/date"
+                  }
+                }
+              }
+            },
             "watch": {
               "description": "missing 的显式检查范围；每个在用目标只绑定一个插件实例和服务。",
               "type": "array",
