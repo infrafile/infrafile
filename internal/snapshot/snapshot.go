@@ -62,6 +62,21 @@ func openState(dir string) (*os.Root, error) {
 // Read 按插件、实例的目录顺序读取快照，不判断插件当前是否启用。
 // skip 为 nil 时读取全部；对 skip 返回 true 的实例只检查路径，不读取内容。
 func Read(ctx context.Context, dir string, skip func(plugin, instance string) bool) ([]Snapshot, error) {
+	return read(ctx, dir, skip, 0, 0)
+}
+
+// ReadLimited applies aggregate input limits before parsing each source file.
+func ReadLimited(ctx context.Context, dir string, maxFiles int, maxBytes int64) ([]Snapshot, error) {
+	if maxFiles <= 0 || maxBytes <= 0 {
+		return nil, errors.New("快照读取预算必须大于零")
+	}
+	return read(ctx, dir, nil, maxFiles, maxBytes)
+}
+
+func read(ctx context.Context, dir string, skip func(plugin, instance string) bool, maxFiles int, remaining int64) ([]Snapshot, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	root, err := openState(dir)
 	if err != nil || root == nil {
 		return []Snapshot{}, err
@@ -73,6 +88,9 @@ func Read(ctx context.Context, dir string, skip func(plugin, instance string) bo
 	}
 	snapshots := []Snapshot{}
 	for _, p := range plugins {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if strings.HasPrefix(p.Name(), ".") || p.Name() == "_sync.yaml" {
 			continue
 		}
@@ -84,6 +102,9 @@ func Read(ctx context.Context, dir string, skip func(plugin, instance string) bo
 			return nil, errors.New("无法列出插件快照")
 		}
 		for _, f := range files {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			if strings.HasPrefix(f.Name(), ".") {
 				continue
 			}
@@ -100,7 +121,32 @@ func Read(ctx context.Context, dir string, skip func(plugin, instance string) bo
 				snapshots = append(snapshots, Snapshot{Plugin: p.Name(), Instance: name, File: source, Skipped: true})
 				continue
 			}
-			data, err := root.ReadFile(rel)
+			if maxFiles > 0 && len(snapshots) >= maxFiles {
+				return nil, errors.New("快照来源文件超过导入预算")
+			}
+			var data []byte
+			if maxFiles > 0 {
+				if info.Size() > remaining {
+					return nil, errors.New("快照来源累计字节超过导入预算")
+				}
+				f, openErr := root.Open(rel)
+				if openErr != nil {
+					return nil, errors.New("无法读取快照")
+				}
+				opened, statErr := f.Stat()
+				if statErr != nil || !os.SameFile(info, opened) {
+					f.Close()
+					return nil, errors.New("快照文件在打开时发生变化")
+				}
+				data, err = io.ReadAll(io.LimitReader(f, remaining+1))
+				f.Close()
+				if int64(len(data)) > remaining {
+					return nil, errors.New("快照来源累计字节超过导入预算")
+				}
+				remaining -= int64(len(data))
+			} else {
+				data, err = root.ReadFile(rel)
+			}
 			if err != nil {
 				return nil, errors.New("无法读取快照")
 			}

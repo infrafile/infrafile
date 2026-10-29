@@ -1,0 +1,54 @@
+$ infrafile import review draft.json --json
+[退出码 1]
+--- stdout
+{
+  "version": "v1",
+  "ok": false,
+  "source_changed": false,
+  "repo_changed": false,
+  "records": [
+    {
+      "id": "1f50b695827bce81bd9020314e38f5014427def0a8a4db02adb57faed19e267c",
+      "source": "state/aliyun/home.yaml",
+      "key": "Resource/aliyun-home-cdn-static.example.com-67c01b69",
+      "status": "draft"
+    },
+    {
+      "id": "8be4d92a21feb9870e92f7874069d95e2185e7ebd31040a7055b02935cbdf0fd",
+      "source": "state/ssh/observed-web.yaml",
+      "key": "Server/observed-web",
+      "status": "draft",
+      "gaps": [
+        "missing-ssh.user",
+        "missing-ssh.port"
+      ]
+    },
+    {
+      "id": "8db612b04627678a7be0fa44617c3e6db93c3baf54e5e48dd92341b45e48af34",
+      "source": "state/aliyun/home.yaml",
+      "key": "Domain/example.org",
+      "status": "draft"
+    },
+    {
+      "id": "99a0609b19dd76379d17d494f7a04e61c30bfeb4e7b2185c0ac360b5bd60bb4f",
+      "source": "state/cloudflare/home.yaml",
+      "key": "Resource/cloudflare-home-dns-zone-example.net-f2943b01",
+      "status": "draft"
+    },
+    {
+      "id": "d7f946f36ef9d3a7c28e1f100430629449003cb9a29e7cd622e8c11fa474cf4b",
+      "source": "state/aliyun/home.yaml",
+      "key": "Domain/example.com",
+      "status": "conflict",
+      "match": "Domain/example.com"
+    }
+  ],
+  "skipped": [
+    {
+      "source": "state/dns/blog.yaml",
+      "reason": "observation-only"
+    }
+  ],
+  "problems": []
+}
+--- stderr

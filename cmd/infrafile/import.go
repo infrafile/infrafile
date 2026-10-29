@@ -14,11 +14,12 @@ func newImportCmd(opts *globalOpts) *cobra.Command {
 	for _, source := range []string{"ssh-config", "state"} {
 		group.AddCommand(newImportSourceCmd(opts, source))
 	}
+	group.AddCommand(newImportReviewCmd(opts))
 	return group
 }
 
 func newImportSourceCmd(opts *globalOpts, source string) *cobra.Command {
-	var dir, file, output string
+	var dir, file, output, draftPath string
 	var write bool
 	short := "从 SSH config 生成 Server 草稿"
 	if source == "state" {
@@ -28,9 +29,22 @@ func newImportSourceCmd(opts *globalOpts, source string) *cobra.Command {
 		if write && output != "" {
 			return usageError(cmd, "--write 与 --output 不能同时使用")
 		}
+		if draftPath != "" && (write || output != "") {
+			return usageError(cmd, "--draft 与 --write/--output 互斥")
+		}
 		repo, err := loadQueryRepo(cmd.Context(), dir)
 		if err != nil {
 			return err
+		}
+		if draftPath != "" {
+			draft, review, err := importer.PrepareDraft(cmd.Context(), repo, source, file)
+			if err != nil {
+				return err
+			}
+			if err := draft.Save(cmd.Context(), repo.Dir, draftPath); err != nil {
+				return err
+			}
+			return printImportReview(cmd, opts, review)
 		}
 		var entries []importer.Entry
 		var notices []importer.Notice
@@ -114,5 +128,61 @@ func newImportSourceCmd(opts *globalOpts, source string) *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&write, "write", false, "只创建 inventory/ 中不存在的记录")
 	cmd.Flags().StringVarP(&output, "output", "o", "", "将草稿写到待审目录，只创建不存在的文件")
+	cmd.Flags().StringVar(&draftPath, "draft", "", "保存带来源哈希的可编辑草稿；仅预览，不写 inventory")
 	return cmd
+}
+
+func newImportReviewCmd(opts *globalOpts) *cobra.Command {
+	var dir, file string
+	cmd := &cobra.Command{Use: "review <草稿文件>", Short: "离线校验手改候选、来源版本、身份和完整台账引用", Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return usageError(cmd, "需要一个草稿文件")
+		}
+		return nil
+	}, RunE: func(cmd *cobra.Command, args []string) error {
+		repo, err := loadQueryRepo(cmd.Context(), dir)
+		if err != nil {
+			return err
+		}
+		draft, err := importer.ReadDraft(cmd.Context(), args[0])
+		if err != nil {
+			return err
+		}
+		review, err := importer.ReviewDraft(cmd.Context(), repo, draft, file)
+		if err != nil {
+			return err
+		}
+		return printImportReview(cmd, opts, review)
+	}}
+	cmd.Flags().StringVar(&dir, "dir", ".", "数据仓目录")
+	cmd.Flags().StringVar(&file, "file", "", "SSH 来源；SSH 草稿必须显式选择，不读取草稿中的路径")
+	return cmd
+}
+
+func printImportReview(cmd *cobra.Command, opts *globalOpts, review *importer.ReviewResult) error {
+	if opts.json {
+		if err := writeJSON(cmd.OutOrStdout(), review); err != nil {
+			return err
+		}
+	} else {
+		for _, entry := range review.Records {
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s %s [%s] 匹配=%s 缺口=%v\n", entry.ID, entry.Key, entry.Status, entry.Match, entry.Gaps); err != nil {
+				return err
+			}
+		}
+		for _, problem := range review.Problems {
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), "拒绝："+problem); err != nil {
+				return err
+			}
+		}
+		for _, notice := range review.Skipped {
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s：跳过 [%s]\n", notice.Source, notice.Reason); err != nil {
+				return err
+			}
+		}
+	}
+	if !review.OK {
+		return exitCode(1)
+	}
+	return nil
 }

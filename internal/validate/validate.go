@@ -29,6 +29,30 @@ func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	return check(ctx, repo, problems, opts)
+}
+
+// Check validates a complete in-memory candidate using the same rules as Run.
+func Check(ctx context.Context, repo *ledger.Repo) (*Result, error) {
+	if repo == nil || repo.Config == nil {
+		return nil, fmt.Errorf("候选需要完整的数据仓配置")
+	}
+	seen := map[string]bool{}
+	problems := []ledger.Problem{}
+	for _, r := range repo.Records {
+		key := r.Kind + "/" + r.Name
+		if seen[key] {
+			problems = append(problems, ledger.Problem{Code: ledger.CodeName, File: r.File, Message: "候选主键重复"})
+		}
+		seen[key] = true
+	}
+	return check(ctx, repo, problems, Options{})
+}
+
+func check(ctx context.Context, repo *ledger.Repo, problems []ledger.Problem, opts Options) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	schemas, err := ledger.LoadSchemas()
 	if err != nil {
 		return nil, err
@@ -36,7 +60,7 @@ func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
 
 	if repo.Config != nil {
 		problems = append(problems, schemaProblems(repo.Config, schemas.Validate(ledger.ConfigKind, repo.Config.Value))...)
-		problems = append(problems, scanPlaintext(repo.Config)...)
+		problems = append(problems, PlaintextProblems(repo.Config)...)
 	}
 	for _, r := range repo.Records {
 		if err := ctx.Err(); err != nil {
@@ -48,7 +72,7 @@ func Run(ctx context.Context, dir string, opts Options) (*Result, error) {
 				Line: r.Line("metadata.name"), Path: "metadata.name",
 				Message: fmt.Sprintf("metadata.name 是 %s，与文件名 %s.yaml 不一致", r.Name, r.Stem())})
 		}
-		problems = append(problems, scanPlaintext(r.Document)...)
+		problems = append(problems, PlaintextProblems(r.Document)...)
 		if r.Kind == "Resource" {
 			problems = append(problems, checkOrigin(r)...)
 		}

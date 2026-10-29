@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,6 +32,36 @@ func TestReadMissingState(t *testing.T) {
 	stamps, err := ReadSync(dir)
 	if err != nil || len(stamps) != 0 {
 		t.Fatalf("ReadSync = %v, %v", stamps, err)
+	}
+}
+
+func TestReadLimitedAggregatesAndKeepsLegacyRead(t *testing.T) {
+	dir := t.TempDir()
+	write(t, dir, "state/aliyun/home.yaml", valid)
+	write(t, dir, "state/tencent/home.yaml", valid)
+	for _, limits := range []struct {
+		files int
+		bytes int64
+	}{{1, 1 << 20}, {2, int64(2*len(valid) - 1)}, {0, 100}, {2, 0}} {
+		if got, err := ReadLimited(context.Background(), dir, limits.files, limits.bytes); err == nil || got != nil {
+			t.Fatalf("accepted partial source: %v %v", got, err)
+		}
+	}
+	got, err := ReadLimited(context.Background(), dir, 2, int64(2*len(valid)))
+	if err != nil || len(got) != 2 || got[0].Hash == "" || got[1].Hash != got[0].Hash {
+		t.Fatalf("exact budget: %v %v", got, err)
+	}
+	if old, err := Read(context.Background(), dir, nil); err != nil || len(old) != 2 {
+		t.Fatalf("legacy reader: %v %v", old, err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := ReadLimited(ctx, dir, 2, 1<<20); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	write(t, dir, "state/aliyun/home.yaml", valid+"#"+strings.Repeat("x", 2048)+"\n")
+	if got, err := ReadLimited(context.Background(), dir, 2, 1024); err == nil || got != nil || !strings.Contains(err.Error(), "字节") {
+		t.Fatalf("large source: %v %v", got, err)
 	}
 }
 

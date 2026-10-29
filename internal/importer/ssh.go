@@ -3,8 +3,10 @@ package importer
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,15 +35,20 @@ const (
 type sshBudget struct {
 	ctx                       context.Context
 	files, bytes, evaluations int
+	inputs                    map[string]string
 }
 
 func SSHConfig(ctx context.Context, file string) ([]Entry, error) {
+	return sshConfig(ctx, file, nil)
+}
+
+func sshConfig(ctx context.Context, file string, inputs map[string]string) ([]Entry, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, errors.New("无法确定 SSH 用户目录")
 	}
 	aliases := map[string]bool{}
-	budget := &sshBudget{ctx: ctx}
+	budget := &sshBudget{ctx: ctx, inputs: inputs}
 	directives, err := budget.readSSH(file, home, aliases, map[string]bool{})
 	if err != nil {
 		return nil, err
@@ -117,7 +124,12 @@ func (b *sshBudget) readSSH(file, home string, aliases, stack map[string]bool) (
 	}
 	defer f.Close()
 	directives := []directive{}
-	scanner := bufio.NewScanner(f)
+	hash := sha256.New()
+	var reader io.Reader = f
+	if b.inputs != nil {
+		reader = io.TeeReader(f, hash)
+	}
+	scanner := bufio.NewScanner(reader)
 	for line := 1; scanner.Scan(); line++ {
 		if err := b.ctx.Err(); err != nil {
 			return nil, err
@@ -190,6 +202,13 @@ func (b *sshBudget) readSSH(file, home string, aliases, stack map[string]bool) (
 	}
 	if scanner.Err() != nil {
 		return nil, errors.New("SSH config 无法完整读取")
+	}
+	if b.inputs != nil {
+		digest := fmt.Sprintf("%x", hash.Sum(nil))
+		if old, ok := b.inputs[canonical]; ok && old != digest {
+			return nil, errors.New("SSH 来源在读取期间发生变化")
+		}
+		b.inputs[canonical] = digest
 	}
 	return directives, nil
 }
