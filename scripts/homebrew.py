@@ -42,7 +42,7 @@ print(f'''class Infrafile < Formula
   def install
     bin.install "infrafile"
     bin.install_symlink "infrafile" => "ifl"
-    pkgshare.install "examples", "docs"
+    pkgshare.install "examples", "docs", "scripts"
   end
 
   test do

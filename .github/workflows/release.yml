@@ -39,7 +39,8 @@ jobs:
           extracted="$(mktemp -d)"
           tar -xzf "dist/infrafile_${RELEASE_TAG#v}_linux_amd64.tar.gz" -C "$extracted"
           test -s "$extracted/docs/quickstart.md"
-          bash scripts/smoke.sh "$extracted/infrafile" "$extracted/examples/homelab"
+          python3 "$extracted/scripts/prepare_agent_acceptance.py" --help
+          bash "$extracted/scripts/smoke.sh" "$extracted/infrafile" "$extracted/examples/homelab"
       - name: Generate, sign and attach the formula to the draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

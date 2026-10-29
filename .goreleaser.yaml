@@ -3,6 +3,7 @@ project_name: infrafile
 
 release:
   draft: true
+  prerelease: auto
 
 builds:
   - main: ./cmd/infrafile
@@ -22,6 +23,8 @@ archives:
       - README.md
       - docs/*
       - examples/*
+      - scripts/smoke.sh
+      - scripts/prepare_agent_acceptance.py
     format_overrides:
       - goos: windows
         formats: [zip]

@@ -28,7 +28,7 @@ class HomebrewFormulaTest(unittest.TestCase):
         self.assertIn('sha256 "' + "2" * 64 + '"', result.stdout)
         self.assertIn('https://github.com/infrafile/infrafile/releases/download/v0.1.0/infrafile_0.1.0_darwin_arm64.tar.gz', result.stdout)
         self.assertIn('bin.install_symlink "infrafile" => "ifl"', result.stdout)
-        self.assertIn('pkgshare.install "examples", "docs"', result.stdout)
+        self.assertIn('pkgshare.install "examples", "docs", "scripts"', result.stdout)
 
     def test_invalid_input_never_emits_partial_formula(self):
         for lines, tag in [

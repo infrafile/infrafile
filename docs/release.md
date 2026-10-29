@@ -2,12 +2,12 @@
 
 发布入口是 `.github/workflows/release.yml`。`v*` 标签触发测试、离线快速上手、GoReleaser 六个平台构建，以及基于 GitHub OIDC 的 Cosign keyless 签名。工作流先创建草稿 Release，验收后公开并更新 Homebrew tap。以下以 v0.3.0 为例。
 
-涉及新存储时，先按[兼容与恢复策略](compatibility.md)确认显式标记、旧正式二进制重放和完整恢复点；仅更换程序不构成数据降级。RC/正式版仍须完成 T19 对应候选的升级与恢复验收。
+涉及新存储时，先按[兼容与恢复策略](compatibility.md)确认显式标记、旧正式二进制重放和完整恢复点；仅更换程序不构成数据降级。RC 提供 T17/T19 所需候选产物，正式版等待对应候选的真实接入、升级与恢复验收。
 
 ## 构建与发布约定
 
 - GoReleaser 固定 v2.19.0，Cosign 固定 v3.1.4；Go 版本来自 go.mod。
-- Linux / macOS / Windows 各提供 amd64、arm64。归档包含二进制、LICENSE、README、docs 与 examples。
+- Linux / macOS / Windows 各提供 amd64、arm64。归档包含二进制、LICENSE、README、docs、examples，以及 `scripts/smoke.sh` 和 `scripts/prepare_agent_acceptance.py`。Homebrew 将示例、文档和脚本安装到 pkgshare；脚本需要 Bash / Python 3。
 - `checksums.txt` 列出六个归档的 SHA-256，`checksums.txt.sigstore.json` 是签名 bundle。
 - `scripts/homebrew.py` 从同批校验和生成 macOS / Linux formula，包含 `infrafile` 与 `ifl` 软链，以及共享示例和文档。formula 和自己的签名 bundle 一并上传草稿 Release。
 - GoReleaser 的旧 brews 发布器[已经弃用](https://goreleaser.com/customization/publish/homebrew_formulas/)，这里保留标准 formula，使用校验和生成配方。tap 的提交由维护者在验签后完成，无需给构建工作流配置跨仓令牌。
@@ -33,6 +33,22 @@ git push origin v0.3.0
 ```
 
 不要移动已发布标签。下载草稿需要有仓库权限的 gh 登录；工作流失败时先检查已存在的草稿资产，再修复原因。不要用本地 snapshot 替换正式构建产物。
+
+## v1.0 候选版
+
+首个候选使用 `v1.0.0-rc.1`；创建前确认远端没有同名 tag/Release，并等待精确候选提交的 CI。`prerelease: auto` 将带 RC 后缀的 tag 标为预发布，工作流仍先生成草稿、签名并检查正式 Linux 归档。归档中的 smoke 同时覆盖旧离线上手和显式 v1 存储副本的能力、上下文、unknown、问题历史重复刷新与缺回执空态；不联网采集或执行云写。
+
+候选契约以该 tag 的 [兼容策略](compatibility.md)、[CLI JSON](json/README.md)、[MCP](json/mcp.md)、[插件协议](plugins.md)和[第一方插件范围](first-party-plugins.md)为准。它们描述候选的接口边界；`v1alpha1` 保留既有兼容承诺，后续 RC 变化须记录并重验受影响路径。
+
+按下节验签并确认正式归档的版本/commit、脚本和离线流程后，方可公开预发布：
+
+```sh
+gh release edit v1.0.0-rc.1 --repo infrafile/infrafile --draft=false --prerelease --latest=false
+```
+
+RC 不更新稳定 Homebrew tap，也不替换用户现有的 v0.3.0 安装。在独立目录运行已验签的 macOS arm64 / Linux amd64 归档，供 T17 独立上手和 T19 升级/恢复验收。formula 仍作为同批签名附件生成并核对 URL/哈希，稳定 tap 等正式发布门槛通过后再更新。
+
+候选已知限制：外部非维护者独立试用、14 个真实日历日的持续运行、正式范围切换、完整客户端受控场景及候选升级/密钥恢复尚待逐项验收；Windows 的新持久执行拒绝运行，其他未做原生验收的平台仅承诺构建产物。自有台账的控制面/DNS 结果不证明 HTTP/TLS/应用健康。详细门槛仍由[验收清单](plan/v1.0-acceptance.md)及工作包 issue 维护，RC 公开不表示 v1.0 完成。
 
 ## 验签
 
@@ -82,13 +98,13 @@ ifl version --json
 
 Homebrew 要求信任时，审阅配方后只信任这一 formula：`brew trust --formula infrafile/tap/infrafile`，见 [Tap Trust](https://docs.brew.sh/Tap-Trust)。升级已有安装使用 `brew update`、`brew upgrade infrafile/tap/infrafile`。最后按[快速上手](quickstart.md)跑完临时 homelab 流程，才能把“签名产物已发布”与“包管理器安装可用”两项都记为完成。
 
-## v0.3.0 发布验收
+## v0.2.0 发布验收
 
 2026-10-28 完成公开发布及 Homebrew 升级验收：
 
-- [v0.3.0 Release](https://github.com/infrafile/infrafile/releases/tag/v0.3.0) 已公开为正式最新版，共 10 个附件：六个平台归档、校验清单及签名 bundle、formula 及签名 bundle。标签固定在 `d8de6fafe3396cf0bbf097a77a8a047328d4400b`，未移动 v0.1.0 标签。
+- [v0.2.0 Release](https://github.com/infrafile/infrafile/releases/tag/v0.2.0) 当时公开为正式最新版，共 10 个附件：六个平台归档、校验清单及签名 bundle、formula 及签名 bundle。标签固定在 `d8de6fafe3396cf0bbf097a77a8a047328d4400b`，未移动 v0.1.0 标签。
 - [PR #1](https://github.com/infrafile/infrafile/pull/1) 合并后，[最终发布提交的 CI](https://github.com/infrafile/infrafile/actions/runs/40672698855) 与[正式发布工作流](https://github.com/infrafile/infrafile/actions/runs/40673075746)通过，包括 gofmt、vet、全仓 race、配方测试，以及 Linux amd64 正式归档的离线上手。
-- 下载草稿附件后，使用 Cosign v3.1.4 验证两份 bundle：identity 为 `https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/v0.3.0`，issuer 为 `https://token.actions.githubusercontent.com`。六个 SHA-256、各平台二进制及归档内文档/示例均通过核对，包含新增 audit/Gatus 契约与同步时间示例；无私有验收数据。重新生成的 formula 与签名附件逐字节相同。
+- 下载草稿附件后，使用 Cosign v3.1.4 验证两份 bundle：identity 为 `https://github.com/infrafile/infrafile/.github/workflows/release.yml@refs/tags/v0.2.0`，issuer 为 `https://token.actions.githubusercontent.com`。六个 SHA-256、各平台二进制及归档内文档/示例均通过核对，包含新增 audit/Gatus 契约与同步时间示例；无私有验收数据。重新生成的 formula 与签名附件逐字节相同。
 - macOS arm64 正式归档报告 `0.2.0 / d8de6fa`，完整离线上手通过。随后公开 Release，[tap 配方提交 bc3e70c](https://github.com/infrafile/homebrew-tap/commit/bc3e70c87026ef8991df77d47369302a3135c868)采用已验签的同批附件。
 - 本机 Homebrew 从 0.1.0 升级到 0.2.0，`brew test infrafile/tap/infrafile` 通过；`infrafile` 与 `ifl` 解析到同一二进制，版本均为 `0.2.0 / d8de6fa`。安装版的完整离线上手与先前私有台账验收快照的离线审计回归通过；后者未重新请求云 API，也未迁移权威台账。
 
