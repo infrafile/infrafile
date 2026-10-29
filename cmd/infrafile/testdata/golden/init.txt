@@ -3,6 +3,7 @@ $ infrafile init ledger
 --- stdout
 已在 ledger 创建数据仓：
   infrafile.yaml
+  .gitignore
   inventory/servers/.gitkeep
   inventory/apps/.gitkeep
   inventory/domains/.gitkeep

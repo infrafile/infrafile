@@ -322,6 +322,11 @@ async function inspectionsPage(signal) {
 }
 async function changesPage(signal) {
     scopeBar('变更');
+    const editing = await inventoryPanel(signal);
+    if (editing?.status === 'recovery_required') {
+        empty(box('问题变化时间线'), '台账有未完成的变更。请先恢复事务，再读取台账和问题历史。');
+        return;
+    }
     const data = await api('changes', {}, signal);
     const section = box('问题变化时间线');
     section.append(el('p', '只展示已显式保存的变化；浏览不会刷新历史，也不表示云端发生了操作。', 'notice'));
@@ -341,10 +346,77 @@ async function changesPage(signal) {
         }
         section.append(list);
     }
-    const inventory = box('台账修改');
-    inventory.append(el('p', '台账变更预览与保存尚未接入工作台。可使用现有 Git 流程审阅台账修改。'));
     const cloud = box('云计划与执行回执');
     cloud.append(el('p', '受控记录尚未接入。请通过本地 CLI 审阅计划并按适用授权执行；保存台账不表示线上已经变更。'));
+}
+
+async function inventoryPanel(signal) {
+    const section = box('台账修改');
+    const info = await api('change/status', {}, signal);
+    if (!info.enabled) {
+        empty(section, '当前工作台为只读模式。需要编辑时，在本机以 --allow-edit 启动后重新配对。');
+        return info.transaction;
+    }
+    const current = info.transaction;
+    const feedback = el('div'); feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite');
+    const refresh = el('button', '检查事务状态并读取最新台账'); refresh.type = 'button'; refresh.addEventListener('click', load);
+    async function perform(button, action) {
+        button.disabled = true;
+        try { await action(); }
+        catch (error) { if (!signal.aborted) feedback.replaceChildren(el('p', error.message + ' 提交请求中断时，请先检查事务状态，再决定下一步。', 'notice')); }
+        finally { if (!signal.aborted) button.disabled = false; }
+    }
+    function receipt(result) {
+        const text = { committed: '已提交到本地 Git', unchanged: '没有需要提交的变化', rejected: '变更被拒绝，请重新预览', recovery_required: '事务未完成，需要恢复', rolled_back: '已恢复原文件', complete: '事务已完成' };
+        feedback.replaceChildren(el('p', text[result.status] || result.status), jsonDetails('事务回执', result), refresh);
+    }
+    if (current.status === 'recovery_required') {
+        section.append(el('p', '存在未完成事务：' + current.transaction, 'notice'));
+        const recover = el('button', '恢复此事务'); recover.type = 'button';
+        recover.addEventListener('click', () => perform(recover, async () => receipt(await api('change/recover', { id: current.transaction }, signal))));
+        section.append(el('p', '恢复会核对文件和提交哈希；发现外部修改会停止并保留现场。'), recover, feedback, refresh);
+        return current;
+    }
+    section.append(el('p', '填写完整记录，可同时提交多条记录并调整引用。不会删除记录；停用时填写 metadata.archived。凭据引用由服务端保留，不能在此表单中填写。'));
+    section.append(el('p', '保存会重新序列化变更文件，原有注释和排版会变化。此处显示字段差异；需要核对原始字节 diff 时请使用 change preview。', 'notice'));
+    const label = el('label', '完整记录 JSON（单条或数组）');
+    const editor = el('textarea'); editor.rows = 16; editor.spellcheck = false; editor.setAttribute('aria-label', '完整记录 JSON');
+    let initial = { apiVersion: 'infrafile/v1alpha1', kind: 'Server', metadata: { name: 'new-server' }, spec: { address: '192.0.2.10' } };
+    if (selectedKey() && isAssetKey(selectedKey())) initial = (await api('show', { key: selectedKey() }, signal)).record;
+    editor.value = JSON.stringify(initial, null, 2); label.append(editor);
+    const form = el('form'); const preview = el('button', '校验并预览变更'); preview.type = 'submit';
+    const reviewedLabel = el('label', '我已核对修改前后的完整内容'); reviewedLabel.className = 'reviewed';
+    const reviewed = el('input'); reviewed.type = 'checkbox'; reviewedLabel.prepend(reviewed);
+    const commit = el('button', '确认并提交到 Git'); commit.type = 'button'; commit.disabled = true;
+    const diff = el('div'); let prepared;
+    function invalidate() { prepared = undefined; reviewed.checked = false; commit.disabled = true; diff.replaceChildren(); }
+    editor.addEventListener('input', invalidate);
+    reviewed.addEventListener('change', () => { commit.disabled = !prepared || !reviewed.checked; });
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        perform(preview, async () => {
+            invalidate(); feedback.replaceChildren();
+            const records = JSON.parse(editor.value, (key, value) => { if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) throw Error('此数值超出浏览器精度，请通过 CLI 编辑。'); return value; });
+            const request = { version: 'v1', records: Array.isArray(records) ? records : [records] };
+            const result = await api('change/preview', request, signal);
+            if (!result.ok) { feedback.replaceChildren(el('p', '校验未通过：' + result.problems.join('、'), 'notice')); return; }
+            prepared = { request, digest: result.digest };
+            diff.append(el('p', '基准 HEAD：' + result.head), el('p', '预览摘要：' + result.digest));
+            if (!result.files.length) empty(diff, '记录内容与台账一致，没有变化。');
+            for (const file of result.files) {
+                const item = box(file.key, diff);
+                item.append(el('h3', '修改前'), el('pre', JSON.stringify(file.before, null, 2)), el('h3', '修改后'), el('pre', JSON.stringify(file.after, null, 2)));
+            }
+        });
+    });
+    commit.addEventListener('click', () => {
+        if (!prepared || !reviewed.checked) return;
+        const approved = prepared; prepared = undefined; commit.disabled = true; editor.disabled = true; preview.disabled = true; reviewed.disabled = true;
+        feedback.replaceChildren(el('p', '正在提交，请等待回执。'));
+        api('change/apply', approved, signal).then(receipt).catch(error => { if (!signal.aborted) feedback.replaceChildren(el('p', error.message + ' 请先检查事务状态，避免盲目重试。', 'notice'), refresh); });
+    });
+    form.append(label, preview, diff, reviewedLabel, commit); section.append(form, feedback);
+    return current;
 }
 async function load() {
     controller?.abort();
@@ -365,7 +437,7 @@ async function load() {
         }
         await ({ assets: assetsPage, inspections: inspectionsPage, changes: changesPage }[page] || assetsPage)(signal);
         if (!signal.aborted)
-            statusLine.textContent = '已读取 · 离线只读视图 · 证据有效期 ' + days() + ' 天';
+            statusLine.textContent = '已读取 · 查询不刷新观测 · 证据有效期 ' + days() + ' 天';
     }
     catch (error) {
         if (error.name === 'AbortError')

@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/infrafile/infrafile/internal/change"
 	"github.com/infrafile/infrafile/internal/ledger"
 	"github.com/infrafile/infrafile/internal/validate"
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -51,6 +52,7 @@ type workbench struct {
 	pairExpires, attemptReset time.Time
 	sessions                  map[string]webSession
 	attempts                  int
+	allowEdit                 bool
 }
 
 func newWorkbench(ctx context.Context, dir string, address serveAddress, ttl time.Duration, now func() time.Time, publish func(string) error) (*workbench, error) {
@@ -66,7 +68,10 @@ func newWorkbench(ctx context.Context, dir string, address serveAddress, ttl tim
 		return nil, fmt.Errorf("数据仓必须是普通目录")
 	}
 	if _, _, err := ledger.Load(ctx, dir); err != nil {
-		return nil, fmt.Errorf("无法读取数据仓")
+		state, statusErr := change.Status(ctx, dir)
+		if statusErr != nil || state.Status != "recovery_required" {
+			return nil, fmt.Errorf("无法读取数据仓")
+		}
 	}
 	definitions, err := workbenchQueries()
 	if err != nil {
@@ -252,6 +257,10 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	}
 	if len(r.Header.Values("X-CSRF-Token")) != 1 || !secureEqual(csrf, r.Header.Get("X-CSRF-Token")) {
 		webError(out, 403)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/change/") {
+		w.changeHTTP(out, r, csrf, expires)
 		return
 	}
 	tool := strings.TrimPrefix(r.URL.Path, "/api/")

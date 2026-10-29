@@ -6,6 +6,7 @@ $ infrafile init --json ledger
   "dir": "ledger",
   "created": [
     "infrafile.yaml",
+    ".gitignore",
     "inventory/servers/.gitkeep",
     "inventory/apps/.gitkeep",
     "inventory/domains/.gitkeep",
