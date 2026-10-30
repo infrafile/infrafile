@@ -1,0 +1,12 @@
+apiVersion: infrafile/v1alpha1
+kind: Config
+plugins:
+  tls:
+    instances:
+      wiki: {host: WIKI.EXAMPLE.COM.}
+      blog: {host: example.com, port: 8443}
+      assets: {host: assets.example.com}
+      orphan: {host: orphan.example.net}
+      ambiguous: {host: shared.example.com}
+      ip: {host: 192.0.2.10}
+      missing: {host: missing.example.com}

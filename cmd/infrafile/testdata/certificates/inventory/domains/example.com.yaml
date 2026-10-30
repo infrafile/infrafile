@@ -1,0 +1,12 @@
+apiVersion: infrafile/v1alpha1
+kind: Domain
+metadata: {name: example.com}
+spec:
+  bindings:
+    - {name: wiki, app: wiki}
+    - {name: '@', app: blog}
+    - {name: assets, resource: assets}
+    - {name: shared, app: wiki}
+    - {name: shared, app: blog}
+    - {name: missing, app: blog}
+    - {name: unconfigured, app: wiki}

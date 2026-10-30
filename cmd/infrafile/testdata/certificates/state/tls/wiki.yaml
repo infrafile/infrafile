@@ -1,0 +1,13 @@
+apiVersion: infrafile/v1alpha1
+kind: Snapshot
+metadata: {name: wiki}
+spec:
+  host: WIKI.EXAMPLE.COM.
+  port: 443
+  verified: true
+  verification: valid
+  certificate:
+    subject: CN=wiki.example.com
+    issuer: CN=Synthetic test issuer
+    not_before: '2026-01-01T00:00:00Z'
+    not_after: '2026-12-31T12:00:00Z'

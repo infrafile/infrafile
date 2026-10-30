@@ -1,6 +1,6 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十三个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十四个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
 
 ## 本机启动
 
@@ -63,6 +63,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 | audit | 可选 rules / max_age_days | CLI audit JSON，含显式保存的历史 |
 | inspect | 可选 key / labels / kind / max_age_days | CLI inspect JSON；key 与 labels 互斥 |
 | asset-summaries | 与 inspect 相同 | Web 专用 `{version,as_of,max_age_days,rows}`；同一请求一次准备输入，rows 按 key 排序，逐行等价于相同时间/TTL 下单资产 inspect |
+| certificates | 可选非负整数 max_age_days，默认 7 | Web 专用 `{version,as_of,max_age_days,has_snapshots,message,groups,uncollected}`；保存的 TLS 证书元数据与应用归属，不改变 CLI/MCP 契约 |
 | validate | `{}` | 记录数、问题数与代码计数，无敏感诊断原文 |
 | schema | `{}` | 内嵌 JSON Schema bundle |
 | capabilities | `{}` | 离线支持能力目录 |
@@ -74,6 +75,12 @@ infrafile serve --dir /absolute/path/to/ledger \
 原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具。changes 和两个执行回执入口只在工作台提供，复用 CLI 严格读取器。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes/executions/execution 沿用历史救援契约，严格读取保存记录，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
 
 资产摘要行包含 `key/kind/name/labels/archived/ok`、coverage 的 expected/checked/unknown/not_applicable、risk 的 confirmed/unknown/waived、execution、首要原因 reason（code/message）与去重后的 evidence。省略完整 spec、checks、findings、历史和观测原文；详情通过 context 查询。风险与未知可以并存；只有单资产 `ok=true` 才表示当前配置范围内通过。空选择返回空 rows，全局实例问题不会被重复分给所有资产。损坏历史、取消或响应超过 4 MiB 时整份失败，不返回部分成功。
+
+`certificates` 只读当前启用的 `tls` 实例保存快照、成功同步时间与执行回执，重新校验台账，不运行插件、联网、解析凭据或写台账/历史。每个 group 含 `app`（`App/<name>` 或空串）、`ownership` 与 `certificates`。归属只比较小写、去一个尾点后的实例 `host` 和在用 Domain 的 binding 主机名（`@` 为根域名，其他为 `<name>.<domain>`）；实例名不参与匹配，不用证书 dns_names 做通配符推断。`ownership` 为 `app`（唯一应用）、`no_app`（binding 无应用）、`unassociated`（没有 binding，含 IP）、`ambiguous`（不同应用共同声明）。候选应用主键按序列在条目的 `apps` 中，歧义不择一。
+
+条目仅含 `host/port/apps/not_after/days_left/verified/verification/observed_at/stale/data_state/expiry_state`；不含证书原文、subject/issuer、私钥、凭据引用或文件路径。`verified/verification` 表示保存的信任验证结果，与到期状态分开。当前配置、成功时间、快照哈希与成功回执匹配且不超过 TTL 才有 `data_state: fresh`；超过 TTL 为 `stale`，失败/未结束/未来时间/证据不匹配分别为 `failed/running/future/unverified`。仅 fresh 计算剩余完整天数（向下取整）并给出 `expired/today/expiring/not_due`（30 天阈值）；其余 `expiry_state: unknown`、`days_left: null`，旧元数据只作历史观测。TTL 恰好等于期限仍新鲜，超过一秒即过期。
+
+有应用 binding 却没有实例/匹配快照的主机单列 `uncollected`，`data_state: uncollected`、到期状态 unknown；未配置实例时 port 以默认 443 表示配置约定，非实测。没有任何启用 tls 快照时 `groups: []`、`has_snapshots: false`，`message` 明确为“没有 tls 探测快照 · 不代表证书正常”，未采集主机仍保留在 `uncollected`。该接口为后续总览提供数据，本阶段不新增页面。沿用同源会话/CSRF、严格 JSON、64 KiB 请求、4 MiB 响应、30 秒与并发 4 上限；台账、快照损坏或超限均返回固定 422 错误，不回显路径或原文。
 
 ## 台账编辑（显式启用）
 
