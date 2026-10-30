@@ -92,7 +92,7 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     changed = true;
     for (let n = 1; n <= 3; n++) {
       await page.clock.runFor(60000);
-      await page.locator(`[data-auto-read][data-failures="${n}"]`).waitFor();
+      await page.locator(`[data-auto-read][data-failures="${n}"][data-reading="false"]`).waitFor();
     }
     const expiry = page.getByRole('region', { name: '登记到期', exact: true });
     await expiry.getByRole('alert').waitFor();
