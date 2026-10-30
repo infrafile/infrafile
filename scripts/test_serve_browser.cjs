@@ -593,7 +593,9 @@ async function main() {
         report.checks.views = await views(p1, local);
         report.checks.assets = await assetViews(p1, local);
         report.checks.auto_read = await require('../web/tests/auto-read-browser.cjs')(browser, local, { pair, base, assert });
-        report.checks.overview = await require('../web/tests/overview-browser.cjs')(browser, local, { pair, base, assert });
+        const overview = await start('overview');
+        report.checks.overview = await require('../web/tests/overview-browser.cjs')(browser, overview, { pair, base, assert });
+        await stop(overview);
         report.checks.eight_native_browser_queries = queries;
         const second = await browser.newContext({ viewport: { width: 390, height: 844 } }), p2 = await second.newPage();
         await pair(p2, local);

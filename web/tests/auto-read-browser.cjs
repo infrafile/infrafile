@@ -21,7 +21,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
     const toggle = page.getByRole('checkbox', { name: '自动重读（60 秒）', exact: true });
     const status = page.locator('[data-auto-read]:visible');
     assert(await toggle.isChecked(), 'automatic rereading is not enabled by default');
-    await page.clock.pauseAt(new Date());
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     let mode = 'normal', expiryFailure = false, summaries = 0, expiries = 0, contexts = 0, active = 0, maximum = 0;
     const timings = [];
     let release, lateSettled;
@@ -186,7 +186,7 @@ module.exports.edit = async function autoReadEditor(browser, entry, { pair, asse
     await page.goto(entry.origin + '/changes#key=Server%2Fweb');
     const editor = page.getByLabel('完整记录 JSON', { exact: true });
     await editor.waitFor();
-    await page.clock.pauseAt(new Date());
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     const record = JSON.parse(await editor.inputValue()); record.spec.address = '192.0.2.99';
     const draft = JSON.stringify(record, null, 2);
     await editor.fill(draft);

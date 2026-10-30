@@ -40,7 +40,7 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'overview overflows narrow viewport');
     await page.screenshot({ path: path.join(base, 'overview-narrow.png') });
     await page.setViewportSize({ width: 1200, height: 850 });
-    await page.clock.pauseAt(new Date());
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await page.route('**/api/expiry', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
     changed = true;
     for (let n = 1; n <= 3; n++) {

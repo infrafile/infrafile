@@ -1,6 +1,6 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十四个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定一个数据仓，提供配对登录、总览/资产/巡检/变更四个页面和十四个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
 
 ## 本机启动
 
@@ -37,9 +37,17 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 本机模式拒绝所有代理头及非回环连接。两种模式都验证精确 Host、浏览器 Origin 和 Sec-Fetch-Site；不提供 CORS，不接受 URL 查询参数或绝对形式请求 URI。HTTPS 实际证书、代理部署和网络隔离需在使用方另行验证。
 
-## 三页只读使用
+## 总览与三页只读使用
 
-登录后默认进入三栏资产页：类型导航、资产列表、完整详情分别组织信息，列表与详情独立滚动。默认显示在用资产，依次排列有确认风险、待核实、范围内通过的资产，同组按主键排序；可组合搜索名称/主键/标签、类型、归档和状态。未知检查与未知发现分别计数，不相加成唯一问题数量。摘要读取失败时仅显示标有“状态未读取”的目录，并停用状态筛选。
+登录后默认进入总览（`/` 或 `/overview`），显示全部在用资产的四类数量、登记到期、按应用分组的证书、服务器登记配置和数据新鲜度。每个在用资产只计入“有风险 / 需处理 / 暂无检查 / 范围内通过”之一，四类之和等于总数；这不是问题数或健康评分，“暂无检查”不是已通过。类别由服务端提供，点击数量进入带 `category` fragment 的资产筛选。旧 `/assets#key=…`、巡检/变更地址以及根路径 `/#key=…` 资产深链保留。
+
+总览每个周期依次读取一次 `asset-summaries`、`expiry`、`certificates`，不随服务器数量逐项请求。服务器只展示在用记录 `hardware.cpu/memory/disk/os` 的原始字符串，标“台账登记值 · 非实时”；缺失显示“未登记”，不做使用率、换算或合计。到期使用服务端日历日 `days_left`，可切换 Domain/Resource/Server；Domain 展示已登记/在用总数和未登记提醒，归档不计分母。Resource/Server 展示已登记项并注明“另有 K 个未登记”，不将日期缺失升级为警报，也不把它当正常。
+
+证书区消费保存的 TLS 结果，按应用、无应用、未关联、歧义及未采集分别显示；只有 fresh 且到期状态明确的条目展示当前剩余天数，其余旧日期标历史观测、当前到期未知，信任验证另列。新鲜度来自在用资产检查引用的 `execution[].observed_at`，按插件/实例去重，分别显示最新/最旧采集时间和缺失、未来、超出有效期；以服务端摘要 `as_of` 比较，不用浏览器时间判断证据。保存时间不能替代成功资格，也不是全账号采集清单。
+
+各数据块分别显示读取时间。一个接口失败不遮蔽其他块：自动失败保留该块已有内容和原时间，成功的新内容仍等待“应用更新”；初次、手动和切换范围失败的块不保留旧数据。顶栏读取时间取当前可见块最早的读取时间，任何块连续失败三次提示可能过期。资产摘要失败时无法核对到期分母，明确提示目录未读取，不把日期列表当完整覆盖；任意接口的 401 清空全部业务内容。
+
+资产页保持类型导航、资产列表、完整详情三栏，列表与详情独立滚动。默认显示在用资产，依次排列有风险、需处理、暂无检查、范围内通过，同组按主键排序；可组合搜索名称/主键/标签、类型、归档和服务端类别。未知检查与未知发现分别计数，不相加成唯一问题数量。摘要读取失败时仅显示标有“状态未读取”的目录，并停用状态筛选。
 
 首次无选择时选中第一项；用户筛选移除当前项时换选并播报，空结果清空详情。显式链接、关系跳转或归档深链保留目标，显示范围外提示和清除筛选入口。方向键选择时焦点留在列表，Enter 进入详情；窄屏从列表进入详情后可返回原列表位置。侧栏支持系统/浅色/深色，仅外观偏好写入 localStorage。
 
@@ -51,7 +59,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 页面支持键盘操作、明确标签、跳过导航、状态文字和窄屏。选中资产与 TTL/问题身份放在 URL fragment（key/days/issue），列表筛选保存在当前页面内，配对/会话令牌始终不进 URL。默认视图证据有效期 7 天，可显式调整；切换页面保留范围，切换资产会取消旧详情查询。“重新读取”只重读已保存结果。失效会话清空整个业务界面；初次加载、手动读取和范围切换失败清空对应旧内容，只有自动重读失败保留旧成功内容。缺少 JSON 原始数值支持的浏览器会明确拒绝显示超出安全整数的数值，须改用支持的浏览器或 CLI。
 
-三页默认每 60 秒自动重读保存结果；页面重新可见或获得焦点且距上次尝试至少 30 秒时立即读取，并重新计算下一次 60 秒周期。页面后台暂停，关闭开关或离开范围会取消对应自动请求；同页最多一个自动读取周期，周期内串行调用只读接口。开关仅保存在当前页面内存，重新打开页面恢复默认开启，不延长会话、不运行插件或采集。资产页每周期最多一次摘要和一次到期查询，请求数不随资产数量增长；巡检页一次 inspect；变更页依次读取事务状态、变化和范围内的执行索引，未完成事务不继续台账查询。各接口仍是独立请求，不能把一轮重读当作跨接口事务。
+四页默认每 60 秒自动重读保存结果；页面重新可见或获得焦点且距上次尝试至少 30 秒时立即读取，并重新计算下一次 60 秒周期。页面后台暂停，关闭开关或离开范围会取消对应自动请求；同页最多一个自动读取周期，周期内串行调用只读接口。开关仅保存在当前页面内存，重新打开页面恢复默认开启，不延长会话、不运行插件或采集。总览固定三次查询，资产页每周期最多一次摘要和一次到期查询，请求数不随资产数量增长；巡检页一次 inspect；变更页依次读取事务状态、变化和范围内的执行索引，未完成事务不继续台账查询。各接口仍是独立请求，不能把一轮重读当作跨接口事务。
 
 没有内容变化时只更新页面读取时间。资产变更按主键计数，新增/移除/字段变化各算一项；到期报告变化而资产未变化时算一项报告更新。巡检和变更报告内容变化时各算一项。新结果先显示“有 N 项更新，应用更新”，不自动重排列表或替换报告；用户应用后保留显式选择，已退出筛选范围的目标仍可查看。搜索、筛选、焦点、列表滚动、已打开详情、编辑草稿和已审阅预览不因自动读取重建。页面读取时间只说明浏览器读到了保存结果；数据采集时间和证据资格仍以各报告为准。
 
@@ -80,13 +88,26 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具。changes 和两个执行回执入口只在工作台提供，复用 CLI 严格读取器。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes/executions/execution 沿用历史救援契约，严格读取保存记录，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
 
-资产摘要行包含 `key/kind/name/labels/archived/ok`、coverage 的 expected/checked/unknown/not_applicable、risk 的 confirmed/unknown/waived、execution、首要原因 reason（code/message）与去重后的 evidence。省略完整 spec、checks、findings、历史和观测原文；详情通过 context 查询。风险与未知可以并存；只有单资产 `ok=true` 才表示当前配置范围内通过。空选择返回空 rows，全局实例问题不会被重复分给所有资产。损坏历史、取消或响应超过 4 MiB 时整份失败，不返回部分成功。
+资产摘要行包含 `key/kind/name/labels/archived/ok/category`、coverage 的 expected/checked/unknown/not_applicable、risk 的 confirmed/unknown/waived、execution、首要原因 reason（code/message）与去重后的 evidence。仅 Server 可追加 `hardware` 四字符串白名单，不包含 address、完整 spec、秘密或扩展字段；详情仍通过 context 查询。风险与未知可以并存；只有单资产 `ok=true` 才表示当前配置范围内通过。空选择返回空 rows，全局实例问题不会被重复分给所有资产。损坏历史、取消或响应超过 4 MiB 时整份失败，不返回部分成功。新增字段只属于 Web 摘要，不改 CLI/MCP 的 inspect/audit/context。
+
+`category` 优先级为：未豁免确认风险 → `risk`；既有 `ok=true` → `passed`；仍有未知/未通过的豁免事项、执行资格不足或可处理检查 → `needs_attention`；余下没有检查、全部不支持或已审阅不适用 → `no_checks`。不能仅按首个 reason 判断；例如 unsupported 与 failed 混合时仍为需处理。当前原因/检查代码对照如下，分类测试覆盖现有代码和未知代码反例：
+
+| reason/check code | 类别与条件 |
+| --- | --- |
+| `passed` | `passed`，依赖完整报告既有 `ok=true` |
+| `unsupported`、`not_applicable`、`no_checks` | 无其他待处理项时 `no_checks`；混合可处理检查时 `needs_attention` |
+| `not_configured`、`ambiguous_scope`、`missing_relationship`、`address_unknown`、`identity_mismatch` | `needs_attention`，缺配置/关系或身份资格，不当作结构性不支持 |
+| `unverified`、`future`、`failed`、`running`、`ttl_unset`、`stale`、`incomplete` | `needs_attention`，执行/覆盖证据不足 |
+| `not_baselined`、`baseline_future`、`observation_unknown`、`not_observed` | `needs_attention`，基线/观测不足 |
+| finding 的 `missing/orphan/zombie/stale_state/origin_exposure/cdn_drift` | 未豁免确认风险优先 `risk`，未知发现为 `needs_attention`；豁免本身不使检查通过 |
+| `checked` | 单项检查/执行通过，仍结合完整报告；不单独将资产判为 passed |
+| 未知代码或未来类别 | 保守 `needs_attention`；前端不解析 reason.code 推断类别 |
 
 `certificates` 只读当前启用的 `tls` 实例保存快照、成功同步时间与执行回执，重新校验台账，不运行插件、联网、解析凭据或写台账/历史。每个 group 含 `app`（`App/<name>` 或空串）、`ownership` 与 `certificates`。归属只比较小写、去一个尾点后的实例 `host` 和在用 Domain 的 binding 主机名（`@` 为根域名，其他为 `<name>.<domain>`）；实例名不参与匹配，不用证书 dns_names 做通配符推断。`ownership` 为 `app`（唯一应用）、`no_app`（binding 无应用）、`unassociated`（没有 binding，含 IP）、`ambiguous`（不同应用共同声明）。候选应用主键按序列在条目的 `apps` 中，歧义不择一。
 
 条目仅含 `host/port/apps/not_after/days_left/verified/verification/observed_at/stale/data_state/expiry_state`；不含证书原文、subject/issuer、私钥、凭据引用或文件路径。`verified/verification` 表示保存的信任验证结果，与到期状态分开。当前配置、成功时间、快照哈希与成功回执匹配且不超过 TTL 才有 `data_state: fresh`；超过 TTL 为 `stale`，失败/未结束/未来时间/证据不匹配分别为 `failed/running/future/unverified`。仅 fresh 计算剩余完整天数（向下取整）并给出 `expired/today/expiring/not_due`（30 天阈值）；其余 `expiry_state: unknown`、`days_left: null`，旧元数据只作历史观测。TTL 恰好等于期限仍新鲜，超过一秒即过期。
 
-有应用 binding 却没有实例/匹配快照的主机单列 `uncollected`，`data_state: uncollected`、到期状态 unknown；未配置实例时 port 以默认 443 表示配置约定，非实测。没有任何启用 tls 快照时 `groups: []`、`has_snapshots: false`，`message` 明确为“没有 tls 探测快照 · 不代表证书正常”，未采集主机仍保留在 `uncollected`。该接口为后续总览提供数据，本阶段不新增页面。沿用同源会话/CSRF、严格 JSON、64 KiB 请求、4 MiB 响应、30 秒与并发 4 上限；台账、快照损坏或超限均返回固定 422 错误，不回显路径或原文。
+有应用 binding 却没有实例/匹配快照的主机单列 `uncollected`，`data_state: uncollected`、到期状态 unknown；未配置实例时 port 以默认 443 表示配置约定，非实测。没有任何启用 tls 快照时 `groups: []`、`has_snapshots: false`，`message` 明确为“没有 tls 探测快照 · 不代表证书正常”，未采集主机仍保留在 `uncollected`。总览消费该接口，不在 App 详情扩展证书展示。沿用同源会话/CSRF、严格 JSON、64 KiB 请求、4 MiB 响应、30 秒与并发 4 上限；台账、快照损坏或超限均返回固定 422 错误，不回显路径或原文。
 
 ## 台账编辑（显式启用）
 
@@ -110,4 +131,4 @@ HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_bro
 
 验收机需预先安装 Node 22.12+、npm 11、锁文件依赖、Playwright Chromium/WebKit 和 OpenSSL，命令见 [CONTRIBUTING](../CONTRIBUTING.md#本地开发)。`make browser-test` 不下载依赖，不访问云账号；默认读取 `bin/infrafile` 和 `web/node_modules/playwright`，可用 `INFRAFILE_BINARY`、`INFRAFILE_PLAYWRIGHT_MODULE`（绝对模块路径）、`INFRAFILE_BROWSER_EXECUTABLE` 指定，`INFRAFILE_BROWSER_ENGINE=chromium|webkit` 选择引擎。WebKit 自动化不等同于真实 Safari 验收。
 
-默认 all suite 保留认证、事务恢复和云回执测试，增加三栏请求数量、旧请求竞争、401 清空、摘要失败、主题及窄屏返回。`INFRAFILE_BROWSER_SUITE=auto-read` 用浏览器时钟验证三页周期、焦点/可见性、单周期互斥、范围切换取消、待应用更新、失败/恢复/401，以及真实编辑器草稿和预览保留；保存虚构台账上的摘要读取耗时，不作为真实大台账性能承诺。CSP 检查先完成，再单独截图，避免 Playwright 自己在 WebKit 截图时注入的 `body {}` 样式产生误报；不放宽产品 CSP。`INFRAFILE_BROWSER_SUITE=package` 验证三个页面无外部资源请求，服务进程 PATH 中无 Node；可对解压后的二进制运行。回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。
+默认 all suite 保留认证、事务恢复和云回执测试，增加三栏请求数量、旧请求竞争、401 清空、摘要失败、主题及窄屏返回。`INFRAFILE_BROWSER_SUITE=auto-read` 用浏览器时钟验证原三页周期、焦点/可见性、单周期互斥、范围切换取消、待应用更新、失败/恢复/401，以及真实编辑器草稿和预览保留；保存虚构台账上的摘要读取耗时，不作为真实大台账性能承诺。`INFRAFILE_BROWSER_SUITE=overview` 验证默认总览、类别筛选链接、旧资产深链、固定三次串行查询、服务器数量增长不增加请求，以及各块独立失败、保留时间、待应用更新、恢复与后续接口 401。CSP 检查先完成，再单独截图，避免 Playwright 自己在 WebKit 截图时注入的 `body {}` 样式产生误报；不放宽产品 CSP。`INFRAFILE_BROWSER_SUITE=package` 验证四个页面无外部资源请求，服务进程 PATH 中无 Node；可对解压后的二进制运行。回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。
