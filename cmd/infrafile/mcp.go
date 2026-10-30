@@ -166,6 +166,12 @@ func mcpCall(ctx context.Context, dir, tool string, args mcpArgs, now time.Time)
 		}
 		return map[string]any{"version": jsonVersion, "schemas": bundle}, nil
 	}
+	// Pin a published directory generation for every read performed by this call.
+	var err error
+	dir, err = filepath.EvalSymlinks(dir)
+	if err != nil {
+		return nil, err
+	}
 	if tool == "validate" {
 		res, err := validate.Run(ctx, dir, validate.Options{})
 		if err != nil {
