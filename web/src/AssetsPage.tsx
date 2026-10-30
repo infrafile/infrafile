@@ -1,30 +1,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Badge, Button, SegmentedControl, TextField } from '@radix-ui/themes';
 import { ApiError, query } from './api';
-import type { AssetDirectoryEntry, AssetSummaries, ListResult } from './contracts';
-import { assetStatus, defaultFilters, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
+import type { AssetDirectoryEntry, AssetSummaries, ExpiryReport, ListResult } from './contracts';
+import { assetChanges, assetStatus, defaultFilters, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
 import { AssetDetail } from './AssetDetail';
 import { ScopeBar } from './ScopeBar';
 import { isAssetKey, type PageProps } from './scope';
-import { useQuery } from './useQuery';
+import { useQuery, type QueryState } from './useQuery';
 import { loadExpiry } from './expiry';
+import { AutoReadStatus } from './AutoReadStatus';
 
-type Directory = { mode: 'complete'; summary: AssetSummaries } | { mode: 'directory'; rows: AssetDirectoryEntry[] };
+type DirectoryRows = { mode: 'complete'; summary: AssetSummaries } | { mode: 'directory'; rows: AssetDirectoryEntry[] };
+type Directory = DirectoryRows & { expiry: QueryState<ExpiryReport> };
+const directoryRows = (value: Directory) => value.mode === 'complete' ? value.summary.rows : value.rows;
+const directoryChanges = (previous: Directory, next: Directory) => assetChanges(directoryRows(previous), directoryRows(next)) || (JSON.stringify(previous.expiry) === JSON.stringify(next.expiry) ? 0 : 1);
 const kinds = [['', '全部资产'], ['Server', '服务器'], ['Domain', '域名'], ['Resource', '资源'], ['App', '应用'], ['Repo', '代码仓'], ['Account', '账号']];
 export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar }: PageProps & { renderSidebar: (children: ReactNode) => ReactNode }) {
   const [filters, setFilters] = useState<AssetFilters>(defaultFilters), [refresh, setRefresh] = useState(0);
   const [announcement, setAnnouncement] = useState(''), [detailOpen, setDetailOpen] = useState(!!scope.key);
   const list = useRef<HTMLDivElement>(null), detail = useRef<HTMLElement>(null), cause = useRef<'initial' | 'filter' | 'link'>(scope.key ? 'link' : 'initial');
-  const load = useCallback(async (signal: AbortSignal): Promise<Directory> => {
+  const load = useCallback(async (signal: AbortSignal, automatic = false): Promise<Directory> => {
     const selection = filters.kind ? { kind: filters.kind } : {};
-    try { return { mode: 'complete', summary: await query<AssetSummaries>('asset-summaries', { ...selection, max_age_days: scope.days }, signal) }; }
+    let directory: DirectoryRows;
+    try { directory = { mode: 'complete', summary: await query<AssetSummaries>('asset-summaries', { ...selection, max_age_days: scope.days }, signal) }; }
     catch (error) {
-      if (signal.aborted || error instanceof ApiError && error.status === 401) throw error;
-      return { mode: 'directory', rows: (await query<ListResult>('list', selection, signal)).records };
+      if (automatic || signal.aborted || error instanceof ApiError && error.status === 401) throw error;
+      directory = { mode: 'directory', rows: (await query<ListResult>('list', selection, signal)).records };
     }
+    let expiry: QueryState<ExpiryReport>;
+    try { expiry = { status: 'ready', data: await loadExpiry(signal) }; }
+    catch (error) {
+      if (automatic || signal.aborted || error instanceof ApiError && error.status === 401) throw error;
+      expiry = { status: 'error', error: error instanceof Error ? error : Error('到期信息读取失败。') };
+    }
+    return { ...directory, expiry };
   }, [filters.kind, scope.days]);
-  const state = useQuery(`${filters.kind}/${scope.days}/${refresh}`, load, onUnauthorized);
-  const expiry = useQuery(`expiry/${refresh}`, loadExpiry, onUnauthorized);
+  const state = useQuery(`${filters.kind}/${scope.days}/${refresh}`, load, onUnauthorized, { automatic: true, changes: directoryChanges });
   const data = state.status === 'ready' ? state.data : undefined;
   const rows = useMemo(() => !data ? [] : data.mode === 'complete' ? filterAssets(data.summary.rows, filters) : filterDirectory(data.rows, filters), [data, filters]);
   const summaries = data?.mode === 'complete' ? new Map(data.summary.rows.map(row => [row.key, row])) : undefined;
@@ -56,6 +67,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
           {[['all', '全部'], ['risk', '有风险'], ['pending', '待核实'], ['passed', '通过']].map(([value, name]) => <SegmentedControl.Item key={value} value={value}>{name}</SegmentedControl.Item>)}
         </SegmentedControl.Root>
         <p role="status" className="sr-only">{announcement}</p>
+        <div className="list-auto-read"><AutoReadStatus state={state.auto} /></div>
       </div>
       {state.status === 'loading' && <p className="empty" role="status">正在读取资产摘要…</p>}
       {state.status === 'error' && <p role="alert" className="error">{state.error.message}</p>}
@@ -80,8 +92,9 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
       </div>
       <section className="asset-detail" ref={detail} tabIndex={-1} aria-label="资产详情">
         <div className="detail-toolbar"><Button className="back-button" size="1" variant="soft" onClick={() => { setDetailOpen(false); requestAnimationFrame(() => list.current?.querySelector<HTMLButtonElement>('[aria-selected=true]')?.focus({ preventScroll: true })); }}>返回资产列表</Button><ScopeBar scope={scope} onScopeChange={onScopeChange} onRefresh={() => setRefresh(value => value + 1)} /></div>
+        <AutoReadStatus state={state.auto} />
         {outside && <div className="notice"><span>此资产不在当前筛选范围内。</span> <Button size="1" variant="soft" onClick={() => { cause.current = 'link'; setFilters({ ...defaultFilters, archived: 'all' }); }}>清除筛选</Button></div>}
-        {scope.key && isAssetKey(scope.key) ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} expiry={expiry} directory={data?.mode === 'complete' ? data.summary.rows : data?.rows} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
+        {scope.key && isAssetKey(scope.key) ? data ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} expiry={data.expiry} summaryReadAt={state.auto.readAt} directory={directoryRows(data)} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">正在读取资产目录…</p> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
       </section>
     </main>
   </div>;

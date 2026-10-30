@@ -7,6 +7,7 @@ import { Raw, StatusBadge } from './InspectionSections';
 import { pageURL, type PageProps } from './scope';
 import { ScopeBar } from './ScopeBar';
 import { useQuery } from './useQuery';
+import { AutoReadStatus } from './AutoReadStatus';
 
 function ExecutionCard({ row, onUnauthorized }: { row: ExecutionIndex; onUnauthorized: () => void }) {
   const [read, setRead] = useState(0);
@@ -22,7 +23,7 @@ function ExecutionCard({ row, onUnauthorized }: { row: ExecutionIndex; onUnautho
 }
 export function ChangesPage({ scope, onScopeChange, onUnauthorized }: PageProps) {
   const [refresh, setRefresh] = useState(0);
-  const load = useCallback(async (signal: AbortSignal) => {
+  const load = useCallback(async (signal: AbortSignal, automatic = false) => {
     const info = await query<ChangeStatus>('change/status', {}, signal);
     if (info.transaction.status === 'recovery_required') return { info };
     const rethrow = (error: unknown): never => {
@@ -30,17 +31,17 @@ export function ChangesPage({ scope, onScopeChange, onUnauthorized }: PageProps)
       if (error instanceof ApiError && error.status === 401) onUnauthorized();
       throw error;
     };
-    const [changes, executions] = await Promise.all([
-      query<ChangesResult>('changes', {}, signal).catch(rethrow),
-      !scope.key || scope.key.startsWith('Resource/') ? query<ExecutionsResult>('executions', scope.key ? { key: scope.key } : {}, signal).catch(rethrow) : Promise.resolve(undefined),
-    ]);
+    const readChanges = () => query<ChangesResult>('changes', {}, signal).catch(rethrow);
+    const readExecutions = () => !scope.key || scope.key.startsWith('Resource/') ? query<ExecutionsResult>('executions', scope.key ? { key: scope.key } : {}, signal).catch(rethrow) : Promise.resolve(undefined);
+    const [changes, executions] = automatic ? [await readChanges(), await readExecutions()] : await Promise.all([readChanges(), readExecutions()]);
     return { info, changes, executions };
   }, [scope.key, onUnauthorized]);
-  const state = useQuery(`${scope.key}/${scope.days}/${scope.issue}/${refresh}`, load, onUnauthorized);
+  const state = useQuery(`${scope.key}/${scope.days}/${scope.issue}/${refresh}`, load, onUnauthorized, { automatic: true });
   const data = state.status === 'ready' ? state.data : undefined;
   const events = data?.changes?.changes.filter(event => (!scope.key || event.identity.key.target === scope.key) && (!scope.issue || event.identity.fingerprint + '/' + event.identity.scope_hash === scope.issue)).toReversed() ?? [];
   return <><h1>变更</h1><p className="muted">当前范围：{scope.key || '全部资产'} {scope.key && <a href={pageURL('changes', { ...scope, key: '', issue: '' })}>查看全部范围</a>}</p>
     <ScopeBar scope={scope} onScopeChange={onScopeChange} onRefresh={() => setRefresh(value => value + 1)} />
+    <AutoReadStatus state={state.auto} />
     <p id="status" role="status" className="muted">{data ? '已读取保存的变更记录' : state.status === 'loading' ? '正在读取变更…' : ''}</p>
     <div id="error" role="alert">{state.status === 'error' && <p className="error">{state.error.message}</p>}</div>
     <div id="content" className="report">{data && <>

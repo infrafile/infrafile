@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AssetSummary } from './contracts';
-import { filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
+import { assetChanges, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
 
 const filters: AssetFilters = { search: '', kind: '', archived: 'active', status: 'all' };
 const asset = (key: string, patch: Partial<AssetSummary> = {}): AssetSummary => ({
@@ -9,6 +9,12 @@ const asset = (key: string, patch: Partial<AssetSummary> = {}): AssetSummary => 
   execution: [], reason: { code: 'unknown', message: '待核实' }, evidence: [], ...patch,
 });
 describe('asset selection', () => {
+  it('counts changed, added and removed assets once while ignoring response order', () => {
+    const previous = [asset('Server/a'), asset('Server/b'), asset('Server/removed')];
+    const next = [asset('Server/new'), asset('Server/b'), asset('Server/a', { ok: true })];
+    expect(assetChanges(previous, next)).toBe(3);
+    expect(assetChanges(previous, previous.toReversed())).toBe(0);
+  });
   const rows = [asset('Server/z', { ok: true }), asset('Domain/old', { archived: true }), asset('Server/b'), asset('Server/a'), asset('Domain/risk', { risk: { confirmed: 1, unknown: 2, waived: 0 } })];
   it('defaults to active assets, ordered risk, pending, passed and stable key', () => {
     expect(filterAssets(rows, filters).map(r => r.key)).toEqual(['Domain/risk', 'Server/a', 'Server/b', 'Server/z']);

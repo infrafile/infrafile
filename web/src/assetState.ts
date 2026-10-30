@@ -2,6 +2,11 @@ import type { AssetDirectoryEntry, AssetSummary } from './contracts';
 
 export interface AssetFilters { search: string; kind: string; archived: 'active' | 'archived' | 'all'; status: 'all' | 'risk' | 'pending' | 'passed' }
 export const defaultFilters: AssetFilters = { search: '', kind: '', archived: 'active', status: 'all' };
+export function assetChanges(previous: AssetDirectoryEntry[], next: AssetDirectoryEntry[]): number {
+  const before = new Map(previous.map(row => [row.key, JSON.stringify(row)]));
+  const after = new Map(next.map(row => [row.key, JSON.stringify(row)]));
+  return [...new Set([...before.keys(), ...after.keys()])].filter(key => before.get(key) !== after.get(key)).length;
+}
 export function filterDirectory<T extends AssetDirectoryEntry>(rows: T[], filters: AssetFilters): T[] {
   const search = filters.search.trim().toLowerCase();
   return rows.filter(row => (!filters.kind || row.kind === filters.kind)
