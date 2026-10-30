@@ -155,100 +155,44 @@ func inspectWithHistory(ctx context.Context, repo *ledger.Repo, opts InspectOpti
 }
 
 func inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*inspector, error) {
+	in, err := prepareInspection(ctx, repo, opts)
+	if err != nil {
+		return nil, err
+	}
+	return inspectPrepared(ctx, in, opts.Keys)
+}
+
+func inspectPrepared(ctx context.Context, prepared *inspectionInput, keys []string) (*inspector, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if opts.MaxAgeDays != nil && *opts.MaxAgeDays < 0 {
-		return nil, fmt.Errorf("max-age must be nonnegative")
-	}
-	snaps, notices, err := ReadSnapshots(ctx, repo)
+	records, err := prepared.selectRecords(keys)
 	if err != nil {
 		return nil, err
 	}
-	in := &Input{Repo: repo, Snapshots: snaps, Now: opts.Now, MaxAge: opts.MaxAgeDays}
-	rules, err := Select(nil, in)
-	if err != nil {
-		return nil, err
-	}
-	if err := Prepare(ctx, in, rules); err != nil {
-		return nil, err
-	}
-	findings, more := Run(in, rules)
-	report := &Inspection{Version: "v1", AsOf: opts.Now.UTC().Format(time.RFC3339), MaxAgeDays: opts.MaxAgeDays,
+	in := prepared.in
+	report := &Inspection{Version: "v1", AsOf: in.Now.UTC().Format(time.RFC3339), MaxAgeDays: in.MaxAge,
 		Assets: []InspectAsset{}, Relations: []InspectRelation{}, Execution: []InspectExecution{},
-		Coverage: InspectCoverage{Checks: []Check{}}, Risk: InspectRisk{Findings: []InspectFinding{}}, Notices: append(notices, more...)}
-	i := &inspector{in: in, report: report, config: map[string]map[string]map[string]any{}, snaps: map[string]Snapshot{},
-		attempts: map[string]snapshot.Attempt{}, watches: map[string]observation.Watch{}, baselines: map[string]snapshot.PresenceEntry{}, selected: map[string]bool{}}
-	for _, r := range repo.Records {
+		Coverage: InspectCoverage{Checks: []Check{}}, Risk: InspectRisk{Findings: []InspectFinding{}}, Notices: append([]Notice{}, prepared.notices...)}
+	i := &inspector{in: in, report: report, config: prepared.config, snaps: prepared.snaps,
+		attempts: prepared.attempts, watches: prepared.watches, baselines: prepared.baselines, selected: map[string]bool{}}
+	for _, r := range records {
 		key := r.Kind + "/" + r.Name
-		if opts.Keys == nil || contains(opts.Keys, key) {
-			i.selected[key] = true
-			report.Assets = append(report.Assets, InspectAsset{key, r.File, r.Archived()})
-		}
+		i.selected[key] = true
+		report.Assets = append(report.Assets, InspectAsset{key, r.File, r.Archived()})
 	}
-	if len(i.selected) != len(opts.Keys) && opts.Keys != nil {
-		return nil, fmt.Errorf("unknown or repeated selection")
+	for _, index := range selectedIndices(i.selected, prepared.relationsByKey) {
+		report.Relations = append(report.Relations, prepared.relations[index])
 	}
-	schemas, err := ledger.LoadSchemas()
-	if err != nil {
-		return nil, err
-	}
-	for _, r := range repo.Records {
-		from := r.Kind + "/" + r.Name
-		for _, ref := range r.References(schemas) {
-			to := ref.Kind + "/" + ref.Name
-			if i.selected[from] || i.selected[to] {
-				report.Relations = append(report.Relations, InspectRelation{from, to, ref.Path})
-			}
-		}
-	}
-	plugins, _ := field(repo.Config.Value, "plugins").(map[string]any)
-	for p, value := range plugins {
-		i.config[p] = map[string]map[string]any{}
-		instances, _ := field(value, "instances").(map[string]any)
-		for name, config := range instances {
-			i.config[p][name], _ = config.(map[string]any)
-		}
-	}
-	for _, s := range snaps {
-		i.snaps[s.Plugin+"/"+s.Instance] = s
-	}
-	status, err := snapshot.ReadStatus(ctx, repo.Dir)
-	if err != nil {
-		return nil, err
-	}
-	if status != nil {
-		for p, instances := range status.Spec {
-			for name, attempt := range instances {
-				i.attempts[p+"/"+name] = attempt
-			}
-		}
-	}
-	watches, problems := observation.Watches(repo)
-	if len(problems) != 0 {
-		return nil, fmt.Errorf("invalid watch")
-	}
-	for _, w := range watches {
-		i.watches[w.Target] = w
-	}
-	presence, err := snapshot.ReadPresence(ctx, repo.Dir)
-	if err != nil {
-		return nil, err
-	}
-	if presence != nil {
-		i.baselines = presence.Spec
-	}
-	for _, r := range repo.Records {
+	for _, r := range records {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if i.selected[r.Kind+"/"+r.Name] {
-			if err := i.assetChecks(r); err != nil {
-				return nil, err
-			}
+		if err := i.assetChecks(r); err != nil {
+			return nil, err
 		}
 	}
-	if opts.Keys == nil {
+	if keys == nil {
 		if err := i.instanceChecks(ctx); err != nil {
 			return nil, err
 		}
@@ -261,7 +205,7 @@ func inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*insp
 	}
 	for p, instances := range i.config {
 		for name := range instances {
-			if opts.Keys != nil && !used[p+"/"+name] {
+			if keys != nil && !used[p+"/"+name] {
 				continue
 			}
 			s := i.snaps[p+"/"+name]
@@ -277,10 +221,14 @@ func inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*insp
 			report.Execution = append(report.Execution, InspectExecution{p, name, state, code, a.AttemptedAt, stamp(s.ObservedAt), s.File, "state/" + snapshot.StatusFile})
 		}
 	}
-	for _, f := range findings {
-		if opts.Keys != nil && !i.selected[f.Target] {
-			continue
+	findings := prepared.findings
+	if keys != nil {
+		findings = []Finding{}
+		for _, index := range selectedIndices(i.selected, prepared.findingsByKey) {
+			findings = append(findings, prepared.findings[index])
 		}
+	}
+	for _, f := range findings {
 		assessment := "unknown"
 		for _, c := range report.Coverage.Checks {
 			if qualifiesFinding(c, f) {
@@ -303,7 +251,7 @@ func inspect(ctx context.Context, repo *ledger.Repo, opts InspectOptions) (*insp
 	if err := i.applyNA(); err != nil {
 		return nil, err
 	}
-	if opts.Keys != nil {
+	if keys != nil {
 		selectedNotices := []Notice{}
 		for _, n := range report.Notices {
 			keep := i.selected[n.Target] || used[n.Target]

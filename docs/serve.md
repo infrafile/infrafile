@@ -58,6 +58,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 | expiry | 可选 key / labels / kind / within_days | 选定记录的到期报告 |
 | audit | 可选 rules / max_age_days | CLI audit JSON，含显式保存的历史 |
 | inspect | 可选 key / labels / kind / max_age_days | CLI inspect JSON；key 与 labels 互斥 |
+| asset-summaries | 与 inspect 相同 | Web 专用 `{version,as_of,max_age_days,rows}`；同一请求一次准备输入，rows 按 key 排序，逐行等价于相同时间/TTL 下单资产 inspect |
 | validate | `{}` | 记录数、问题数与代码计数，无敏感诊断原文 |
 | schema | `{}` | 内嵌 JSON Schema bundle |
 | capabilities | `{}` | 离线支持能力目录 |
@@ -67,6 +68,8 @@ infrafile serve --dir /absolute/path/to/ledger \
 | execution | id，64位小写十六进制 | [完整执行回执](json/executions.md)及所绑定计划；没有该 ID 返回失败，不接受路径 |
 
 原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具。changes 和两个执行回执入口只在工作台提供，复用 CLI 严格读取器。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes/executions/execution 沿用历史救援契约，严格读取保存记录，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
+
+资产摘要行包含 `key/kind/name/labels/archived/ok`、coverage 的 expected/checked/unknown/not_applicable、risk 的 confirmed/unknown/waived、execution、首要原因 reason（code/message）与去重后的 evidence。省略完整 spec、checks、findings、历史和观测原文；详情通过 context 查询。风险与未知可以并存；只有单资产 `ok=true` 才表示当前配置范围内通过。空选择返回空 rows，全局实例问题不会被重复分给所有资产。损坏历史、取消或响应超过 4 MiB 时整份失败，不返回部分成功。
 
 ## 台账编辑（显式启用）
 
