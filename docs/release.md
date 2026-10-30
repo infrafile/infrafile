@@ -109,6 +109,18 @@ Homebrew 要求信任时，审阅配方后只信任这一 formula：`brew trust 
 
 T19/AT19 针对 RC1 的完成证据汇总于[工作包 F](https://github.com/infrafile/infrafile/issues/15)。其他四个平台目标仅核对构建/归档/哈希，未做原生运行；签名配方未发布到稳定 tap。外部独立试用、14 日运行、完整客户端受控场景和正式范围切换继续开放，不能据本次候选关闭 v1.0 总任务。tag 内文档保留打标签时状态，本完成记录以后续 main 为准。
 
+## v0.3.0 发布验收
+
+2026-10-28 完成公开发布及 Homebrew 升级验收，原始验收范围见 [v0.3 方案 M5](plan/v0.3.md#m5-发布验收)：
+
+- [v0.3.0 Release](https://github.com/infrafile/infrafile/releases/tag/v0.3.0) 已公开，共10个附件：六个平台归档、校验清单及签名 bundle、formula 及签名 bundle。标签固定在 `3e43bcee3b676950544bdc3d883a0767d96162bf`，对应 PR #6 合并提交。
+- [正式发布工作流](https://github.com/infrafile/infrafile/actions/runs/40696756251)完成。六个归档校验和、checksums 与 formula 两份 Cosign 签名均已验收；签名身份限定该仓 release.yml 的 v0.3.0 标签及 GitHub OIDC issuer。
+- Linux amd64（工作流）与 macOS arm64（本机）的正式归档实际上手通过；本机二进制报告 `0.3.0 / 3e43bce`，其余四个平台仅完成构建、归档及哈希检查。
+- [tap 配方提交 6c2ff1c](https://github.com/infrafile/homebrew-tap/commit/6c2ff1ce2c82a251fa8516294f43e9d141e5c91a)对应0.3.0；本机 Homebrew 从0.2.0升级到0.3.0，brew test、安装后上手以及 infrafile/ifl 同一二进制检查通过。
+- 正式二进制在私有投影上的禁网 audit 与六个离线 MCP 工具复验通过；不能据此宣称桌面客户端已加载、定时任务已实际触发、远端 CI 或监控通知已验收。
+
+Cloudflare 回源403、未建立基线的目标、最小 IAM、真实生产写入与完整权威台账切换仍按 [v0.3 接入边界](plan/v0.3.md#m4-路径边界与使用接入)记录。以上为历史验收记录，本轮文档校正另行核对了正式标签、Release 元数据和 tap 提交，未重复执行发布或移动标签。
+
 ## v0.2.0 发布验收
 
 2026-10-28 完成公开发布及 Homebrew 升级验收：
