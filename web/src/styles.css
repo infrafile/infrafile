@@ -13,6 +13,7 @@ h2 { font-size: 17px; line-height: 1.4; margin-bottom: 12px; }
 h3 { font-size: 14px; line-height: 1.5; margin-bottom: 7px; font-weight: 600; }
 p { line-height: 1.6; margin-bottom: 8px; }
 :focus-visible { outline: 2px solid var(--accent-9); outline-offset: 3px; }
+.expiry-value { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .skip { position: fixed; left: 12px; top: -80px; z-index: 10; padding: 12px; background: var(--color-panel-solid); }
 .skip:focus { top: 10px; }
 .sr-only { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }

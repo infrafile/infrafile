@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { query } from './api';
-import type { AssetContext } from './contracts';
+import type { AssetContext, AssetDirectoryEntry, ExpiryReport } from './contracts';
 import { InspectionSections, Raw } from './InspectionSections';
 import { pageURL } from './scope';
-import { useQuery } from './useQuery';
+import { useQuery, type QueryState } from './useQuery';
+import { ExpirySection } from './ExpirySection';
 
-export function AssetDetail({ assetKey, days, onNavigate, onUnauthorized }: { assetKey: string; days: number; onNavigate: (key: string) => void; onUnauthorized: () => void }) {
+export function AssetDetail({ assetKey, days, expiry, directory, onNavigate, onUnauthorized }: { assetKey: string; days: number; expiry: QueryState<ExpiryReport>; directory?: AssetDirectoryEntry[]; onNavigate: (key: string) => void; onUnauthorized: () => void }) {
   const load = useCallback((signal: AbortSignal) => query<AssetContext>('context', { key: assetKey, max_age_days: days }, signal), [assetKey, days]);
   const state = useQuery(assetKey + '/' + days, load, onUnauthorized);
   if (state.status === 'error') return <div role="alert" className="error">{state.error.message} 此资产上下文无法读取时，可使用本地 CLI 查看。</div>;
@@ -16,6 +17,7 @@ export function AssetDetail({ assetKey, days, onNavigate, onUnauthorized }: { as
     <p className="evidence">详情读取时间：<time>{data.inspection.as_of}</time></p>
     <div className="actions"><a href={pageURL('inspections', scope)}>查看此资产巡检</a><a href={pageURL('changes', scope)}>查看变更与台账编辑</a></div>
   </div><InspectionSections inspection={data.inspection} scope={scope} context={data}>
+    <ExpirySection asset={directory?.find(row => row.key === assetKey) ?? { key: assetKey, kind: assetKey.split('/')[0], name: assetKey.split('/')[1], archived: data.inspection.assets.find(row => row.key === assetKey)?.archived ?? false, labels: null }} records={directory} state={expiry} />
     <section><h2>登记期望</h2>{record ? <><p className="evidence">{record.file}</p><Raw value={record.record} title="完整脱敏登记" open /></> : <p>未找到登记。</p>}</section>
     <section><h2>直接关系</h2><ul className="items">{data.inspection.relations.map((relation, index) => {
       const target = relation.from === assetKey ? relation.to : relation.from;
