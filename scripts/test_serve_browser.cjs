@@ -83,7 +83,27 @@ async function stop(entry) {
     assert(code === 0 && signal === null, 'serve did not stop gracefully');
     assert(!fs.existsSync(entry.pair), 'pair file retained after graceful shutdown');
 }
+const previewPages = new WeakSet();
+async function preview(page) {
+    if (!process.env.INFRAFILE_BROWSER_PREVIEW || previewPages.has(page)) return;
+    previewPages.add(page);
+    await page.route(/\/(assets|inspections|changes|app\.js|app\.css)?$/, async route => {
+        const response = await route.fetch(), pathname = new URL(route.request().url()).pathname;
+        if (pathname === '/app.js' || pathname === '/app.css') {
+            return route.fulfill({ response, body: fs.readFileSync(path.join(source, 'cmd/infrafile/web/dist', pathname.slice(1))) });
+        }
+        let html = await response.text();
+        if (html.includes('name="csrf-token"')) {
+            const repo = html.match(/<span>台账 · (.*?)<\/span>/)?.[1] || '';
+            const session = html.match(/<details class="session">[\s\S]*?<\/details>/)?.[0] || '';
+            html = html.replace('<script src="/app.js" defer>', '<script src="/app.js" type="module">')
+                .replace(/<body[\s\S]*<\/body>/, '<body><div id="root" data-repo="' + repo + '"></div><div id="session-controls" hidden>' + session + '</div></body>');
+        }
+        await route.fulfill({ response, body: html });
+    });
+}
 async function pair(page, entry, origin = entry.origin) {
+    await preview(page);
     await page.goto(origin + '/');
     const code = fs.readFileSync(entry.pair, 'utf8').trim();
     codes.push(code);
@@ -98,7 +118,8 @@ async function pair(page, entry, origin = entry.origin) {
         throw Error('pair response ' + response.status() + ' in ' + path.basename(entry.pair));
     }
     await page.waitForLoadState('domcontentloaded');
-    if (!await page.getByRole('navigation', { name: '工作台', exact: true }).isVisible()) {
+    try { await page.getByRole('navigation', { name: '工作台', exact: true }).waitFor({ timeout: 5000 }); }
+    catch {
         const status = await session(page);
         throw Error('pair redirect session ' + status.status + ' in ' + path.basename(entry.pair));
     }
@@ -238,6 +259,100 @@ async function views(page, entry) {
     assert(failures.length === 0, 'browser script failed');
     return { keyboard_asset_relationship_evidence_issue_changes: true, narrow_layout: true, description_escaped: true, cli_inspection_equal: true, failed_and_stale_visible: true, missing_and_corrupt_history_visible: true, large_cursor_lossless: true, old_request_cancellation: true };
 }
+async function assetViews(page, entry) {
+    let summaries = 0, contexts = 0;
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.on('request', request => {
+        if (request.url().endsWith('/api/asset-summaries')) summaries++;
+        if (request.url().endsWith('/api/context')) contexts++;
+    });
+    await page.addInitScript(() => {
+        globalThis.__violations = [];
+        document.addEventListener('securitypolicyviolation', event => globalThis.__violations.push({ directive: event.violatedDirective, blocked: event.blockedURI, source: event.sourceFile, line: event.lineNumber }));
+    });
+    await page.goto(entry.origin + '/assets');
+    await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
+    await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
+    assert(summaries === 1 && contexts === 1, 'initial assets caused per-asset requests');
+    await page.getByLabel('搜索资产', { exact: true }).fill('web1');
+    const item = page.getByRole('option', { name: /Server\/web1/ });
+    await item.focus(); await page.keyboard.press('Enter');
+    await page.getByRole('heading', { name: 'Server/web1', exact: true }).waitFor();
+    assert(await page.locator('body').innerText().then(t => t.includes('<img src=x onerror=')), 'description hidden or interpreted');
+    assert(!await page.evaluate(() => globalThis.__infrafileInjected), 'ledger HTML executed');
+    await page.getByRole('link', { name: 'Domain/example.net', exact: true }).first().click();
+    await page.getByText('此资产不在当前筛选范围内。', { exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Domain/example.net', exact: true }).waitFor();
+    await page.getByRole('button', { name: '清除筛选', exact: true }).click();
+    await page.getByText('展开观测事实', { exact: true }).first().click();
+    for (const width of [1440, 1080, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+        for (const theme of ['浅色', '深色']) {
+            await page.getByRole('radio', { name: theme, exact: true }).click();
+            await page.waitForFunction(value => document.documentElement.dataset.theme === value, theme === '深色' ? 'dark' : 'light');
+            await page.locator('.asset-detail').evaluate(element => element.scrollTop = 0);
+            await page.waitForFunction(dark => {
+                const color = getComputedStyle(document.querySelector('.asset-detail')).backgroundColor;
+                const red = Number(color.match(/[\d.]+/)[0]);
+                return dark ? red < 80 : red > 200;
+            }, theme === '深色');
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'asset layout overflows');
+        }
+    }
+    await page.getByRole('button', { name: '返回资产列表', exact: true }).click();
+    assert(await page.getByRole('option', { name: /Domain\/example.net/ }).getAttribute('aria-selected') === 'true', 'narrow back lost selection');
+    await page.setViewportSize({ width: 1080, height: 800 });
+    await page.getByRole('option', { name: /Domain\/example.net/ }).focus();
+    await page.keyboard.press('ArrowDown');
+    assert(await page.evaluate(() => document.activeElement.getAttribute('role') === 'option'), 'arrow key moved focus into detail');
+    for (const status of [200, 500]) {
+        let release, done;
+        const finished = new Promise(resolve => done = resolve);
+        await page.route('**/api/context', async route => {
+            if (route.request().postDataJSON().key !== 'Server/web1') return route.continue();
+            const response = await route.fetch();
+            await new Promise(resolve => release = resolve);
+            try { await route.fulfill({ response, status }); } catch {} finally { done(); }
+        });
+        await page.goto(entry.origin + '/assets#key=Server%2Fweb1');
+        for (let n = 0; n < 200 && !release; n++) await delay(10);
+        assert(release, 'delayed request not reached');
+        await page.evaluate(() => location.hash = 'key=Domain%2Fexample.net');
+        await page.getByRole('heading', { name: 'Domain/example.net', exact: true }).waitFor();
+        release(); await finished;
+        assert(await page.getByRole('heading', { name: 'Server/web1', exact: true }).count() === 0, 'late success/error replaced selection');
+        await page.unroute('**/api/context');
+    }
+    await page.route('**/api/asset-summaries', route => route.fulfill({ status: 503, body: '{}' }));
+    await page.getByRole('button', { name: '重新读取', exact: true }).click();
+    await page.getByText('摘要读取失败，仅显示资产目录。状态未读取。', { exact: true }).waitFor();
+    assert(await page.getByRole('radio', { name: '有风险', exact: true }).isDisabled(), 'status filter enabled without summaries');
+    assert(await page.locator('.asset-list').innerText().then(t => !t.includes('范围内通过')), 'fallback retained old green statuses');
+    await page.unroute('**/api/asset-summaries');
+    await page.route('**/api/context', route => route.fulfill({ status: 401, body: '{}' }));
+    await page.getByRole('button', { name: '重新读取', exact: true }).click();
+    await page.getByRole('link', { name: '重新连接工作台', exact: true }).waitFor();
+    assert(await page.getByRole('listbox').count() === 0 && await page.locator('pre').count() === 0, '401 left business data visible');
+    await page.unroute('**/api/context');
+    assert(errors.length === 0, 'asset page errors: ' + errors.join(','));
+    const violations = await page.evaluate(() => globalThis.__violations);
+    assert(violations.length === 0, 'asset page violated CSP: ' + JSON.stringify(violations));
+    // Capture separately: Playwright injects `body {}` for every WebKit screenshot.
+    // CSP assertions above cover application interactions without that test-only injection.
+    await page.goto(entry.origin + '/assets#key=Domain%2Fexample.net');
+    await page.reload();
+    await page.getByRole('heading', { name: 'Domain/example.net', exact: true }).waitFor();
+    for (const width of [1440, 1080, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+        for (const theme of ['浅色', '深色']) {
+            await page.getByRole('radio', { name: theme, exact: true }).click();
+            await page.waitForFunction(dark => document.querySelector('.radix-themes').classList.contains(dark ? 'dark' : 'light'), theme === '深色');
+            await page.screenshot({ path: path.join(base, `assets-${width}-${theme}.png`), caret: 'initial' });
+        }
+    }
+    return { summary_batch: true, keyboard: true, outside_link: true, narrow_return: true, race_success_and_failure: true, fallback: true, unauthorized_clears: true, themes: true, csp: true };
+}
 async function editViews(browser) {
     const editRepo = path.join(base, 'edit-ledger');
     execFileSync(binary, ['init', editRepo], { stdio: 'pipe' });
@@ -373,6 +488,13 @@ async function main() {
         if (suite === 'csp') {
             report.checks.csp = await cspViews(p1, local);
             console.log(JSON.stringify(report.checks));
+            return;
+        }
+        if (suite === 'views') {
+            report.checks.assets = await assetViews(p1, local);
+            assert(isDeepStrictEqual(before, files(repo)), 'asset view modified ledger');
+            fs.writeFileSync(path.join(base, 'evidence.json'), JSON.stringify(report, null, 2));
+            console.log(JSON.stringify({ evidence: path.join(base, 'evidence.json'), checks: report.checks }));
             return;
         }
         await p1.screenshot({ path: path.join(base, 'connected.png') });
