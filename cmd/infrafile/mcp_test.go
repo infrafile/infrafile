@@ -386,6 +386,69 @@ func TestMCPLabelsFreshReadsAndExpiry(t *testing.T) {
 	wg.Wait()
 }
 
+type mcpGenerationContext struct {
+	context.Context
+	once sync.Once
+	swap func()
+}
+
+func (c *mcpGenerationContext) Err() error {
+	c.once.Do(c.swap)
+	return c.Context.Err()
+}
+
+func TestMCPPinsDirectoryGenerationPerCall(t *testing.T) {
+	root := t.TempDir()
+	one, two := filepath.Join(root, "one"), filepath.Join(root, "two")
+	for _, dir := range []string{one, two} {
+		if err := os.Mkdir(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	file := filepath.Join(two, "inventory/servers/web1.yaml")
+	data, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeImportFile(t, file, strings.Replace(string(data), "203.0.113.10", "203.0.113.11", 1))
+	current := filepath.Join(root, "current")
+	if err := os.Symlink(one, current); err != nil {
+		t.Skipf("directory symlinks unavailable: %v", err)
+	}
+	swap := func(dir string) {
+		t.Helper()
+		next := filepath.Join(root, "next")
+		if err := os.Symlink(dir, next); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(next, current); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Flip after the request starts but before ledger IO; the whole call must use one.
+	ctx := &mcpGenerationContext{Context: context.Background(), swap: func() { swap(two) }}
+	value, err := mcpCall(ctx, current, "show", mcpArgs{Key: "Server/web1"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value.(map[string]any)["record"].(map[string]any)["spec"].(map[string]any)["address"] != "203.0.113.10" {
+		t.Fatal("request followed a replacement directory after it started")
+	}
+	session := mcpSession(t, current)
+	value = callMCP(t, session, "show", map[string]any{"key": "Server/web1"}, false)
+	if value.(map[string]any)["record"].(map[string]any)["spec"].(map[string]any)["address"] != "203.0.113.11" {
+		t.Fatal("next request did not use the published generation")
+	}
+	swap(one)
+	value = callMCP(t, session, "show", map[string]any{"key": "Server/web1"}, false)
+	if value.(map[string]any)["record"].(map[string]any)["spec"].(map[string]any)["address"] != "203.0.113.10" {
+		t.Fatal("persistent session kept an old generation")
+	}
+}
+
 func TestMCPAudit(t *testing.T) {
 	s := mcpSession(t, homelab)
 	got := callMCP(t, s, "audit", map[string]any{}, false)

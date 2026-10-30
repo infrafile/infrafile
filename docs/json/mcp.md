@@ -4,6 +4,8 @@
 
 完整工具名、描述、参数 Schema、annotations 和典型结果由 `cmd/infrafile/testdata/golden/mcp.json` 锁定。参数禁止额外字段及重复 JSON 键。选择规则见[Agent 指南](../agent.md)。
 
+固定的 `--dir` 可指向使用方发布的目录链接。每次数据工具调用先解析并固定实际目录，该次调用的全部读取使用同一代；使用方原子更新链接后，既有会话的下一次调用读取新代。使用方须先完整生成/校验新代，保留旧代供正在执行的调用完成；链接损坏时调用失败，不回退成成功。工具参数仍不能改写目录，capabilities/schema 继续离线且不需要数据仓。该行为不允许并发修改同一代内的文件来冒充原子快照。
+
 | 工具 | 结果对象 |
 | --- | --- |
 | infrafile_list | `{version, records: [{key, kind, name, archived, labels}]}`；archived 是布尔，未填写 labels 时为 null |
