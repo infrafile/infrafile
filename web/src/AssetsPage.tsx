@@ -7,6 +7,7 @@ import { AssetDetail } from './AssetDetail';
 import { ScopeBar } from './ScopeBar';
 import { isAssetKey, type PageProps } from './scope';
 import { useQuery } from './useQuery';
+import { loadExpiry } from './expiry';
 
 type Directory = { mode: 'complete'; summary: AssetSummaries } | { mode: 'directory'; rows: AssetDirectoryEntry[] };
 const kinds = [['', '全部资产'], ['Server', '服务器'], ['Domain', '域名'], ['Resource', '资源'], ['App', '应用'], ['Repo', '代码仓'], ['Account', '账号']];
@@ -23,6 +24,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
     }
   }, [filters.kind, scope.days]);
   const state = useQuery(`${filters.kind}/${scope.days}/${refresh}`, load, onUnauthorized);
+  const expiry = useQuery(`expiry/${refresh}`, loadExpiry, onUnauthorized);
   const data = state.status === 'ready' ? state.data : undefined;
   const rows = useMemo(() => !data ? [] : data.mode === 'complete' ? filterAssets(data.summary.rows, filters) : filterDirectory(data.rows, filters), [data, filters]);
   const summaries = data?.mode === 'complete' ? new Map(data.summary.rows.map(row => [row.key, row])) : undefined;
@@ -79,7 +81,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
       <section className="asset-detail" ref={detail} tabIndex={-1} aria-label="资产详情">
         <div className="detail-toolbar"><Button className="back-button" size="1" variant="soft" onClick={() => { setDetailOpen(false); requestAnimationFrame(() => list.current?.querySelector<HTMLButtonElement>('[aria-selected=true]')?.focus({ preventScroll: true })); }}>返回资产列表</Button><ScopeBar scope={scope} onScopeChange={onScopeChange} onRefresh={() => setRefresh(value => value + 1)} /></div>
         {outside && <div className="notice"><span>此资产不在当前筛选范围内。</span> <Button size="1" variant="soft" onClick={() => { cause.current = 'link'; setFilters({ ...defaultFilters, archived: 'all' }); }}>清除筛选</Button></div>}
-        {scope.key && isAssetKey(scope.key) ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
+        {scope.key && isAssetKey(scope.key) ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} expiry={expiry} directory={data?.mode === 'complete' ? data.summary.rows : data?.rows} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
       </section>
     </main>
   </div>;
