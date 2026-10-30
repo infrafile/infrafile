@@ -11,6 +11,30 @@ import (
 	"time"
 )
 
+func TestWorkbenchOverviewPage(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {
+		t.Fatal(err)
+	}
+	f := newWebFixture(t, dir)
+	out := f.send(f.request("GET", "/overview", ""))
+	if out.Code != 200 || !strings.Contains(out.Body.String(), "连接你的台账") || strings.Contains(out.Body.String(), `name="csrf-token"`) {
+		t.Fatal("unauthenticated overview exposed application", out.Code)
+	}
+	f.login(t)
+	for _, path := range []string{"/", "/overview", "/assets", "/inspections", "/changes"} {
+		out := f.send(f.request("GET", path, ""))
+		if out.Code != 200 || !strings.Contains(out.Body.String(), `id="root"`) {
+			t.Fatal("page unavailable", path, out.Code)
+		}
+	}
+	r := f.request("GET", "/overview", "")
+	r.Host = "attacker.example.com"
+	if out := f.send(r); out.Code != 403 {
+		t.Fatal("overview host protection bypassed", out.Code)
+	}
+}
+
 func TestWorkbenchAssetSummariesBoundary(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.CopyFS(dir, os.DirFS(homelab)); err != nil {

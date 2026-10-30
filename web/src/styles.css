@@ -84,6 +84,16 @@ pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--
 .list-auto-read { display: none; }
 .page { padding: 30px 36px; overflow-y: auto; min-width: 0; }
 .page>h1 { margin-bottom: 18px; }
+.overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+.overview-grid>section { min-width: 0; padding: 22px; border: 1px solid var(--gray-5); border-radius: 8px; }
+.overview-grid>section:last-child { grid-column: 1 / -1; }
+.overview-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.overview-metrics a { padding: 12px; background: var(--gray-2); border-radius: 5px; }
+.overview-metrics strong { display: block; margin-top: 6px; font-size: 24px; }
+.overview-grid select { margin-bottom: 12px; padding: 5px; border: 1px solid var(--gray-6); border-radius: 4px; color: var(--gray-12); background: var(--gray-2); }
+.overview-table { overflow-x: auto; }
+.overview-table table { width: 100%; border-collapse: collapse; text-align: left; }
+.overview-table th, .overview-table td { padding: 12px 8px; border-bottom: 1px solid var(--gray-5); min-width: 90px; max-width: 260px; overflow-wrap: anywhere; vertical-align: top; }
 .disconnected { padding: 12vh 10vw; }
 .page>.scope-bar { margin-bottom: 14px; }.page>.report { max-width: 1100px; }
 .inventory-editor textarea { display: block; width: 100%; resize: vertical; margin: 10px 0 14px; padding: 14px; border: 1px solid var(--gray-6); border-radius: 6px; background: var(--gray-2); color: var(--gray-12); font: 12px/1.6 ui-monospace, SFMono-Regular, monospace; }
@@ -95,6 +105,7 @@ pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--
 .login h1 { margin: 12px 0; }.login form { display: grid; gap: 10px; margin-top: 20px; }.login input,.login button { padding: 10px; border: 1px solid #c4cad2; border-radius: 6px; }.login button { background: #1664ce; color: white; }
 @media (max-width: 1000px) { .app-shell { grid-template-columns: 160px minmax(0, 1fr); }.assets-workspace { grid-template-columns: 275px minmax(0, 1fr); }.asset-detail { padding-inline: 20px; } }
 @media (max-width: 760px) {
+  .overview-grid { grid-template-columns: 1fr; gap: 16px; }.overview-grid>section { padding: 16px; }
   .list-auto-read { display: block; }
   .diff-columns { grid-template-columns: 1fr; }
   .app-shell { display: flex; flex-direction: column; }

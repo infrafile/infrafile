@@ -31,6 +31,7 @@ async function main() {
     await page.goto(origin);
     await page.getByLabel('配对码', { exact: true }).fill(fs.readFileSync(pairFile, 'utf8').trim());
     await page.getByRole('button', { name: '连接工作台', exact: true }).click();
+    await page.goto(origin + '/assets');
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
     const cli = spawnSync(binary, ['expiry', ledger, '--within', '3652500d', '--json'], { encoding: 'utf8' });
     assert.ok(cli.status === 0 || cli.status === 1);

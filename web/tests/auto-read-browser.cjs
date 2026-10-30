@@ -14,6 +14,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
       await route.fulfill({ response, json: body });
     });
     await pair(page, entry);
+    await page.goto(entry.origin + '/assets');
     await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
     assert(await page.getByText('摘要有更新的结果。', { exact: false }).count() === 0, 'initial reports with the same server timestamp must not show a newer-summary warning');
     await page.unroute('**/api/asset-summaries'); await page.unroute('**/api/context');

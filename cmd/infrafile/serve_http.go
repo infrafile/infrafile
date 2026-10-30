@@ -226,7 +226,7 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		out.Write(data)
 		return
 	}
-	if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/assets" || r.URL.Path == "/inspections" || r.URL.Path == "/changes") {
+	if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/overview" || r.URL.Path == "/assets" || r.URL.Path == "/inspections" || r.URL.Path == "/changes") {
 		w.page(out, r)
 		return
 	}
