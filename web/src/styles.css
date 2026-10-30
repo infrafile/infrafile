@@ -91,6 +91,7 @@ pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--
 .overview-metrics a { padding: 12px; background: var(--gray-2); border-radius: 5px; }
 .overview-metrics strong { display: block; margin-top: 6px; font-size: 24px; }
 .overview-grid select { margin-bottom: 12px; padding: 5px; border: 1px solid var(--gray-6); border-radius: 4px; color: var(--gray-12); background: var(--gray-2); }
+.asset-status { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; font-size: 12px; }.asset-status legend { margin-bottom: 6px; }.asset-status label { display: inline-flex; align-items: center; gap: 4px; }
 .overview-table { overflow-x: auto; }
 .overview-table table { width: 100%; border-collapse: collapse; text-align: left; }
 .overview-table th, .overview-table td { padding: 12px 8px; border-bottom: 1px solid var(--gray-5); min-width: 90px; max-width: 260px; overflow-wrap: anywhere; vertical-align: top; }

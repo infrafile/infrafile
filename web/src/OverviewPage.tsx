@@ -22,15 +22,31 @@ export function OverviewPage({ scope, onScopeChange, onUnauthorized }: PageProps
   const [refresh, setRefresh] = useState(0), [kind, setKind] = useState('Domain');
   const requestKey = `${scope.days}/${refresh}`;
   const previous = useRef<{ key: string; data: OverviewData } | null>(null);
+  const [partial, setPartial] = useState<{ key: string; data: OverviewData }>({ key: '', data: {} });
   const [issues, setIssues] = useState<{ key: string; automatic: boolean; errors: Errors }>({ key: '', automatic: false, errors: {} });
   const load = useCallback(async (signal: AbortSignal, automatic = false): Promise<OverviewData> => {
     const prior = automatic && previous.current?.key === requestKey ? previous.current.data : {};
-    const failed: Partial<Record<BlockName, string>> = {};
+    if (!automatic) setPartial({ key: requestKey, data: {} });
+    setIssues(current => ({ key: requestKey, automatic, errors: automatic && current.key === requestKey ? current.errors : {} }));
+    function status(block: BlockName, message?: string) {
+      setIssues(current => {
+        const errors = current.key === requestKey ? { ...current.errors } : {};
+        if (message) errors[block] = { message, failures: (errors[block]?.failures ?? 0) + 1 };
+        else delete errors[block];
+        return { key: requestKey, automatic, errors };
+      });
+    }
     async function read<T>(block: BlockName, name: QueryName, args: object, old?: Saved<T>): Promise<Saved<T> | undefined> {
-      try { return { data: await query<T>(name, args, signal), readAt: new Date().toISOString() }; }
+      try {
+        const saved = { data: await query<T>(name, args, signal), readAt: new Date().toISOString() };
+        signal.throwIfAborted();
+        status(block);
+        if (!automatic) setPartial(current => ({ key: requestKey, data: { ...(current.key === requestKey ? current.data : {}), [block]: saved } }));
+        return saved;
+      }
       catch (error) {
         if (signal.aborted || error instanceof ApiError && error.status === 401) throw error;
-        failed[block] = error instanceof Error ? error.message : '无法读取保存结果。';
+        status(block, error instanceof Error ? error.message : '无法读取保存结果。');
         return old;
       }
     }
@@ -41,15 +57,10 @@ export function OverviewPage({ scope, onScopeChange, onUnauthorized }: PageProps
     };
     signal.throwIfAborted();
     previous.current = { key: requestKey, data };
-    setIssues(current => {
-      const errors: Errors = {};
-      for (const name of blocks) if (failed[name]) errors[name] = { message: failed[name]!, failures: (current.key === requestKey ? current.errors[name]?.failures ?? 0 : 0) + 1 };
-      return { key: requestKey, automatic, errors };
-    });
     return data;
   }, [requestKey, scope.days]);
   const state = useQuery(requestKey, load, onUnauthorized, { automatic: true, changes: changedBlocks });
-  const data = state.status === 'ready' ? state.data : undefined;
+  const data = state.status === 'ready' ? state.data : state.status === 'loading' && partial.key === requestKey ? partial.data : undefined;
   const errors = issues.key === requestKey ? issues.errors : {};
   const failures = Math.max(0, ...Object.values(errors).map(error => error.failures));
   const readTimes = data ? blocks.flatMap(name => data[name] ? [data[name]!.readAt] : []).sort() : [];

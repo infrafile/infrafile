@@ -67,9 +67,9 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
         <SegmentedControl.Root aria-label="归档状态" size="1" value={filters.archived} onValueChange={archived => updateFilters({ archived: archived as AssetFilters['archived'] })}>
           <SegmentedControl.Item value="active">在用</SegmentedControl.Item><SegmentedControl.Item value="archived">已归档</SegmentedControl.Item><SegmentedControl.Item value="all">全部</SegmentedControl.Item>
         </SegmentedControl.Root>
-        <SegmentedControl.Root aria-label="资产状态" size="1" disabled={!summaries} value={filters.status} onValueChange={status => updateFilters({ status: status as AssetFilters['status'] })}>
-          {[['all', '全部'], ['risk', '有风险'], ['needs_attention', '需处理'], ['no_checks', '暂无检查'], ['passed', '通过']].map(([value, name]) => <SegmentedControl.Item key={value} value={value}>{name}</SegmentedControl.Item>)}
-        </SegmentedControl.Root>
+        <fieldset className="asset-status" disabled={!summaries}><legend>资产状态</legend>
+          {[['all', '全部'], ['risk', '有风险'], ['needs_attention', '需处理'], ['no_checks', '暂无检查'], ['passed', '通过']].map(([value, name]) => <label key={value}><input type="radio" name="asset-status" value={value} checked={filters.status === value} onChange={() => updateFilters({ status: value as AssetFilters['status'] })} />{name}</label>)}
+        </fieldset>
         <p role="status" className="sr-only">{announcement}</p>
         <div className="list-auto-read"><AutoReadStatus state={state.auto} /></div>
       </div>

@@ -249,7 +249,7 @@ async function assetViews(page, entry) {
     });
     await page.addInitScript(() => {
         globalThis.__violations = [];
-        document.addEventListener('securitypolicyviolation', event => globalThis.__violations.push({ directive: event.violatedDirective, blocked: event.blockedURI, source: event.sourceFile, line: event.lineNumber }));
+        document.addEventListener('securitypolicyviolation', event => globalThis.__violations.push({ directive: event.violatedDirective, blocked: event.blockedURI, source: event.sourceFile, line: event.lineNumber, target: event.target instanceof Element ? event.target.outerHTML : String(event.target) }));
     });
     await page.goto(entry.origin + '/assets');
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();

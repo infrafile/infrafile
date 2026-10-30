@@ -7,9 +7,10 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
   try {
     await page.clock.install();
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
-    let calls = [], many = false, changed = false;
+    let calls = [], many = false, changed = false, summaryFailure = false;
     page.on('request', request => { const name = request.url().split('/api/')[1]; if (name) calls.push(name); });
     await page.route('**/api/asset-summaries', async route => {
+      if (summaryFailure) return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
       const response = await route.fetch(), body = await response.json();
       if (many) {
         const server = body.rows.find(row => row.kind === 'Server' && !row.archived);
@@ -21,16 +22,26 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     await page.getByRole('heading', { name: '总览', exact: true }).waitFor();
     await page.getByRole('heading', { name: '服务器配置', exact: true }).waitFor();
     await page.getByText('台账登记值 · 非实时', { exact: true }).waitFor();
+    await page.getByText('正在读取总览…', { exact: true }).waitFor({ state: 'hidden' });
     assert(JSON.stringify(calls) === JSON.stringify(['asset-summaries', 'expiry', 'certificates']), 'overview must use three fixed serial queries: ' + JSON.stringify(calls));
     await page.getByRole('link', { name: /^暂无检查 \d/ }).click();
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
     assert(await page.getByRole('radio', { name: '暂无检查', exact: true }).isChecked(), 'overview category link lost the filter');
+    await page.setViewportSize({ width: 900, height: 800 });
+    const toolbar = await page.locator('.list-toolbar').boundingBox();
+    for (const name of ['全部', '有风险', '需处理', '暂无检查', '通过']) {
+      const statusFilter = await page.locator('.asset-status label').filter({ hasText: name }).boundingBox();
+      assert(statusFilter.x + statusFilter.width <= toolbar.x + toolbar.width, 'asset status filter exceeds its list column');
+    }
+    await page.screenshot({ path: path.join(base, 'asset-status-900.png') });
+    await page.setViewportSize({ width: 1200, height: 850 });
     await page.goto(entry.origin + '/assets#key=Server%2Fweb1&days=7');
     await page.getByRole('heading', { name: 'Server/web1', exact: true }).waitFor();
     await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
     many = true; calls = [];
     await page.goto(entry.origin + '/overview');
     await page.getByText('generated-19', { exact: true }).waitFor();
+    await page.getByText('正在读取总览…', { exact: true }).waitFor({ state: 'hidden' });
     assert(calls.length === 3 && !calls.includes('show') && !calls.includes('context'), 'server count increased overview query count: ' + JSON.stringify(calls));
     for (const [name, theme] of [['浅色', 'light'], ['深色', 'dark']]) {
       await page.getByRole('radio', { name, exact: true }).click();
@@ -41,6 +52,31 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'overview overflows narrow viewport');
     await page.screenshot({ path: path.join(base, 'overview-narrow.png') });
     await page.setViewportSize({ width: 1200, height: 850 });
+    let releaseCertificate, certificateStarted;
+    const heldCertificate = new Promise(resolve => { releaseCertificate = resolve; });
+    const certificateInFlight = new Promise(resolve => { certificateStarted = resolve; });
+    await page.route('**/api/certificates', async route => { certificateStarted(); await heldCertificate; await route.continue(); });
+    summaryFailure = true;
+    try {
+      await page.clock.runFor(60000);
+      await certificateInFlight;
+      await page.getByRole('region', { name: '资产状态', exact: true }).getByRole('alert').waitFor({ timeout: 1000 });
+    } finally { releaseCertificate(); }
+    await page.locator('[data-auto-read][data-reading="false"]').waitFor();
+    await page.unroute('**/api/certificates');
+    summaryFailure = false;
+    let releaseManualCertificate, manualCertificateStarted;
+    const heldManualCertificate = new Promise(resolve => { releaseManualCertificate = resolve; });
+    const manualCertificateInFlight = new Promise(resolve => { manualCertificateStarted = resolve; });
+    await page.route('**/api/certificates', async route => { manualCertificateStarted(); await heldManualCertificate; await route.continue(); });
+    try {
+      await page.getByRole('button', { name: '重新读取', exact: true }).click();
+      await manualCertificateInFlight;
+      await page.getByText('generated-19', { exact: true }).waitFor({ timeout: 1000 });
+      await page.getByText('正在读取总览…', { exact: true }).waitFor();
+    } finally { releaseManualCertificate(); }
+    await page.getByText('正在读取总览…', { exact: true }).waitFor({ state: 'hidden' });
+    await page.unroute('**/api/certificates');
     await page.route('**/api/expiry', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
     changed = true;
     for (let n = 1; n <= 3; n++) {
@@ -69,6 +105,6 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     await page.getByRole('button', { name: '重新读取', exact: true }).click();
     await page.getByRole('heading', { name: '会话已失效', exact: true }).waitFor();
     assert(await page.getByRole('navigation', { name: '工作台', exact: true }).count() === 0, 'late block 401 retained business interface');
-    return { default_route: true, four_categories: true, legacy_deep_link: true, fixed_three_queries_with_many_servers: true, themes_narrow: true, independent_failure_retention_recovery: true, deferred_updates: true, manual_failure_clears: true, late_block_401_clears: true };
+    return { default_route: true, four_categories: true, status_filter_within_column: true, legacy_deep_link: true, fixed_three_queries_with_many_servers: true, themes_narrow: true, independent_failure_retention_recovery: true, immediate_block_failure: true, partial_manual_success: true, deferred_updates: true, manual_failure_clears: true, late_block_401_clears: true };
   } finally { await page.unrouteAll({ behavior: 'ignoreErrors' }); await context.close(); }
 };
