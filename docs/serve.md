@@ -1,6 +1,6 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十二个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。页面、样式和浏览器脚本嵌入二进制，无需 Node。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定一个数据仓，提供配对登录、资产/巡检/变更三个页面和十三个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
 
 ## 本机启动
 
@@ -39,13 +39,17 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 ## 三页只读使用
 
-登录后默认进入资产页。`/assets` 按主键、类型、在用/归档状态和标签搜索，点击关系可以跳到相关资产；详情并列登记期望与最近保存的观测。观测只从该资产明确绑定的实例和服务提取，以自然身份、SSH host 或绑定 hostname 匹配；身份重复、不匹配或服务不完整时不展示为该资产的事实。Cloudflare DNS 仅限 watch 对应 zone，不借用同账号其他 zone 的同名记录。匹配到保存值不代表本轮新鲜覆盖，旁列检查状态、代码、来源与原始时间。
+登录后默认进入三栏资产页：类型导航、资产列表、完整详情分别组织信息，列表与详情独立滚动。默认显示在用资产，依次排列有确认风险、待核实、范围内通过的资产，同组按主键排序；可组合搜索名称/主键/标签、类型、归档和状态。未知检查与未知发现分别计数，不相加成唯一问题数量。摘要读取失败时仅显示标有“状态未读取”的目录，并停用状态筛选。
+
+首次无选择时选中第一项；用户筛选移除当前项时换选并播报，空结果清空详情。显式链接、关系跳转或归档深链保留目标，显示范围外提示和清除筛选入口。方向键选择时焦点留在列表，Enter 进入详情；窄屏从列表进入详情后可返回原列表位置。侧栏支持系统/浅色/深色，仅外观偏好写入 localStorage。
+
+详情按风险与待核实、检查与证据、执行资格、完整脱敏登记与直接关系、已保存历史排列。摘要和详情分别标明读取时间，不承诺来自同一快照。观测只从该资产明确绑定的实例和服务提取，以自然身份、SSH host 或绑定 hostname 匹配；身份重复、不匹配或服务不完整时不展示为该资产的事实。Cloudflare DNS 仅限 watch 对应 zone，不借用同账号其他 zone 的同名记录。匹配到保存值不代表本轮新鲜覆盖，旁列检查状态、代码、来源与原始时间及时区。
 
 `/inspections` 分开展示最近执行、固定覆盖分母、当前风险和最近一次显式保存的问题历史。可筛选已检/未知/不适用，不将零 findings、豁免或空历史显示为健康。点击问题可以在 `/changes` 查看同一 fingerprint/scope_hash 的保留变化；退出范围和 unknown 不显示为恢复。
 
 `/changes` 交付问题变化时间线、台账修改和云计划/执行回执卡片。已清理前缀显式标注，返回现存保留事件；大于 JavaScript 安全整数的游标按原始数字文本显示，不取整。缺历史与损坏分别显示空态/失败，不保留上一次成功内容冒充当前结果。云卡片按 Resource 范围列出已尝试执行的计划、摘要/有效期、主体和授权说明、阶段/结果；详情读取完整计划和写前/回读证据。uncertain 明确提示先核实，不因浏览或状态匹配推断原请求成功；没有回执不表示没有云操作。
 
-页面支持键盘操作、明确标签、跳过导航、状态文字和窄屏。筛选范围与 TTL 放在 URL fragment（key/days/issue），配对/会话令牌始终不进 URL。默认视图证据有效期 7 天，可显式调整；切换页面保留范围，切换资产会取消旧查询。失效会话或读取失败时清空当前数据并显示重连/重选入口。
+页面支持键盘操作、明确标签、跳过导航、状态文字和窄屏。选中资产与 TTL/问题身份放在 URL fragment（key/days/issue），列表筛选保存在当前页面内，配对/会话令牌始终不进 URL。默认视图证据有效期 7 天，可显式调整；切换页面保留范围，切换资产会取消旧查询。“重新读取”只重读已保存结果。失效会话清空整个业务界面；读取失败不会保留旧的成功状态。缺少 JSON 原始数值支持的浏览器会明确拒绝显示超出安全整数的数值，须改用支持的浏览器或 CLI。
 
 ## 只读 API
 
@@ -83,7 +87,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 `POST /logout` 和 `/revoke-all` 使用页面表单的会话 CSRF，分别撤销当前/全部设备。`POST /pair` 使用登录表单独立的 CSRF 与配对 Cookie；两者都要求同源 Origin。配对码每分钟最多尝试 5 次，不按 IP 建立无限增长状态。Cookie 或表单过期后重新打开登录页。
 
-所有响应 no-store，HTML 由 html/template 转义；浏览器动态内容仅用 textContent/DOM 构造，不执行台账文字。CSP 仅允许同源分发的脚本、样式和请求，禁止行内脚本、嵌入框架及外部资源。请求体最多 64 KiB、响应 JSON 最多 4 MiB、并发最多 4；查询最多 30 秒且不超过会话剩余时间。HTTP 请求头上限配置为 8 KiB，读取头/请求分别限 5/10 秒，写入限 35 秒。根目录身份变化、符号链接记录/状态及不安全动态结果会被拒绝，不暴露失败原文。
+所有响应 no-store，HTML 由 html/template 转义；浏览器动态内容由 React 文本节点渲染，不执行台账文字。配对、退出和撤销表单仍由服务端生成。CSP 仅允许同源分发的脚本、样式和请求，禁止行内脚本、嵌入框架及外部资源；React 入口只服务固定的 `/app.js` 与 `/app.css`，不分发源码、source map 或测试夹具。请求体最多 64 KiB、响应 JSON 最多 4 MiB、并发最多 4；查询最多 30 秒且不超过会话剩余时间。HTTP 请求头上限配置为 8 KiB，读取头/请求分别限 5/10 秒，写入限 35 秒。根目录身份变化、符号链接记录/状态及不安全动态结果会被拒绝，不暴露失败原文。
 
 错误只返回 `{version:"v1", ok:false, error:<固定状态文本>}`：400 参数/表单错误，401 未登录或会话失效，403 来源/CSRF/配对拒绝，404 未提供入口，413 请求体过大，415 媒体类型错误，422 台账/查询/结果拒绝，429 尝试/并发/会话上限，503 根目录或配对发布失败，504 查询超时/取消。不返回请求、路径、配对码、Cookie 或云端错误原文；退出 0 表示服务正常停止，不代表台账健康。
 
@@ -91,4 +95,6 @@ infrafile serve --dir /absolute/path/to/ledger \
 
 HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；只读数据逐文件不变。另建虚构 Git 仓验收 CLI/Web 字节哈希一致、审阅后提交、第二设备旧预览拒绝、钩子失败后的重启恢复及窄屏键盘操作。执行卡片使用虚构本地插件实际生成/审阅/执行两份计划，验证写前记录、丢失响应保持 uncertain、重复只回读、CLI 计划详情相同、说明文本转义、范围空态和浏览不写文件；不访问云账号。全部核对日志无令牌和配对文件清理。
 
-验收机需预先安装 Node 22+、Playwright/Chromium 和 OpenSSL；脚本不下载依赖，不访问云账号。默认读取 `bin/infrafile` 和可解析的 `playwright` 包；可分别用 `INFRAFILE_BINARY`、`INFRAFILE_PLAYWRIGHT_MODULE`（绝对模块路径）、`INFRAFILE_BROWSER_EXECUTABLE` 显式指定。直接运行 `node scripts/test_serve_browser.cjs`，回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。
+验收机需预先安装 Node 22.12+、npm 11、锁文件依赖、Playwright Chromium/WebKit 和 OpenSSL，命令见 [CONTRIBUTING](../CONTRIBUTING.md#本地开发)。`make browser-test` 不下载依赖，不访问云账号；默认读取 `bin/infrafile` 和 `web/node_modules/playwright`，可用 `INFRAFILE_BINARY`、`INFRAFILE_PLAYWRIGHT_MODULE`（绝对模块路径）、`INFRAFILE_BROWSER_EXECUTABLE` 指定，`INFRAFILE_BROWSER_ENGINE=chromium|webkit` 选择引擎。WebKit 自动化不等同于真实 Safari 验收。
+
+默认 all suite 保留认证、事务恢复和云回执测试，增加三栏请求数量、旧请求竞争、401 清空、摘要失败、主题及窄屏返回。CSP 检查先完成，再单独截图，避免 Playwright 自己在 WebKit 截图时注入的 `body {}` 样式产生误报；不放宽产品 CSP。`INFRAFILE_BROWSER_SUITE=package` 验证三个页面无外部资源请求，服务进程 PATH 中无 Node；可对解压后的二进制运行。回执和截图保留在新建的 0700 临时目录，可用 `INFRAFILE_BROWSER_OUTPUT_PARENT` 指定已有私有父目录；失败材料保留，测试 TLS 私钥和配对文件在退出时清理。回环 HTTP 表单使用 `Referrer-Policy: same-origin`，避免 no-referrer 导致浏览器发送 Origin:null；严格 Origin 校验保持。

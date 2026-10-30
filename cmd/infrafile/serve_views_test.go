@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -31,7 +32,7 @@ func TestWorkbenchPagesAndReadOnlyChanges(t *testing.T) {
 	before := mcpFiles(t)
 	for _, path := range []string{"/assets", "/inspections", "/changes"} {
 		out := f.send(f.request("GET", path, ""))
-		if out.Code != 200 || !strings.Contains(out.Body.String(), "aria-label=\"工作台\"") || !strings.Contains(out.Body.String(), "/app.js") {
+		if out.Code != 200 || !strings.Contains(out.Body.String(), `id="root"`) || !strings.Contains(out.Body.String(), `<script src="/app.js" type="module">`) {
 			t.Fatal("page not embedded", path, out.Code)
 		}
 	}
@@ -60,6 +61,57 @@ func TestWorkbenchPagesAndReadOnlyChanges(t *testing.T) {
 	}
 	if !reflect.DeepEqual(before, mcpFiles(t)) {
 		t.Fatal("views changed ledger or history")
+	}
+}
+
+func TestWorkbenchEmbeddedAssets(t *testing.T) {
+	f := newWebFixture(t, homelab)
+	const csp = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+	for name, mime := range map[string]string{"app.js": "application/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8"} {
+		out := f.send(f.request("GET", "/"+name, ""))
+		compiled, err := workbenchFiles.ReadFile("web/dist/" + name)
+		if err != nil || out.Code != 200 || len(compiled) == 0 || !bytes.Equal(out.Body.Bytes(), compiled) || out.Header().Get("Content-Type") != mime || out.Header().Get("Content-Security-Policy") != csp {
+			t.Fatalf("compiled asset %s not served with exact policy/MIME: %d %v", name, out.Code, err)
+		}
+	}
+	var embedded []string
+	if err := fs.WalkDir(workbenchFiles, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() {
+			embedded = append(embedded, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(embedded, []string{"web/dist/app.css", "web/dist/app.js", "web/serve.html"}) {
+		t.Fatal("unexpected embedded files", embedded)
+	}
+	for _, loggedIn := range []bool{false, true} {
+		if loggedIn {
+			f.login(t)
+		}
+		out := f.send(f.request("GET", "/assets", ""))
+		html := out.Body.String()
+		if out.Code != 200 || out.Header().Get("Content-Security-Policy") != csp || strings.Contains(html, "Server/web1") || strings.Contains(html, "sops://") {
+			t.Fatal("unsafe HTML shell")
+		}
+		if loggedIn {
+			for _, fragment := range []string{`id="root" data-repo=`, `id="session-controls" hidden`, `name="csrf-token"`, `action="/logout"`, `formaction="/revoke-all"`, `type="module"`} {
+				if !strings.Contains(html, fragment) {
+					t.Fatal("missing shell/form", fragment)
+				}
+			}
+		} else if !strings.Contains(html, `action="/pair"`) || strings.Contains(html, `src="/app.js"`) {
+			t.Fatal("pairing shell changed")
+		}
+		for _, path := range []string{"/app.js.map", "/web/dist/app.js", "/web/src/main.tsx", "/tests/csp.tsx", "/assets/app.js", "/package-lock.json", "/node_modules/react/index.js"} {
+			if code := f.send(f.request("GET", path, "")).Code; code != 401 && code != 404 {
+				t.Fatal("unexpected static route", path, code)
+			}
+		}
 	}
 }
 

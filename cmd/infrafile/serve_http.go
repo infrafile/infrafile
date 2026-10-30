@@ -26,7 +26,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-//go:embed web/*
+//go:embed web/serve.html web/dist/app.js web/dist/app.css
 var workbenchFiles embed.FS
 var workbenchTemplate = template.Must(template.ParseFS(workbenchFiles, "web/serve.html"))
 
@@ -217,7 +217,7 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(out, r.Body, 64<<10)
 	if r.Method == http.MethodGet && (r.URL.Path == "/app.css" || r.URL.Path == "/app.js") {
-		data, _ := workbenchFiles.ReadFile("web" + r.URL.Path)
+		data, _ := workbenchFiles.ReadFile("web/dist" + r.URL.Path)
 		contentType := "text/css; charset=utf-8"
 		if r.URL.Path == "/app.js" {
 			contentType = "application/javascript; charset=utf-8"

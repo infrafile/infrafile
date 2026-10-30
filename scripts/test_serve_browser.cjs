@@ -55,7 +55,7 @@ const report = { binary_sha256: digest(binary), version: JSON.parse(execFileSync
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function start(id, extra = []) {
     const pair = path.join(base, id + '.pair');
-    const child = spawn(binary, ['serve', '--dir', repo, '--listen', '127.0.0.1:0', '--pair-file', pair, ...extra], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(binary, ['serve', '--dir', repo, '--listen', '127.0.0.1:0', '--pair-file', pair, ...extra], { stdio: ['ignore', 'pipe', 'pipe'], env: suite === 'package' ? { ...process.env, PATH: missingBin } : process.env });
     const entry = { child, pair, stdout: '', stderr: '', stopped: false };
     children.push(entry);
     child.stdout.on('data', b => entry.stdout += b);
@@ -83,27 +83,7 @@ async function stop(entry) {
     assert(code === 0 && signal === null, 'serve did not stop gracefully');
     assert(!fs.existsSync(entry.pair), 'pair file retained after graceful shutdown');
 }
-const previewPages = new WeakSet();
-async function preview(page) {
-    if (!process.env.INFRAFILE_BROWSER_PREVIEW || previewPages.has(page)) return;
-    previewPages.add(page);
-    await page.route(/\/(assets|inspections|changes|app\.js|app\.css)?$/, async route => {
-        const response = await route.fetch(), pathname = new URL(route.request().url()).pathname;
-        if (pathname === '/app.js' || pathname === '/app.css') {
-            return route.fulfill({ response, body: fs.readFileSync(path.join(source, 'cmd/infrafile/web/dist', pathname.slice(1))) });
-        }
-        let html = await response.text();
-        if (html.includes('name="csrf-token"')) {
-            const repo = html.match(/<span>台账 · (.*?)<\/span>/)?.[1] || '';
-            const session = html.match(/<details class="session">[\s\S]*?<\/details>/)?.[0] || '';
-            html = html.replace('<script src="/app.js" defer>', '<script src="/app.js" type="module">')
-                .replace(/<body[\s\S]*<\/body>/, '<body><div id="root" data-repo="' + repo + '"></div><div id="session-controls" hidden>' + session + '</div></body>');
-        }
-        await route.fulfill({ response, body: html });
-    });
-}
 async function pair(page, entry, origin = entry.origin) {
-    await preview(page);
     await page.goto(origin + '/');
     const code = fs.readFileSync(entry.pair, 'utf8').trim();
     codes.push(code);
@@ -275,6 +255,11 @@ async function assetViews(page, entry) {
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
     await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
     assert(summaries === 1 && contexts === 1, 'initial assets caused per-asset requests');
+    const initialScope = await page.evaluate(() => location.hash);
+    await page.getByRole('link', { name: '跳到内容', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    assert(await page.evaluate(() => document.activeElement.id === 'workspace'), 'skip link did not focus content');
+    assert(await page.evaluate(() => location.hash) === initialScope, 'skip link changed asset scope');
     await page.getByLabel('搜索资产', { exact: true }).fill('web1');
     const item = page.getByRole('option', { name: /Server\/web1/ });
     await item.focus(); await page.keyboard.press('Enter');
@@ -499,16 +484,33 @@ async function main() {
     assert(!fs.existsSync(path.join(repo, 'code')), 'pair material written into ledger');
     report.checks.unsafe_startup_refused = true;
     assert(['chromium', 'webkit'].includes(engine), 'unsupported browser engine');
-    assert(['csp', 'views', 'all'].includes(suite), 'unsupported browser suite');
+    assert(['csp', 'views', 'all', 'package'].includes(suite), 'unsupported browser suite');
     const browser = await playwright[engine].launch({ headless: true, executablePath: process.env.INFRAFILE_BROWSER_EXECUTABLE || undefined });
     try {
         const local = await start('local');
         const first = await browser.newContext({ viewport: { width: 1080, height: 800 } }), p1 = await first.newPage();
+        const externalRequests = [];
+        if (suite === 'package') await first.route('**/*', route => {
+            if (new URL(route.request().url()).origin !== local.origin) { externalRequests.push(route.request().url()); return route.abort(); }
+            return route.continue();
+        });
         await p1.goto(local.origin + '/');
         await p1.screenshot({ path: path.join(base, 'login.png') });
         const unauth = await session(p1);
         assert(unauth.status === 401, 'unauthenticated API accepted');
         await pair(p1, local);
+        if (suite === 'package') {
+            for (const [route, title] of [['assets', '登记期望'], ['inspections', '已保存的问题历史'], ['changes', '问题变化时间线']]) {
+                await p1.goto(local.origin + '/' + route);
+                await p1.getByRole('heading', { name: title, exact: true }).waitFor();
+            }
+            assert(externalRequests.length === 0, 'package requested external resources');
+            assert(isDeepStrictEqual(before, files(repo)), 'package query modified ledger');
+            report.checks.package = { three_pages: true, external_network_blocked: true, runtime_path_has_no_node: true };
+            fs.writeFileSync(path.join(base, 'evidence.json'), JSON.stringify(report, null, 2));
+            console.log(JSON.stringify({ evidence: path.join(base, 'evidence.json'), checks: report.checks }));
+            return;
+        }
         if (suite === 'csp') {
             report.checks.csp = await cspViews(p1, local);
             console.log(JSON.stringify(report.checks));

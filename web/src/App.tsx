@@ -51,7 +51,7 @@ export function App() {
       <SegmentedControl.Item value="system">系统</SegmentedControl.Item><SegmentedControl.Item value="light">浅色</SegmentedControl.Item><SegmentedControl.Item value="dark">深色</SegmentedControl.Item>
     </SegmentedControl.Root><SessionControls /></div></aside>;
   return <Theme appearance={theme} accentColor="blue" grayColor="slate" radius="medium" scaling="100%">
-    <a className="skip" href="#workspace">跳到内容</a>
+    <a className="skip" href="#workspace" onClick={event => { event.preventDefault(); document.getElementById('workspace')?.focus(); }}>跳到内容</a>
     {expired ? <main className="disconnected" role="alert"><h1>会话已失效</h1><p>请重新连接工作台。</p><a href="/">重新连接工作台</a></main> : selection.error ? <div className="app-shell">{sidebar(null)}<main id="workspace" role="alert" className="page"><h1>无法读取范围</h1><p>{selection.error}</p><a href={'/' + page}>重置范围</a></main></div> : page === 'assets' ? <AssetsPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} renderSidebar={sidebar} /> : <div className="app-shell">{sidebar(null)}<main id="workspace" className="page" tabIndex={-1}>{page === 'inspections' ? <InspectionsPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} /> : <ChangesPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} />}</main></div>}
   </Theme>;
 }

@@ -1,6 +1,10 @@
 version: 2
 project_name: infrafile
 
+before:
+  hooks:
+    - make frontend
+
 release:
   draft: true
   prerelease: auto

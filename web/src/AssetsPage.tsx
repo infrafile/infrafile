@@ -44,7 +44,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
   const enterDetail = () => { setDetailOpen(true); detail.current?.focus(); };
   return <div className="app-shell">
     {renderSidebar(<div className="kind-nav" aria-label="资产类型"><p className="eyebrow">资产类型</p>{kinds.map(([kind, name]) => <button key={kind} className={filters.kind === kind ? 'active' : ''} aria-pressed={filters.kind === kind} onClick={() => updateFilters({ kind })}><span>{name}</span><span className="kind-code">{kind}</span></button>)}</div>)}
-    <main id="workspace" className={'assets-workspace' + (detailOpen ? ' show-detail' : '')}>
+    <main id="workspace" tabIndex={-1} className={'assets-workspace' + (detailOpen ? ' show-detail' : '')}>
       <div className="asset-list"><div className="list-toolbar"><div className="title-line"><h1>资产目录</h1><Badge color="gray">{rows.length}</Badge></div>
         <TextField.Root type="search" aria-label="搜索资产" placeholder="名称、主键或标签" value={filters.search} onChange={event => updateFilters({ search: event.target.value })} />
         <SegmentedControl.Root aria-label="归档状态" size="1" value={filters.archived} onValueChange={archived => updateFilters({ archived: archived as AssetFilters['archived'] })}>
@@ -57,7 +57,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
       </div>
       {state.status === 'loading' && <p className="empty" role="status">正在读取资产摘要…</p>}
       {state.status === 'error' && <p role="alert" className="error">{state.error.message}</p>}
-      {data?.mode === 'directory' && <p className="notice" role="alert">摘要读取失败，仅显示资产目录。状态未读取。</p>}
+      {data?.mode === 'directory' && <div className="notice" role="alert"><p>摘要读取失败，仅显示资产目录。状态未读取。</p><p>请缩小资产类型后重新读取，或使用本地 CLI 核对。</p></div>}
       <div className="asset-rows" role="listbox" aria-label="资产" ref={list}>{rows.map((row, index) => {
         const summary = summaries?.get(row.key), status = summary && assetStatus(summary);
         return <button role="option" aria-selected={row.key === scope.key} tabIndex={row.key === scope.key || !rows.some(row => row.key === scope.key) && index === 0 ? 0 : -1} key={row.key}

@@ -18,12 +18,19 @@ git commit -s
 
 ## 本地开发
 
-需要 Go（版本见 `go.mod`）、Python 3（Homebrew 配方生成器测试）与 Node.js 22+（编辑器 Schema 正则兼容测试，无 npm 依赖）。
+需要 Go（版本见 `go.mod`）、Python 3（Homebrew 配方生成器测试）、Node.js 22.12+ 的受支持 LTS 版本和 npm 11（锁定开发版本 11.21.1）。前端使用 React、Radix Themes、TypeScript 和 Vite，依赖锁定在 `web/package-lock.json`；Node 只参与开发构建，发行二进制不依赖 Node。
 
 ```bash
-make check   # gofmt + go vet + go test -race + 配方生成器测试，与 CI 一致
-make build   # 输出 bin/infrafile
+make check build  # 安装锁定前端依赖、构建、类型/单测、Go 门禁、配方与 Schema 测试，输出 bin/infrafile
+make frontend     # npm ci + Vite；直接 go test/go build 前也需先生成内嵌资源
+npx --prefix web playwright install chromium webkit
+INFRAFILE_BROWSER_ENGINE=chromium make browser-test
+INFRAFILE_BROWSER_ENGINE=webkit make browser-test
 ```
+
+`build/test/vet/check` 共用 `frontend` 前置步骤，同次 make 调用只执行一次。只修改前端时可用 `npm --prefix web run typecheck`、`npm --prefix web test` 和 `npm --prefix web run build`；要浏览实际页面，随后重新编译 Go 二进制。`browser-test` 复用已构建的二进制，详见[工作台验收](docs/serve.md#浏览器验收)。CI 的 Linux 浏览器依赖通过 Playwright `install --with-deps` 安装。
+
+提交 `web/src/` 和锁文件，不提交 `web/node_modules/`、`cmd/infrafile/web/dist/`。GoReleaser 的 before hook 同样执行 `make frontend`，确保源码归档和发布路径生成相同内嵌资源。
 
 ## 红线
 
