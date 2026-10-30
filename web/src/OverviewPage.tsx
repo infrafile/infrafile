@@ -71,7 +71,7 @@ export function OverviewPage({ scope, onScopeChange, onUnauthorized }: PageProps
     {data && <div className="overview-grid">
       <ReadBlock title="资产状态" readAt={data.summary?.readAt} error={errors.summary}>{summary && <AssetTotals report={summary} scope={scope} />}</ReadBlock>
       <ReadBlock title="登记到期" readAt={data.expiry?.readAt} error={errors.expiry}>
-        <label>资产类型 <select aria-label="到期资产类型" value={kind} onChange={event => setKind(event.target.value)}><option value="Domain">域名</option><option value="Resource">资源</option><option value="Server">服务器</option></select></label>
+        <fieldset className="asset-status"><legend>到期资产类型</legend>{[['Domain', '域名'], ['Resource', '资源'], ['Server', '服务器']].map(([value, name]) => <label key={value}><input type="radio" name="expiry-kind" value={value} checked={kind === value} onChange={() => setKind(value)} />{name}</label>)}</fieldset>
         {data.expiry && summary ? <ExpiryOverview report={data.expiry.data} records={summary.rows} kind={kind} /> : data.expiry && <p className="notice">资产目录未读取，无法核对登记范围与缺失数量。</p>}
       </ReadBlock>
       <ReadBlock title="证书到期与应用" readAt={data.certificates?.readAt} error={errors.certificates}>{data.certificates && <CertificateOverview report={data.certificates.data} scope={scope} />}</ReadBlock>

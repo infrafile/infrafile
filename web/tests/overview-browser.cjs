@@ -5,6 +5,7 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
   const context = await browser.newContext({ viewport: { width: 1200, height: 850 } });
   const page = await context.newPage(); page.setDefaultTimeout(5000);
   try {
+    await page.addInitScript(() => { globalThis.overviewCSP = []; document.addEventListener('securitypolicyviolation', event => globalThis.overviewCSP.push({ directive: event.violatedDirective, tag: event.target?.tagName })); });
     await page.clock.install();
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     let calls = [], many = false, changed = false, summaryFailure = false;
@@ -23,7 +24,17 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     await page.getByRole('heading', { name: '服务器配置', exact: true }).waitFor();
     await page.getByText('台账登记值 · 非实时', { exact: true }).waitFor();
     await page.getByText('正在读取总览…', { exact: true }).waitFor({ state: 'hidden' });
+    const violations = await page.evaluate(() => globalThis.overviewCSP);
+    assert(violations.length === 0, 'overview violates application CSP: ' + JSON.stringify(violations));
     assert(JSON.stringify(calls) === JSON.stringify(['asset-summaries', 'expiry', 'certificates']), 'overview must use three fixed serial queries: ' + JSON.stringify(calls));
+    const expiryTypes = page.getByRole('group', { name: '到期资产类型', exact: true });
+    for (const name of ['资源', '服务器']) {
+      await expiryTypes.getByRole('radio', { name, exact: true }).check();
+      await page.getByRole('region', { name: '登记到期', exact: true }).getByText(/另有 \d+ 个未登记/).waitFor();
+      assert(await expiryTypes.getByRole('radio', { name, exact: true }).isChecked(), 'expiry type filter lost selection');
+    }
+    await expiryTypes.getByRole('radio', { name: '域名', exact: true }).check();
+    assert(calls.length === 3 && (await page.evaluate(() => globalThis.overviewCSP)).length === 0, 'expiry type filtering added requests or violated CSP');
     await page.getByRole('link', { name: /^暂无检查 \d/ }).click();
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
     assert(await page.getByRole('radio', { name: '暂无检查', exact: true }).isChecked(), 'overview category link lost the filter');
@@ -105,6 +116,6 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     await page.getByRole('button', { name: '重新读取', exact: true }).click();
     await page.getByRole('heading', { name: '会话已失效', exact: true }).waitFor();
     assert(await page.getByRole('navigation', { name: '工作台', exact: true }).count() === 0, 'late block 401 retained business interface');
-    return { default_route: true, four_categories: true, status_filter_within_column: true, legacy_deep_link: true, fixed_three_queries_with_many_servers: true, themes_narrow: true, independent_failure_retention_recovery: true, immediate_block_failure: true, partial_manual_success: true, deferred_updates: true, manual_failure_clears: true, late_block_401_clears: true };
+    return { default_route: true, csp: true, expiry_type_filter: true, four_categories: true, status_filter_within_column: true, legacy_deep_link: true, fixed_three_queries_with_many_servers: true, themes_narrow: true, independent_failure_retention_recovery: true, immediate_block_failure: true, partial_manual_success: true, deferred_updates: true, manual_failure_clears: true, late_block_401_clears: true };
   } finally { await page.unrouteAll({ behavior: 'ignoreErrors' }); await context.close(); }
 };
