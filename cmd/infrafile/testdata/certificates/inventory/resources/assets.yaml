@@ -1,0 +1,4 @@
+apiVersion: infrafile/v1alpha1
+kind: Resource
+metadata: {name: assets}
+spec: {provider: synthetic, type: cdn, endpoint: assets.example.com}

@@ -117,6 +117,10 @@ spec:
 
 TLS 为了记录过期证书，会先观察对端证书，再用系统信任库、主机名及证书链验证。`verified: false` 表示未通过信任验证，即使 `sync` 成功。`verification` 为 valid、untrusted、hostname-mismatch 或 expired-or-not-yet-valid；证书自身有效期错误优先呈现。观测成功不等于服务可信。
 
+工作台的 Web 专用 `POST /api/certificates` 读取已保存证书，按应用归属（见[只读 API](serve.md#只读-api)）；页面展示由后续总览接入。使用方在 `infrafile.yaml` 为需要的主机各配 `plugins.tls.instances.<名字>.host`，可选 `port`（默认 443），再显式运行 `infrafile sync tls`。实例名随意，归属只按 host 与 Domain `spec.bindings[]` 主机名相等比较（小写、去尾点；`@` 表示根域名），使用 binding 的 `app`；不按证书通配符匹配。无应用、未关联、歧义、未采集单独表达，没有快照不代表证书正常。
+
+增加 tls 实例会使 `inspect` 每实例多一条 freshness 检查，缺失/过期为 unknown，且每次采集多一次 TLS 握手出站连接；使用方日检/周检的应检分母可能变化。此配置与采集动作由使用方择时执行并验证，Web 读取不自动配置或采集。
+
 WHOIS 只解析常见域名、到期日、注册商、NS 和状态字段，不保存联系人或原文。响应没有与查询域名匹配的 Domain Name 行、且某行以无匹配标记（如 `No match for`、`NOT FOUND`）开头时返回 `found: false`，字段值里出现这类字样不算；不可识别的响应、日期或未匹配域名报错。它不继续追踪注册商 referral，也没有 RDAP 回退；已关闭 WHOIS 的注册局可能无法查询。到期日未公开时省略，不推算。
 
 SSH 需要本机 `ssh` 与目标的类 Unix `uname`。开启 BatchMode、严格主机密钥验证，关闭密钥自动更新、交互、PTY、代理/X11/端口转发、连接复用和 LocalCommand；继承用户可信 SSH 配置与已有认证选择（包括配置中的 ProxyJump / ProxyCommand）。私钥由 OpenSSH 读取，不从凭据引用写出临时私钥。显式文件路径相对数据仓或使用绝对路径；不展开 `~`。未指定 user / port 时沿用 SSH 配置。单次连接超时 10 秒，整个实例仍受 `--timeout` 控制；SSH 原始 stderr 不返回。
