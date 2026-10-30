@@ -7,6 +7,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
   page.setDefaultTimeout(5000);
   try {
     await page.clock.install();
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     const sameReportTime = new Date(Date.now() - 60000).toISOString().replace(/\.\d{3}Z$/, 'Z');
     for (const name of ['asset-summaries', 'context']) await page.route('**/api/' + name, async route => {
       const response = await route.fetch(), body = await response.json();
@@ -21,7 +22,6 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
     const toggle = page.getByRole('checkbox', { name: '自动重读（60 秒）', exact: true });
     const status = page.locator('[data-auto-read]:visible');
     assert(await toggle.isChecked(), 'automatic rereading is not enabled by default');
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     let mode = 'normal', expiryFailure = false, summaries = 0, expiries = 0, contexts = 0, active = 0, maximum = 0;
     const timings = [];
     let release, lateSettled;
@@ -173,6 +173,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
     fs.writeFileSync(path.join(base, 'auto-read-timings.json'), JSON.stringify(timings, null, 2));
     return { interval: true, serial_reads: true, focus_visibility: true, disabled_pauses: true, deferred_updates: true, selection_detail_focus_scroll_preserved: true, failures_and_recovery: true, expiry_failure_preserves: true, scope_cancels_old_request: true, three_pages: true, manual_failure_clears: true, unauthorized_clears: true, summary_timings: timings };
   } finally {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
     await context.close();
   }
 };
@@ -182,11 +183,11 @@ module.exports.edit = async function autoReadEditor(browser, entry, { pair, asse
   const page = await context.newPage();
   try {
     await page.clock.install();
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await pair(page, entry);
     await page.goto(entry.origin + '/changes#key=Server%2Fweb');
     const editor = page.getByLabel('完整记录 JSON', { exact: true });
     await editor.waitFor();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     const record = JSON.parse(await editor.inputValue()); record.spec.address = '192.0.2.99';
     const draft = JSON.stringify(record, null, 2);
     await editor.fill(draft);

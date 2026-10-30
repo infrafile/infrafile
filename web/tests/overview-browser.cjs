@@ -6,6 +6,7 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
   const page = await context.newPage(); page.setDefaultTimeout(5000);
   try {
     await page.clock.install();
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     let calls = [], many = false, changed = false;
     page.on('request', request => { const name = request.url().split('/api/')[1]; if (name) calls.push(name); });
     await page.route('**/api/asset-summaries', async route => {
@@ -40,7 +41,6 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'overview overflows narrow viewport');
     await page.screenshot({ path: path.join(base, 'overview-narrow.png') });
     await page.setViewportSize({ width: 1200, height: 850 });
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await page.route('**/api/expiry', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
     changed = true;
     for (let n = 1; n <= 3; n++) {
@@ -70,5 +70,5 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
     await page.getByRole('heading', { name: '会话已失效', exact: true }).waitFor();
     assert(await page.getByRole('navigation', { name: '工作台', exact: true }).count() === 0, 'late block 401 retained business interface');
     return { default_route: true, four_categories: true, legacy_deep_link: true, fixed_three_queries_with_many_servers: true, themes_narrow: true, independent_failure_retention_recovery: true, deferred_updates: true, manual_failure_clears: true, late_block_401_clears: true };
-  } finally { await context.close(); }
+  } finally { await page.unrouteAll({ behavior: 'ignoreErrors' }); await context.close(); }
 };
