@@ -94,7 +94,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
         <div className="detail-toolbar"><Button className="back-button" size="1" variant="soft" onClick={() => { setDetailOpen(false); requestAnimationFrame(() => list.current?.querySelector<HTMLButtonElement>('[aria-selected=true]')?.focus({ preventScroll: true })); }}>返回资产列表</Button><ScopeBar scope={scope} onScopeChange={onScopeChange} onRefresh={() => setRefresh(value => value + 1)} /></div>
         <AutoReadStatus state={state.auto} />
         {outside && <div className="notice"><span>此资产不在当前筛选范围内。</span> <Button size="1" variant="soft" onClick={() => { cause.current = 'link'; setFilters({ ...defaultFilters, archived: 'all' }); }}>清除筛选</Button></div>}
-        {scope.key && isAssetKey(scope.key) ? data ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} expiry={data.expiry} summaryReadAt={state.auto.readAt} directory={directoryRows(data)} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">正在读取资产目录…</p> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
+        {scope.key && isAssetKey(scope.key) ? data ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} expiry={data.expiry} summaryReadAt={data.mode === 'complete' ? data.summary.as_of : null} directory={directoryRows(data)} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">正在读取资产目录…</p> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
       </section>
     </main>
   </div>;

@@ -7,8 +7,16 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
   page.setDefaultTimeout(5000);
   try {
     await page.clock.install();
+    const sameReportTime = new Date(Date.now() - 60000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    for (const name of ['asset-summaries', 'context']) await page.route('**/api/' + name, async route => {
+      const response = await route.fetch(), body = await response.json();
+      if (name === 'context') body.inspection.as_of = sameReportTime; else body.as_of = sameReportTime;
+      await route.fulfill({ response, json: body });
+    });
     await pair(page, entry);
     await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
+    assert(await page.getByText('摘要有更新的结果。', { exact: false }).count() === 0, 'initial reports with the same server timestamp must not show a newer-summary warning');
+    await page.unroute('**/api/asset-summaries'); await page.unroute('**/api/context');
     const toggle = page.getByRole('checkbox', { name: '自动重读（60 秒）', exact: true });
     const status = page.locator('[data-auto-read]:visible');
     assert(await toggle.isChecked(), 'automatic rereading is not enabled by default');
@@ -47,6 +55,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
     await status.getByText('页面读取时间：', { exact: false }).waitFor();
     assert(summaries === 1 && expiries === 1 && maximum === 1, 'one automatic cycle must read summary and expiry serially: ' + JSON.stringify({ summaries, expiries, maximum, active }));
     assert(contexts === 0, 'automatic reread replaced asset details');
+    await page.getByText('摘要有更新的结果。', { exact: false }).waitFor();
     assert(await page.getByRole('option', { selected: true }).innerText() === selected, 'automatic reread changed selection');
     assert(await page.getByRole('searchbox', { name: '搜索资产', exact: true }).evaluate(element => element === document.activeElement), 'automatic reread stole focus');
     assert(!(await page.locator('.asset-detail').innerText()).includes('正在读取资产详情'), 'automatic reread remounted details');
