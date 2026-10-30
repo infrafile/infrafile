@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Badge, Button, Checkbox, Heading, Text, TextField, Theme } from '@radix-ui/themes';
+import { Badge, Button, Checkbox, Heading, SegmentedControl, Text, TextField, Theme } from '@radix-ui/themes';
 import '@radix-ui/themes/styles.css';
 import './csp.css';
 
@@ -22,7 +22,7 @@ function Fixture() {
     <TextField.Root aria-label="搜索资产" placeholder="搜索资产" />
     <Badge color="red">有风险</Badge>
     <Text as="label"><Checkbox /> 已审阅</Text>
-    <select aria-label="筛选状态" defaultValue="all"><option value="all">全部</option><option value="risk">有风险</option></select>
+    <SegmentedControl.Root aria-label="筛选状态" defaultValue="all"><SegmentedControl.Item value="all">全部</SegmentedControl.Item><SegmentedControl.Item value="risk">有风险</SegmentedControl.Item></SegmentedControl.Root>
     <details ref={menu} onKeyDown={event => {
       if (event.key === 'Escape' && menu.current?.open) {
         menu.current.open = false;

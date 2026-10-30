@@ -112,7 +112,7 @@ async function cspViews(page, entry) {
     page.on('request', request => { if (!request.url().startsWith(entry.origin + '/')) external.push(request.url()); });
     await page.addInitScript(() => {
         globalThis.cspViolations = [];
-        document.addEventListener('securitypolicyviolation', e => globalThis.cspViolations.push({ directive: e.violatedDirective, blocked: e.blockedURI, styles: [...document.querySelectorAll('style')].map(style => style.textContent) }));
+        document.addEventListener('securitypolicyviolation', e => globalThis.cspViolations.push({ directive: e.violatedDirective, blocked: e.blockedURI, source: e.sourceFile, line: e.lineNumber, target: e.target instanceof Element ? e.target.outerHTML : String(e.target), styles: [...document.querySelectorAll('style')].map(style => style.textContent) }));
     });
     await page.route(entry.origin + '/assets', async route => {
         const response = await route.fetch();
@@ -129,8 +129,8 @@ async function cspViews(page, entry) {
     await page.getByRole('heading', { name: '组件兼容性' }).waitFor();
     await page.getByRole('textbox', { name: '搜索资产' }).fill('server');
     await page.getByRole('checkbox', { name: '已审阅' }).check();
-    await page.getByRole('combobox', { name: '筛选状态' }).selectOption('risk');
-    assert(await page.getByRole('combobox', { name: '筛选状态' }).inputValue() === 'risk', 'selection lost');
+    await page.getByRole('radio', { name: '有风险', exact: true }).click();
+    assert(await page.getByRole('radio', { name: '有风险', exact: true }).getAttribute('aria-checked') === 'true', 'selection lost');
     await page.getByText('会话菜单', { exact: true }).click();
     await page.getByRole('button', { name: '菜单项目' }).waitFor();
     await page.keyboard.press('Escape');
