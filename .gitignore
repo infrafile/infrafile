@@ -1,2 +1,5 @@
 /dist/
 /bin/
+/web/node_modules/
+/web/.csp/
+/cmd/infrafile/web/dist/

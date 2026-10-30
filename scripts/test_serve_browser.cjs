@@ -7,7 +7,9 @@ const crypto = require('node:crypto');
 const { spawn, spawnSync, execFileSync } = require('node:child_process');
 const { once } = require('node:events');
 const { isDeepStrictEqual } = require('node:util');
-const { chromium } = require(process.env.INFRAFILE_PLAYWRIGHT_MODULE || 'playwright');
+const playwright = require(process.env.INFRAFILE_PLAYWRIGHT_MODULE || path.join(__dirname, '../web/node_modules/playwright'));
+const engine = process.env.INFRAFILE_BROWSER_ENGINE || 'chromium';
+const suite = process.env.INFRAFILE_BROWSER_SUITE || 'all';
 const assert = (condition, message) => {
     if (!condition)
         throw Error(message);
@@ -104,6 +106,51 @@ async function pair(page, entry, origin = entry.origin) {
 }
 async function session(page) { return page.evaluate(async () => { const r = await fetch('/api/session'); return { status: r.status, data: await r.json() }; }); }
 async function listen(server) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); return server.address().port; }
+async function cspViews(page, entry) {
+    const errors = [], external = [];
+    page.on('pageerror', error => errors.push(error.message));
+    page.on('request', request => { if (!request.url().startsWith(entry.origin + '/')) external.push(request.url()); });
+    await page.addInitScript(() => {
+        globalThis.cspViolations = [];
+        document.addEventListener('securitypolicyviolation', e => globalThis.cspViolations.push({ directive: e.violatedDirective, blocked: e.blockedURI, styles: [...document.querySelectorAll('style')].map(style => style.textContent) }));
+    });
+    await page.route(entry.origin + '/assets', async route => {
+        const response = await route.fetch();
+        await route.fulfill({ response, body: '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="/app.css"><script type="module" src="/app.js"></script></head><body><div id="csp-root"></div></body></html>' });
+    });
+    for (const name of ['app.js', 'app.css']) {
+        await page.route(entry.origin + '/' + name, async route => {
+            const response = await route.fetch();
+            await route.fulfill({ response, body: fs.readFileSync(path.join(source, 'web/.csp', name)) });
+        });
+    }
+    page.setDefaultTimeout(5000);
+    await page.goto(entry.origin + '/assets');
+    await page.getByRole('heading', { name: '组件兼容性' }).waitFor();
+    await page.getByRole('textbox', { name: '搜索资产' }).fill('server');
+    await page.getByRole('checkbox', { name: '已审阅' }).check();
+    await page.getByRole('combobox', { name: '筛选状态' }).selectOption('risk');
+    assert(await page.getByRole('combobox', { name: '筛选状态' }).inputValue() === 'risk', 'selection lost');
+    await page.getByText('会话菜单', { exact: true }).click();
+    await page.getByRole('button', { name: '菜单项目' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: '菜单项目' }).waitFor({ state: 'hidden' });
+    await page.getByRole('button', { name: '打开详情' }).click();
+    await page.getByRole('dialog').waitFor();
+    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await page.waitForFunction(() => document.activeElement?.textContent === '打开详情');
+    assert(await page.getByRole('button', { name: '打开详情' }).evaluate(el => el === document.activeElement), 'dialog did not restore focus');
+    for (const colorScheme of ['dark', 'light']) {
+        await page.emulateMedia({ colorScheme });
+        await page.getByTestId('appearance').filter({ hasText: colorScheme }).waitFor();
+    }
+    const violations = await page.evaluate(() => globalThis.cspViolations);
+    assert(violations.length === 0, 'CSP violations: ' + JSON.stringify(violations));
+    assert(errors.length === 0, 'component scripts failed: ' + errors.join(';'));
+    assert(external.length === 0, 'external asset dependency');
+    return { engine, components: true, csp: true, keyboard: true, themes: true };
+}
 async function views(page, entry) {
     const failures = [];
     page.on('pageerror', error => failures.push(error.message));
@@ -312,7 +359,9 @@ async function main() {
     }
     assert(!fs.existsSync(path.join(repo, 'code')), 'pair material written into ledger');
     report.checks.unsafe_startup_refused = true;
-    const browser = await chromium.launch({ headless: true, executablePath: process.env.INFRAFILE_BROWSER_EXECUTABLE || undefined });
+    assert(['chromium', 'webkit'].includes(engine), 'unsupported browser engine');
+    assert(['csp', 'views', 'all'].includes(suite), 'unsupported browser suite');
+    const browser = await playwright[engine].launch({ headless: true, executablePath: process.env.INFRAFILE_BROWSER_EXECUTABLE || undefined });
     try {
         const local = await start('local');
         const first = await browser.newContext({ viewport: { width: 1080, height: 800 } }), p1 = await first.newPage();
@@ -321,6 +370,11 @@ async function main() {
         const unauth = await session(p1);
         assert(unauth.status === 401, 'unauthenticated API accepted');
         await pair(p1, local);
+        if (suite === 'csp') {
+            report.checks.csp = await cspViews(p1, local);
+            console.log(JSON.stringify(report.checks));
+            return;
+        }
         await p1.screenshot({ path: path.join(base, 'connected.png') });
         const state1 = await session(p1);
         assert(state1.status === 200, 'first session failed');

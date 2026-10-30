@@ -1,0 +1,3 @@
+body { font-family: system-ui, sans-serif; margin: 24px; }
+.radix-themes { padding: 24px; }
+dialog, select { font: inherit; color: var(--gray-12); background: var(--color-panel-solid); border: 1px solid var(--gray-6); border-radius: var(--radius-3); padding: 8px; }
