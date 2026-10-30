@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, parseReadJSON, query } from './api';
+import { ApiError, parseEditJSON, parseReadJSON, query } from './api';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -15,6 +15,15 @@ describe('lossless read JSON', () => {
   });
   it('does not echo a malformed response into the error', () => {
     expect(() => parseReadJSON('private-fragment invalid JSON')).toThrow('响应不是有效 JSON');
+  });
+});
+
+describe('editable JSON preserves numeric types', () => {
+  it('accepts ordinary complete records and arrays', () => {
+    expect(parseEditJSON('[{"kind":"Server","spec":{"cores":8,"ratio":1.5}}]')).toEqual([{ kind: 'Server', spec: { cores: 8, ratio: 1.5 } }]);
+  });
+  it.each(['9007199254740993', '-9007199254740993', '1e400'])('rejects unsafe numeric literal %s before it can become editable text', number => {
+    expect(() => parseEditJSON('{"record":{"spec":{"size":' + number + '}}}')).toThrow('CLI');
   });
 });
 

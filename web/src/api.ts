@@ -24,7 +24,19 @@ export function parseReadJSON(text: string): JsonValue {
   }
 }
 
-export async function query<T>(name: QueryName, body: object, signal: AbortSignal): Promise<T> {
+export function parseEditJSON(text: string): JsonValue {
+  try {
+    return JSON.parse(text, (_key, value) => {
+      if (typeof value === 'number' && (!Number.isFinite(value) || Number.isInteger(value) && !Number.isSafeInteger(value))) throw Error('此数值超出浏览器精度，请通过 CLI 编辑。');
+      return value;
+    });
+  } catch (error) {
+    if (error instanceof SyntaxError) throw Error('记录不是有效 JSON，请核对完整记录。');
+    throw error;
+  }
+}
+
+export async function query<T>(name: QueryName, body: object, signal: AbortSignal, parse = parseReadJSON): Promise<T> {
   signal.throwIfAborted();
   const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
   if (!csrf) throw new ApiError(401);
@@ -33,7 +45,7 @@ export async function query<T>(name: QueryName, body: object, signal: AbortSigna
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(body),
   });
   if (!response.ok) throw new ApiError(response.status);
-  const result = parseReadJSON(await response.text());
+  const result = parse(await response.text());
   signal.throwIfAborted();
   return result as T;
 }

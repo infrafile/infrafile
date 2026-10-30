@@ -3,9 +3,9 @@ import { Badge, SegmentedControl } from '@radix-ui/themes';
 import type { AssetContext, Inspection } from './contracts';
 import { isAssetKey, pageURL, type Scope } from './scope';
 
-const labels: Record<string, string> = { unknown: '未知', checked: '已检', not_applicable: '不适用', confirmed: '已确认', waived: '已豁免', failed: '执行失败', stale: '证据过期', success: '执行成功', open: '未恢复', recovered: '已恢复', missing: '缺少证据', pending: '待核实' };
+const labels: Record<string, string> = { unknown: '未知', checked: '已检', not_applicable: '不适用', confirmed: '已确认', waived: '已豁免', failed: '执行失败', stale: '前提已变化', succeeded: '执行成功', open: '未恢复', recovered: '已恢复', missing: '缺少证据', pending: '待核实', running: '执行中', clear: '已明确通过', out_of_scope: '已退出范围', opened: '首次发现', unconfirmed: '尚未确认', reopened: '再次发生', returned: '重新进入范围', unwaived: '豁免结束', applied: '已回读匹配', unchanged: '无需变更', mismatch: '回读不符', uncertain: '结果不确定', rejected: '未执行', prepared: '已保存执行前提', write_started: '已记录写入开始', completed: '本次尝试已结束' };
 export function StatusBadge({ value }: { value: string }) {
-  return <Badge color={['confirmed', 'failed'].includes(value) ? 'red' : ['unknown', 'stale', 'missing', 'pending'].includes(value) ? 'amber' : value === 'checked' || value === 'success' ? 'green' : 'gray'}>{labels[value] ?? value}</Badge>;
+  return <Badge color={['confirmed', 'failed', 'mismatch'].includes(value) ? 'red' : ['unknown', 'stale', 'missing', 'pending', 'uncertain'].includes(value) ? 'amber' : value === 'checked' || value === 'succeeded' || value === 'applied' ? 'green' : 'gray'}>{labels[value] ?? value}</Badge>;
 }
 export function Raw({ value, title = '展开原始数据', open = false }: { value: unknown; title?: string; open?: boolean }) {
   return <details className="raw" open={open}><summary>{title}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details>;
@@ -16,12 +16,15 @@ export function InspectionSections({ inspection: report, scope, context, childre
     <section aria-labelledby="issues-title"><h2 id="issues-title">风险与待核实</h2>
       <p className="counts"><span>确认风险 <strong>{report.risk.confirmed}</strong></span><span>未知检查 <strong>{report.coverage.unknown}</strong></span><span>未知发现 <strong>{report.risk.unknown}</strong></span><span>已豁免 <strong>{report.risk.waived}</strong></span></p>
       <p className="muted">未知检查与未知发现可能指向同一问题，分别计数。已豁免不表示检查通过。</p>
-      <ul className="items">{report.risk.findings.map((finding, index) => <li key={index}>
+      {[true, false].map(asset => report.risk.findings.some(finding => isAssetKey(finding.target) === asset) && <div key={String(asset)}>
+      {!asset && <h3 className="group-heading">全局问题</h3>}
+      <ul className="items">{report.risk.findings.filter(finding => isAssetKey(finding.target) === asset).map((finding, index) => <li key={index}>
         <h3>{finding.rule} · {finding.target}</h3><StatusBadge value={finding.assessment} /> {finding.waiver && <StatusBadge value="waived" />}
         <p>{finding.message}</p><p className="muted">来源：{finding.file || '无文件'}</p>
         {finding.waiver && <p>豁免：{finding.waiver.reason} · {finding.waiver.until || '未设置到期'} · {finding.waiver.source}</p>}
         <Raw value={finding.evidence} title="展开问题证据" />
-      </li>)}</ul>
+        {finding.issues?.map(identity => <p key={identity.fingerprint + identity.scope_hash}><a href={pageURL('changes', { ...scope, key: finding.target, issue: identity.fingerprint + '/' + identity.scope_hash })}>查看问题变化</a></p>)}
+      </li>)}</ul></div>)}
       {!report.risk.findings.length && <p className="empty">当前范围没有保存的风险发现，仍需核对覆盖缺口。</p>}
     </section>
     <section><h2>覆盖与证据</h2><p className="counts"><span>应检 <strong>{report.coverage.expected}</strong></span><span>已检 <strong>{report.coverage.checked}</strong></span><span>未知 <strong>{report.coverage.unknown}</strong></span><span>不适用 <strong>{report.coverage.not_applicable}</strong></span></p>

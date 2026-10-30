@@ -83,11 +83,17 @@ pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--
 .page { padding: 30px 36px; overflow-y: auto; min-width: 0; }
 .page>h1 { margin-bottom: 18px; }
 .disconnected { padding: 12vh 10vw; }
+.page>.scope-bar { margin-bottom: 14px; }.page>.report { max-width: 1100px; }
+.inventory-editor textarea { display: block; width: 100%; resize: vertical; margin: 10px 0 14px; padding: 14px; border: 1px solid var(--gray-6); border-radius: 6px; background: var(--gray-2); color: var(--gray-12); font: 12px/1.6 ui-monospace, SFMono-Regular, monospace; }
+.reviewed { display: flex; align-items: center; gap: 8px; margin: 20px 0 14px; font-size: 13px; }
+.preview { margin-top: 20px; }.diff-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }.diff-columns pre { margin-top: 6px; }
+.report article { padding: 20px 0; border-bottom: 1px solid var(--gray-5); overflow-wrap: anywhere; }.report article p { margin-top: 9px; }
 .login { color: #20242c; background: #f4f5f7; }
 .login main { max-width: 480px; margin: 15vh auto; padding: 32px; background: white; border: 1px solid #e3e5e8; border-radius: 12px; }
 .login h1 { margin: 12px 0; }.login form { display: grid; gap: 10px; margin-top: 20px; }.login input,.login button { padding: 10px; border: 1px solid #c4cad2; border-radius: 6px; }.login button { background: #1664ce; color: white; }
 @media (max-width: 1000px) { .app-shell { grid-template-columns: 160px minmax(0, 1fr); }.assets-workspace { grid-template-columns: 275px minmax(0, 1fr); }.asset-detail { padding-inline: 20px; } }
 @media (max-width: 760px) {
+  .diff-columns { grid-template-columns: 1fr; }
   .app-shell { display: flex; flex-direction: column; }
   .sidebar { flex-shrink: 0; padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 9px; border-right: 0; border-bottom: 1px solid var(--gray-5); overflow: visible; }
   .brand { font-size: 16px; padding: 0; }.brand span,.repo-name,.sidebar-bottom>.eyebrow { display: none; }

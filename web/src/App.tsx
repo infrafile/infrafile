@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { SegmentedControl, Theme } from '@radix-ui/themes';
 import { AssetsPage } from './AssetsPage';
+import { InspectionsPage } from './InspectionsPage';
+import { ChangesPage } from './ChangesPage';
 import { pageURL, readScope, type Scope, type WorkbenchPage } from './scope';
 
 type Appearance = 'system' | 'light' | 'dark';
@@ -50,6 +52,6 @@ export function App() {
     </SegmentedControl.Root><SessionControls /></div></aside>;
   return <Theme appearance={theme} accentColor="blue" grayColor="slate" radius="medium" scaling="100%">
     <a className="skip" href="#workspace">跳到内容</a>
-    {expired ? <main className="disconnected" role="alert"><h1>会话已失效</h1><p>请重新连接工作台。</p><a href="/">重新连接工作台</a></main> : selection.error ? <div className="app-shell">{sidebar(null)}<main id="workspace" role="alert" className="page"><h1>无法读取范围</h1><p>{selection.error}</p><a href={'/' + page}>重置范围</a></main></div> : page === 'assets' ? <AssetsPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} renderSidebar={sidebar} /> : <div className="app-shell">{sidebar(null)}<main id="workspace" className="page"><p>正在迁移此页面…</p></main></div>}
+    {expired ? <main className="disconnected" role="alert"><h1>会话已失效</h1><p>请重新连接工作台。</p><a href="/">重新连接工作台</a></main> : selection.error ? <div className="app-shell">{sidebar(null)}<main id="workspace" role="alert" className="page"><h1>无法读取范围</h1><p>{selection.error}</p><a href={'/' + page}>重置范围</a></main></div> : page === 'assets' ? <AssetsPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} renderSidebar={sidebar} /> : <div className="app-shell">{sidebar(null)}<main id="workspace" className="page" tabIndex={-1}>{page === 'inspections' ? <InspectionsPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} /> : <ChangesPage scope={selection.scope} onScopeChange={onScopeChange} onUnauthorized={onUnauthorized} />}</main></div>}
   </Theme>;
 }

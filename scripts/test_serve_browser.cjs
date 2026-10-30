@@ -182,7 +182,7 @@ async function views(page, entry) {
     await page.goto(entry.origin + '/assets');
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
     await page.getByLabel('搜索资产', { exact: true }).fill('web1');
-    const asset = page.locator('.assets').getByRole('link', { name: /^Server\/web1/ });
+    const asset = page.getByRole('option', { name: /Server\/web1/ });
     await asset.focus();
     await page.keyboard.press('Enter');
     await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
@@ -387,6 +387,13 @@ async function editViews(browser) {
         await page.getByRole('button', { name: '确认并提交到 Git', exact: true }).press('Enter');
     }
     const p = await prepare(a, '192.0.2.11'); await prepare(b, '192.0.2.12');
+    await a.getByRole('checkbox', { name: '我已核对修改前后的完整内容', exact: true }).check();
+    const edited = a.getByLabel('完整记录 JSON', { exact: true });
+    await edited.fill(await edited.inputValue() + '\n');
+    assert(!await a.getByRole('checkbox', { name: '我已核对修改前后的完整内容', exact: true }).isChecked(), 'changed preview stayed reviewed');
+    assert(await a.getByRole('button', { name: '确认并提交到 Git', exact: true }).isDisabled(), 'changed preview retained approval');
+    await a.getByRole('button', { name: '校验并预览变更', exact: true }).click();
+    await a.getByText('修改后', { exact: true }).waitFor();
     const requestFile = path.join(base, 'edit-request.json');
     fs.writeFileSync(requestFile, JSON.stringify({ version: 'v1', records: [p.replacement] }), { mode: 0o600 });
     const cli = JSON.parse(execFileSync(binary, ['change', 'preview', editRepo, '--request', requestFile, '--json'], { encoding: 'utf8' }));
@@ -409,8 +416,25 @@ async function editViews(browser) {
     await a.getByLabel('完整记录 JSON', { exact: true }).waitFor();
     assert(fs.readFileSync(file, 'utf8').includes('192.0.2.11') && git(['status', '--porcelain']) === '', 'browser restart recovery changed committed state');
     await a.screenshot({ path: path.join(base, 'edit-recovered.png'), fullPage: true });
+    fs.unlinkSync(path.join(editRepo, '.git/hooks/pre-commit'));
+    await prepare(a, '192.0.2.14');
+    let applyCalls = 0, statusCalls = 0;
+    await a.route('**/api/change/apply', async route => { applyCalls++; await route.fetch(); await route.abort('failed'); });
+    await a.route('**/api/change/status', async route => { statusCalls++; await route.continue(); });
+    await save(a);
+    await a.getByText(/请先检查事务状态，避免盲目重试/).waitFor();
+    assert(await a.getByRole('button', { name: '确认并提交到 Git', exact: true }).isDisabled(), 'uncertain submission can be resent');
+    await a.getByRole('button', { name: '检查事务状态并读取最新台账', exact: true }).click();
+    await a.getByLabel('完整记录 JSON', { exact: true }).waitFor();
+    assert(applyCalls === 1 && statusCalls > 0, 'lost reply did not require status read');
+    await a.unroute('**/api/change/apply'); await a.unroute('**/api/change/status');
+    // An unsafe number in the raw show response must never become a string in an editable record.
+    await a.route('**/api/show', async route => { const response = await route.fetch(); await route.fulfill({ response, body: (await response.text()).replace('{', '{"unsafe":9007199254740993,') }); });
+    await a.reload();
+    await a.getByText(/此数值超出浏览器精度，请通过 CLI 编辑/).waitFor();
+    assert(await a.getByLabel('完整记录 JSON', { exact: true }).count() === 0, 'unsafe numeric response became editable');
     await first.close(); await second.close(); await stop(app);
-    return { cli_web_byte_diff_equal: true, explicit_review_and_commit: true, stale_second_session_refused: true, hook_failure_restart_recovery: true, narrow_keyboard_flow: true };
+    return { cli_web_byte_diff_equal: true, explicit_review_and_commit: true, stale_second_session_refused: true, hook_failure_restart_recovery: true, narrow_keyboard_flow: true, changed_preview_invalidated: true, lost_reply_status_before_retry: true, unsafe_edit_number_rejected: true };
 }
 async function executionViews(browser) {
     const executionRepo = path.join(base, 'execution-ledger'), pluginDir = path.join(base, 'plugins');
@@ -514,6 +538,7 @@ async function main() {
         assert(Object.values(queries).every(q => q.status === 200 && q.version === 'v1'), 'native browser query failed');
         assert(queries.show.secrets_omitted, 'secret references visible');
         report.checks.views = await views(p1, local);
+        report.checks.assets = await assetViews(p1, local);
         report.checks.eight_native_browser_queries = queries;
         const second = await browser.newContext({ viewport: { width: 390, height: 844 } }), p2 = await second.newPage();
         await pair(p2, local);
