@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Button } from '@radix-ui/themes';
-import { query } from './api';
+import { ApiError, query } from './api';
 import type { ChangeStatus, ChangesResult, ExecutionIndex, ExecutionResult, ExecutionsResult } from './contracts';
 import { InventoryEditor } from './InventoryEditor';
 import { Raw, StatusBadge } from './InspectionSections';
@@ -25,12 +25,17 @@ export function ChangesPage({ scope, onScopeChange, onUnauthorized }: PageProps)
   const load = useCallback(async (signal: AbortSignal) => {
     const info = await query<ChangeStatus>('change/status', {}, signal);
     if (info.transaction.status === 'recovery_required') return { info };
+    const rethrow = (error: unknown): never => {
+      // Promise.all stops forwarding errors after its first rejection.
+      if (error instanceof ApiError && error.status === 401) onUnauthorized();
+      throw error;
+    };
     const [changes, executions] = await Promise.all([
-      query<ChangesResult>('changes', {}, signal),
-      !scope.key || scope.key.startsWith('Resource/') ? query<ExecutionsResult>('executions', scope.key ? { key: scope.key } : {}, signal) : Promise.resolve(undefined),
+      query<ChangesResult>('changes', {}, signal).catch(rethrow),
+      !scope.key || scope.key.startsWith('Resource/') ? query<ExecutionsResult>('executions', scope.key ? { key: scope.key } : {}, signal).catch(rethrow) : Promise.resolve(undefined),
     ]);
     return { info, changes, executions };
-  }, [scope.key]);
+  }, [scope.key, onUnauthorized]);
   const state = useQuery(`${scope.key}/${scope.days}/${scope.issue}/${refresh}`, load, onUnauthorized);
   const data = state.status === 'ready' ? state.data : undefined;
   const events = data?.changes?.changes.filter(event => (!scope.key || event.identity.key.target === scope.key) && (!scope.issue || event.identity.fingerprint + '/' + event.identity.scope_hash === scope.issue)).toReversed() ?? [];

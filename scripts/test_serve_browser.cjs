@@ -287,6 +287,18 @@ async function assetViews(page, entry) {
     }
     await page.getByRole('button', { name: '返回资产列表', exact: true }).click();
     assert(await page.getByRole('option', { name: /Domain\/example.net/ }).getAttribute('aria-selected') === 'true', 'narrow back lost selection');
+    const selected = page.getByRole('option', { name: /Domain\/example.net/ });
+    await selected.focus(); await page.keyboard.press('Enter');
+    await page.locator('.asset-detail').waitFor({ state: 'visible' });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+    const keyboardFocus = await page.evaluate(() => document.querySelector('.asset-detail').contains(document.activeElement));
+    await page.getByRole('button', { name: '返回资产列表', exact: true }).click();
+    await selected.click();
+    await page.locator('.asset-detail').waitFor({ state: 'visible' });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+    const pointerFocus = await page.evaluate(() => document.querySelector('.asset-detail').contains(document.activeElement));
+    assert(keyboardFocus && pointerFocus, 'narrow entry did not move focus into detail');
+    await page.getByRole('button', { name: '返回资产列表', exact: true }).click();
     await page.setViewportSize({ width: 1080, height: 800 });
     await page.getByRole('option', { name: /Domain\/example.net/ }).focus();
     await page.keyboard.press('ArrowDown');
@@ -337,6 +349,28 @@ async function assetViews(page, entry) {
         }
     }
     return { summary_batch: true, keyboard: true, outside_link: true, narrow_return: true, race_success_and_failure: true, fallback: true, unauthorized_clears: true, themes: true, csp: true };
+}
+async function concurrentAuthViews(page, entry) {
+    for (const [first, late] of [['changes', 'executions'], ['executions', 'changes']]) {
+        let release;
+        await page.route('**/api/' + first, route => route.fulfill({ status: 422, body: '{}' }));
+        await page.route('**/api/' + late, async route => {
+            await new Promise(resolve => release = resolve);
+            await route.fulfill({ status: 401, body: '{}' });
+        });
+        try {
+            await page.goto(entry.origin + '/changes');
+            await page.locator('#error').filter({ hasText: 'HTTP 422' }).waitFor();
+            for (let n = 0; n < 100 && !release; n++) await delay(10);
+            assert(release, 'parallel query not issued'); release();
+            await page.getByRole('link', { name: '重新连接工作台', exact: true }).waitFor({ timeout: 5000 });
+            assert(await page.getByRole('navigation', { name: '工作台', exact: true }).count() === 0, 'late 401 retained business root');
+        } finally {
+            release?.();
+            await page.unroute('**/api/' + first); await page.unroute('**/api/' + late);
+        }
+    }
+    return { late_401_after_ordinary_failure: true, both_parallel_orders: true };
 }
 async function editViews(browser) {
     const editRepo = path.join(base, 'edit-ledger');
@@ -539,6 +573,7 @@ async function main() {
         }, state1.data.csrf);
         assert(Object.values(queries).every(q => q.status === 200 && q.version === 'v1'), 'native browser query failed');
         assert(queries.show.secrets_omitted, 'secret references visible');
+        report.checks.concurrent_auth = await concurrentAuthViews(p1, local);
         report.checks.views = await views(p1, local);
         report.checks.assets = await assetViews(p1, local);
         report.checks.eight_native_browser_queries = queries;

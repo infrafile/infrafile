@@ -6,7 +6,7 @@ export function filterDirectory<T extends AssetDirectoryEntry>(rows: T[], filter
   const search = filters.search.trim().toLowerCase();
   return rows.filter(row => (!filters.kind || row.kind === filters.kind)
     && (filters.archived === 'all' || row.archived === (filters.archived === 'archived'))
-    && [row.key, row.name, ...Object.entries(row.labels ?? {}).flat()].join(' ').toLowerCase().includes(search));
+    && [row.key, row.name, ...Object.entries(row.labels ?? {}).map(([key, value]) => key + '=' + value)].join(' ').toLowerCase().includes(search));
 }
 export function assetStatus(row: AssetSummary): 'risk' | 'pending' | 'passed' {
   return row.risk.confirmed > 0 ? 'risk' : row.ok ? 'passed' : 'pending';

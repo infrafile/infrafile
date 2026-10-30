@@ -38,10 +38,10 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
   const updateFilters = (next: Partial<AssetFilters>) => { cause.current = 'filter'; setFilters(current => ({ ...current, ...next })); };
   const navigate = (key: string, enter = true) => {
     cause.current = 'link'; onScopeChange({ ...scope, key, issue: '' });
-    if (enter) { setDetailOpen(true); detail.current?.focus(); }
+    if (enter) enterDetail();
   };
   const outside = !!data && !!scope.key && !rows.some(row => row.key === scope.key);
-  const enterDetail = () => { setDetailOpen(true); detail.current?.focus(); };
+  const enterDetail = () => { setDetailOpen(true); requestAnimationFrame(() => detail.current?.focus()); };
   return <div className="app-shell">
     {renderSidebar(<div className="kind-nav" aria-label="资产类型"><p className="eyebrow">资产类型</p>{kinds.map(([kind, name]) => <button key={kind} className={filters.kind === kind ? 'active' : ''} aria-pressed={filters.kind === kind} onClick={() => updateFilters({ kind })}><span>{name}</span><span className="kind-code">{kind}</span></button>)}</div>)}
     <main id="workspace" tabIndex={-1} className={'assets-workspace' + (detailOpen ? ' show-detail' : '')}>

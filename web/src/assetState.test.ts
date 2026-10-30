@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AssetSummary } from './contracts';
-import { filterAssets, selectAsset, type AssetFilters } from './assetState';
+import { filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
 
 const filters: AssetFilters = { search: '', kind: '', archived: 'active', status: 'all' };
 const asset = (key: string, patch: Partial<AssetSummary> = {}): AssetSummary => ({
@@ -27,5 +27,11 @@ describe('asset selection', () => {
     expect(selectAsset(filtered, 'Server/b', 'filter').key).toBe('Server/b');
     expect(selectAsset([], 'Server/a', 'filter').key).toBe('');
     expect(selectAsset([], 'Domain/old', 'link').outside).toBe(true);
+  });
+  it('preserves key=value label search in summaries and directory fallback', () => {
+    const labeled = asset('Server/web', { labels: { env: 'production' } });
+    const selection = { ...filters, search: 'ENV=production' };
+    expect(filterAssets([labeled], selection)).toEqual([labeled]);
+    expect(filterDirectory([labeled], selection)).toEqual([labeled]);
   });
 });
