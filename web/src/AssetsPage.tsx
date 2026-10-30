@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Badge, Button, SegmentedControl, TextField } from '@radix-ui/themes';
 import { ApiError, query } from './api';
 import type { AssetDirectoryEntry, AssetSummaries, ExpiryReport, ListResult } from './contracts';
-import { assetChanges, assetStatus, defaultFilters, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
+import { assetChanges, assetStatus, categoryLabels, defaultFilters, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
 import { AssetDetail } from './AssetDetail';
 import { ScopeBar } from './ScopeBar';
 import { isAssetKey, type PageProps } from './scope';
@@ -64,7 +64,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
           <SegmentedControl.Item value="active">在用</SegmentedControl.Item><SegmentedControl.Item value="archived">已归档</SegmentedControl.Item><SegmentedControl.Item value="all">全部</SegmentedControl.Item>
         </SegmentedControl.Root>
         <SegmentedControl.Root aria-label="资产状态" size="1" disabled={!summaries} value={filters.status} onValueChange={status => updateFilters({ status: status as AssetFilters['status'] })}>
-          {[['all', '全部'], ['risk', '有风险'], ['pending', '待核实'], ['passed', '通过']].map(([value, name]) => <SegmentedControl.Item key={value} value={value}>{name}</SegmentedControl.Item>)}
+          {[['all', '全部'], ['risk', '有风险'], ['needs_attention', '需处理'], ['no_checks', '暂无检查'], ['passed', '通过']].map(([value, name]) => <SegmentedControl.Item key={value} value={value}>{name}</SegmentedControl.Item>)}
         </SegmentedControl.Root>
         <p role="status" className="sr-only">{announcement}</p>
         <div className="list-auto-read"><AutoReadStatus state={state.auto} /></div>
@@ -82,7 +82,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
               navigate(rows[next].key, false); list.current?.querySelectorAll<HTMLButtonElement>('[role=option]')[next]?.focus();
             }
           }}>
-          <span className="asset-row-top"><strong>{row.name}</strong>{summary ? <Badge color={status === 'risk' ? 'red' : status === 'passed' ? 'green' : 'amber'}>{status === 'risk' ? '有风险' : status === 'passed' ? '范围内通过' : '待核实'}</Badge> : <Badge color="gray">状态未读取</Badge>}</span>
+          <span className="asset-row-top"><strong>{row.name}</strong>{summary ? <Badge color={status === 'risk' ? 'red' : status === 'passed' ? 'green' : status === 'no_checks' ? 'gray' : 'amber'}>{categoryLabels[status!]}</Badge> : <Badge color="gray">状态未读取</Badge>}</span>
           <span className="asset-key">{row.key}{row.archived ? ' · 已归档' : ''}</span>
           {summary && <><span className="asset-reason">{summary.reason.message}</span><span className="asset-counts">风险 {summary.risk.confirmed} · 未知检查 {summary.coverage.unknown} · 未知发现 {summary.risk.unknown}</span></>}
         </button>;

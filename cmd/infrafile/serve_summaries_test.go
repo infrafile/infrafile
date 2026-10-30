@@ -37,6 +37,24 @@ func TestWorkbenchAssetSummariesBoundary(t *testing.T) {
 	}
 	for _, raw := range rows {
 		row := raw.(map[string]any)
+		switch row["category"] {
+		case "risk", "needs_attention", "no_checks", "passed":
+		default:
+			t.Fatal("missing/unknown category", row)
+		}
+		if hardware, ok := row["hardware"].(map[string]any); ok {
+			if row["kind"] != "Server" {
+				t.Fatal("non-server hardware")
+			}
+			for key, value := range hardware {
+				if key != "cpu" && key != "memory" && key != "disk" && key != "os" {
+					t.Fatal("hardware field outside allowlist", key)
+				}
+				if _, ok := value.(string); !ok {
+					t.Fatal("non-string hardware", key)
+				}
+			}
+		}
 		if _, ok := row["spec"]; ok {
 			t.Fatal("summary exposed spec")
 		}

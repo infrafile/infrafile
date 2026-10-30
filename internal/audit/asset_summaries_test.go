@@ -7,9 +7,72 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestSummaryCategory(t *testing.T) {
+	unsupported := Check{Status: "unknown", Code: "unsupported"}
+	for _, tc := range []struct {
+		name   string
+		report Inspection
+		want   string
+	}{
+		{"empty", Inspection{}, "no_checks"},
+		{"unsupported", Inspection{Coverage: InspectCoverage{Checks: []Check{unsupported}}}, "no_checks"},
+		{"all-na", Inspection{Coverage: InspectCoverage{Checks: []Check{{Status: "not_applicable", Code: "failed"}}}}, "no_checks"},
+		{"passed", Inspection{OK: true}, "passed"},
+		{"risk-before-unknown", Inspection{Risk: InspectRisk{Confirmed: 1, Unknown: 1}}, "risk"},
+		{"unknown-finding", Inspection{Risk: InspectRisk{Unknown: 1}, Coverage: InspectCoverage{Checks: []Check{unsupported}}}, "needs_attention"},
+		{"waived-not-passed", Inspection{Risk: InspectRisk{Waived: 1}}, "needs_attention"},
+		{"waived-passed", Inspection{OK: true, Risk: InspectRisk{Waived: 1}}, "passed"},
+		{"failed-execution", Inspection{Execution: []InspectExecution{{Status: "failed", Code: "failed"}}}, "needs_attention"},
+		{"mixed-checked", Inspection{Coverage: InspectCoverage{Checks: []Check{unsupported, {Status: "checked", Code: "checked"}}}}, "needs_attention"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := summaryCategory(&tc.report); got != tc.want {
+				t.Fatalf("got %s want %s", got, tc.want)
+			}
+		})
+	}
+	for _, code := range []string{"not_configured", "ambiguous_scope", "missing_relationship", "address_unknown", "identity_mismatch", "unverified", "future", "failed", "running", "ttl_unset", "stale", "incomplete", "not_baselined", "baseline_future", "observation_unknown", "not_observed", "new_unknown_code"} {
+		t.Run(code, func(t *testing.T) {
+			r := Inspection{Coverage: InspectCoverage{Checks: []Check{unsupported, {Status: "unknown", Code: code}}}}
+			if got := summaryCategory(&r); got != "needs_attention" {
+				t.Fatalf("unsupported concealed %s: %s", code, got)
+			}
+		})
+	}
+}
+
+func TestAssetSummaryHardwareAllowlist(t *testing.T) {
+	r := repo(t, "", map[string]string{
+		"inventory/servers/web.yaml": "apiVersion: infrafile/v1alpha1\nkind: Server\nmetadata: {name: web}\nspec:\n  address: 192.0.2.10\n  x-private: must-not-leak\n  hardware: {cpu: '4 cores', memory: '16 GiB', disk: '1 TB', os: Linux}\n",
+		"inventory/apps/blog.yaml":   "apiVersion: infrafile/v1alpha1\nkind: App\nmetadata: {name: blog}\nspec: {}\n",
+	})
+	got, err := SummarizeAssets(context.Background(), r, InspectOptions{Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range got.Rows {
+		if row.Category == "" {
+			t.Fatal("missing server category", row)
+		}
+		if row.Kind == "Server" {
+			want := map[string]string{"cpu": "4 cores", "memory": "16 GiB", "disk": "1 TB", "os": "Linux"}
+			if !reflect.DeepEqual(row.Hardware, want) {
+				t.Fatal(row.Hardware)
+			}
+		} else if len(row.Hardware) != 0 {
+			t.Fatal("non-server hardware", row)
+		}
+	}
+	data, _ := json.Marshal(got)
+	if strings.Contains(string(data), "192.0.2.10") || strings.Contains(string(data), "must-not-leak") {
+		t.Fatal("summary leaked full spec")
+	}
+}
 
 func TestAssetSummariesMatchSingleKey(t *testing.T) {
 	for _, name := range []string{"fresh", "risk-and-unknown", "failed", "stale", "boundary", "no-ttl", "waived", "all-na", "archived", "unconfigured"} {

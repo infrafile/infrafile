@@ -35,7 +35,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
         const response = await route.fetch();
         const body = await response.json();
         if (current === 'normal') timings.push({ assets: body.rows.length, milliseconds: performance.now() - started });
-        if (current === 'changed') { const row = body.rows.find(row => row.kind === 'Server' && !row.archived); row.name = 'changed-by-saved-observation'; row.risk.confirmed = 1; }
+        if (current === 'changed') { const row = body.rows.find(row => row.kind === 'Server' && !row.archived); row.name = 'changed-by-saved-observation'; row.risk.confirmed = 1; row.category = 'risk'; }
         if (current === 'late') body.rows[0].name = 'late-discarded-result';
         await route.fulfill({ response, json: body });
       } catch (error) { if (current !== 'late') throw error; }

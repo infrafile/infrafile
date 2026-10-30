@@ -41,6 +41,8 @@ type AssetSummary struct {
 	Labels    map[string]string  `json:"labels"`
 	Archived  bool               `json:"archived"`
 	OK        bool               `json:"ok"`
+	Category  string             `json:"category"`
+	Hardware  map[string]string  `json:"hardware,omitempty"`
 	Coverage  SummaryCoverage    `json:"coverage"`
 	Risk      SummaryRisk        `json:"risk"`
 	Execution []InspectExecution `json:"execution"`
@@ -71,8 +73,17 @@ func SummarizeAssets(ctx context.Context, repo *ledger.Repo, opts InspectOptions
 		}
 		report := i.report
 		row := AssetSummary{Key: key, Kind: record.Kind, Name: record.Name, Labels: map[string]string{}, Archived: record.Archived(), OK: report.OK,
+			Category: summaryCategory(report),
 			Coverage: SummaryCoverage{report.Coverage.Expected, report.Coverage.Checked, report.Coverage.Unknown, report.Coverage.NotApplicable},
 			Risk:     SummaryRisk{report.Risk.Confirmed, report.Risk.Unknown, report.Risk.Waived}, Execution: report.Execution, Reason: summaryReason(report), Evidence: []InspectEvidence{}}
+		if record.Kind == "Server" {
+			row.Hardware = map[string]string{}
+			for _, key := range []string{"cpu", "memory", "disk", "os"} {
+				if value, ok := field(field(field(record.Value, "spec"), "hardware"), key).(string); ok {
+					row.Hardware[key] = value
+				}
+			}
+		}
 		labels, _ := field(field(record.Value, "metadata"), "labels").(map[string]any)
 		for k, value := range labels {
 			if text, ok := value.(string); ok {
@@ -96,6 +107,29 @@ func SummarizeAssets(ctx context.Context, repo *ledger.Repo, opts InspectOptions
 		return nil, err
 	}
 	return result, nil
+}
+
+func summaryCategory(report *Inspection) string {
+	if report.Risk.Confirmed > 0 {
+		return "risk"
+	}
+	if report.OK {
+		return "passed"
+	}
+	if report.Risk.Unknown > 0 || report.Risk.Waived > 0 {
+		return "needs_attention"
+	}
+	for _, execution := range report.Execution {
+		if execution.Status != "succeeded" || execution.Code != "checked" {
+			return "needs_attention"
+		}
+	}
+	for _, check := range report.Coverage.Checks {
+		if check.Status != "not_applicable" && !(check.Status == "unknown" && check.Code == "unsupported") {
+			return "needs_attention"
+		}
+	}
+	return "no_checks"
 }
 
 func summaryReason(report *Inspection) SummaryReason {

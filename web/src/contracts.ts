@@ -8,9 +8,11 @@ export interface Execution {
 }
 export interface Coverage { expected: number; checked: number; unknown: number; not_applicable: number }
 export interface Risk { confirmed: number; unknown: number; waived: number }
+export type AssetCategory = 'risk' | 'needs_attention' | 'no_checks' | 'passed';
 export interface AssetSummary {
   key: string; kind: string; name: string; labels: Record<string, string> | null; archived: boolean; ok: boolean;
   coverage: Coverage; risk: Risk; execution: Execution[]; reason: { code: string; message: string }; evidence: Evidence[];
+  category: string; hardware?: Partial<Record<'cpu' | 'memory' | 'disk' | 'os', string>>;
 }
 export interface AssetSummaries { version: string; as_of: string; max_age_days: number | null; rows: AssetSummary[] }
 export type AssetDirectoryEntry = Pick<AssetSummary, 'key' | 'kind' | 'name' | 'labels' | 'archived'>;
