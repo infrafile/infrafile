@@ -81,6 +81,7 @@ pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--
 .notice, .error { margin: 12px 0; padding: 12px; border-radius: 5px; font-size: 12px; line-height: 1.6; background: var(--amber-3); color: var(--amber-12); overflow-wrap: anywhere; }
 .error { background: var(--red-3); color: var(--red-12); }
 .back-button { display: none; }
+.list-auto-read { display: none; }
 .page { padding: 30px 36px; overflow-y: auto; min-width: 0; }
 .page>h1 { margin-bottom: 18px; }
 .disconnected { padding: 12vh 10vw; }
@@ -94,6 +95,7 @@ pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--
 .login h1 { margin: 12px 0; }.login form { display: grid; gap: 10px; margin-top: 20px; }.login input,.login button { padding: 10px; border: 1px solid #c4cad2; border-radius: 6px; }.login button { background: #1664ce; color: white; }
 @media (max-width: 1000px) { .app-shell { grid-template-columns: 160px minmax(0, 1fr); }.assets-workspace { grid-template-columns: 275px minmax(0, 1fr); }.asset-detail { padding-inline: 20px; } }
 @media (max-width: 760px) {
+  .list-auto-read { display: block; }
   .diff-columns { grid-template-columns: 1fr; }
   .app-shell { display: flex; flex-direction: column; }
   .sidebar { flex-shrink: 0; padding: 10px 14px; display: grid; grid-template-columns: 1fr auto; gap: 9px; border-right: 0; border-bottom: 1px solid var(--gray-5); overflow: visible; }

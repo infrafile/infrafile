@@ -388,6 +388,7 @@ async function editViews(browser) {
     const first = await browser.newContext(), second = await browser.newContext();
     const a = await first.newPage(), b = await second.newPage();
     await pair(a, app); await pair(b, app);
+    const autoReadPreservesDraft = await require('../web/tests/auto-read-browser.cjs').edit(browser, app, { pair, assert });
     async function prepare(page, address) {
         const target = app.origin + '/changes#key=Server%2Fweb';
         if (page.url() === target) await page.getByRole('button', { name: '检查事务状态并读取最新台账', exact: true }).click();
@@ -453,7 +454,7 @@ async function editViews(browser) {
     await a.getByText(/此数值超出浏览器精度，请通过 CLI 编辑/).waitFor();
     assert(await a.getByLabel('完整记录 JSON', { exact: true }).count() === 0, 'unsafe numeric response became editable');
     await first.close(); await second.close(); await stop(app);
-    return { cli_web_byte_diff_equal: true, explicit_review_and_commit: true, stale_second_session_refused: true, hook_failure_restart_recovery: true, narrow_keyboard_flow: true, changed_preview_invalidated: true, lost_reply_status_before_retry: true, unsafe_edit_number_rejected: true };
+    return { cli_web_byte_diff_equal: true, explicit_review_and_commit: true, stale_second_session_refused: true, hook_failure_restart_recovery: true, narrow_keyboard_flow: true, changed_preview_invalidated: true, lost_reply_status_before_retry: true, unsafe_edit_number_rejected: true, automatic_read_preserves_draft: autoReadPreservesDraft };
 }
 async function executionViews(browser) {
     const executionRepo = path.join(base, 'execution-ledger'), pluginDir = path.join(base, 'plugins');
@@ -518,7 +519,7 @@ async function main() {
     assert(!fs.existsSync(path.join(repo, 'code')), 'pair material written into ledger');
     report.checks.unsafe_startup_refused = true;
     assert(['chromium', 'webkit'].includes(engine), 'unsupported browser engine');
-    assert(['csp', 'views', 'all', 'package'].includes(suite), 'unsupported browser suite');
+    assert(['csp', 'views', 'all', 'package', 'auto-read'].includes(suite), 'unsupported browser suite');
     const browser = await playwright[engine].launch({ headless: true, executablePath: process.env.INFRAFILE_BROWSER_EXECUTABLE || undefined });
     try {
         const local = await start('local');
@@ -533,6 +534,14 @@ async function main() {
         const unauth = await session(p1);
         assert(unauth.status === 401, 'unauthenticated API accepted');
         await pair(p1, local);
+        if (suite === 'auto-read') {
+            report.checks.auto_read = await require('../web/tests/auto-read-browser.cjs')(browser, local, { pair, base, assert });
+            report.checks.inventory_edit = await editViews(browser);
+            assert(isDeepStrictEqual(before, files(repo)), 'automatic reread modified ledger');
+            fs.writeFileSync(path.join(base, 'evidence.json'), JSON.stringify(report, null, 2));
+            console.log(JSON.stringify({ evidence: path.join(base, 'evidence.json'), checks: report.checks }));
+            return;
+        }
         if (suite === 'package') {
             for (const [route, title] of [['assets', '登记期望'], ['inspections', '已保存的问题历史'], ['changes', '问题变化时间线']]) {
                 await p1.goto(local.origin + '/' + route);
@@ -576,6 +585,7 @@ async function main() {
         report.checks.concurrent_auth = await concurrentAuthViews(p1, local);
         report.checks.views = await views(p1, local);
         report.checks.assets = await assetViews(p1, local);
+        report.checks.auto_read = await require('../web/tests/auto-read-browser.cjs')(browser, local, { pair, base, assert });
         report.checks.eight_native_browser_queries = queries;
         const second = await browser.newContext({ viewport: { width: 390, height: 844 } }), p2 = await second.newPage();
         await pair(p2, local);
