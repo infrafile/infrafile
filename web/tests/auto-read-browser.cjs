@@ -6,8 +6,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
   const page = await context.newPage();
   page.setDefaultTimeout(5000);
   try {
-    await page.clock.install();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(Date.now());
     const sameReportTime = new Date(Date.now() - 60000).toISOString().replace(/\.\d{3}Z$/, 'Z');
     for (const name of ['asset-summaries', 'context']) await page.route('**/api/' + name, async route => {
       const response = await route.fetch(), body = await response.json();
@@ -182,8 +181,7 @@ module.exports.edit = async function autoReadEditor(browser, entry, { pair, asse
   const context = await browser.newContext();
   const page = await context.newPage();
   try {
-    await page.clock.install();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(Date.now());
     await pair(page, entry);
     await page.goto(entry.origin + '/changes#key=Server%2Fweb');
     const editor = page.getByLabel('完整记录 JSON', { exact: true });

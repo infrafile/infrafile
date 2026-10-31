@@ -6,8 +6,7 @@ module.exports = async function overviewViews(browser, entry, { pair, base, asse
   const page = await context.newPage(); page.setDefaultTimeout(5000);
   try {
     await page.addInitScript(() => { globalThis.overviewCSP = []; document.addEventListener('securitypolicyviolation', event => globalThis.overviewCSP.push({ directive: event.violatedDirective, tag: event.target?.tagName })); });
-    await page.clock.install();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(Date.now());
     let calls = [], many = false, changed = false, summaryFailure = false;
     page.on('request', request => { const name = request.url().split('/api/')[1]; if (name) calls.push(name); });
     await page.route('**/api/asset-summaries', async route => {
