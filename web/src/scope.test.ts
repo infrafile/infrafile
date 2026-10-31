@@ -17,3 +17,8 @@ it('only carries global instance targets into changes, not asset-scoped APIs', (
   expect(pageURL('inspections', scope)).toBe('/inspections#days=7');
   expect(pageURL('changes', scope)).toBe('/changes#days=7&key=dns%2Fpublic');
 });
+it('carries server category filters into assets and preserves old fragments', () => {
+  expect(readScope('#days=7&category=no_checks')).toEqual({ key: '', days: 7, issue: '', category: 'no_checks' });
+  expect(pageURL('assets', { key: '', days: 7, issue: '', category: 'needs_attention' })).toBe('/assets#days=7&category=needs_attention');
+  expect(() => readScope('#category=unknown')).toThrow('资产分类');
+});

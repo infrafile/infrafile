@@ -249,7 +249,7 @@ async function assetViews(page, entry) {
     });
     await page.addInitScript(() => {
         globalThis.__violations = [];
-        document.addEventListener('securitypolicyviolation', event => globalThis.__violations.push({ directive: event.violatedDirective, blocked: event.blockedURI, source: event.sourceFile, line: event.lineNumber }));
+        document.addEventListener('securitypolicyviolation', event => globalThis.__violations.push({ directive: event.violatedDirective, blocked: event.blockedURI, source: event.sourceFile, line: event.lineNumber, target: event.target instanceof Element ? event.target.outerHTML : String(event.target) }));
     });
     await page.goto(entry.origin + '/assets');
     await page.getByRole('heading', { name: '资产目录', exact: true }).waitFor();
@@ -519,7 +519,7 @@ async function main() {
     assert(!fs.existsSync(path.join(repo, 'code')), 'pair material written into ledger');
     report.checks.unsafe_startup_refused = true;
     assert(['chromium', 'webkit'].includes(engine), 'unsupported browser engine');
-    assert(['csp', 'views', 'all', 'package', 'auto-read'].includes(suite), 'unsupported browser suite');
+    assert(['csp', 'views', 'all', 'package', 'auto-read', 'overview'].includes(suite), 'unsupported browser suite');
     const browser = await playwright[engine].launch({ headless: true, executablePath: process.env.INFRAFILE_BROWSER_EXECUTABLE || undefined });
     try {
         const local = await start('local');
@@ -534,6 +534,13 @@ async function main() {
         const unauth = await session(p1);
         assert(unauth.status === 401, 'unauthenticated API accepted');
         await pair(p1, local);
+        if (suite === 'overview') {
+            report.checks.overview = await require('../web/tests/overview-browser.cjs')(browser, local, { pair, base, assert });
+            assert(isDeepStrictEqual(before, files(repo)), 'overview modified ledger');
+            fs.writeFileSync(path.join(base, 'evidence.json'), JSON.stringify(report, null, 2));
+            console.log(JSON.stringify({ evidence: path.join(base, 'evidence.json'), checks: report.checks }));
+            return;
+        }
         if (suite === 'auto-read') {
             report.checks.auto_read = await require('../web/tests/auto-read-browser.cjs')(browser, local, { pair, base, assert });
             report.checks.inventory_edit = await editViews(browser);
@@ -543,13 +550,13 @@ async function main() {
             return;
         }
         if (suite === 'package') {
-            for (const [route, title] of [['assets', '登记期望'], ['inspections', '已保存的问题历史'], ['changes', '问题变化时间线']]) {
+            for (const [route, title] of [['overview', '服务器配置'], ['assets', '登记期望'], ['inspections', '已保存的问题历史'], ['changes', '问题变化时间线']]) {
                 await p1.goto(local.origin + '/' + route);
                 await p1.getByRole('heading', { name: title, exact: true }).waitFor();
             }
             assert(externalRequests.length === 0, 'package requested external resources');
             assert(isDeepStrictEqual(before, files(repo)), 'package query modified ledger');
-            report.checks.package = { three_pages: true, external_network_blocked: true, runtime_path_has_no_node: true };
+            report.checks.package = { four_pages: true, external_network_blocked: true, runtime_path_has_no_node: true };
             fs.writeFileSync(path.join(base, 'evidence.json'), JSON.stringify(report, null, 2));
             console.log(JSON.stringify({ evidence: path.join(base, 'evidence.json'), checks: report.checks }));
             return;
@@ -586,6 +593,9 @@ async function main() {
         report.checks.views = await views(p1, local);
         report.checks.assets = await assetViews(p1, local);
         report.checks.auto_read = await require('../web/tests/auto-read-browser.cjs')(browser, local, { pair, base, assert });
+        const overview = await start('overview');
+        report.checks.overview = await require('../web/tests/overview-browser.cjs')(browser, overview, { pair, base, assert });
+        await stop(overview);
         report.checks.eight_native_browser_queries = queries;
         const second = await browser.newContext({ viewport: { width: 390, height: 844 } }), p2 = await second.newPage();
         await pair(p2, local);

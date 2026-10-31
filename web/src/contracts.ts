@@ -8,15 +8,25 @@ export interface Execution {
 }
 export interface Coverage { expected: number; checked: number; unknown: number; not_applicable: number }
 export interface Risk { confirmed: number; unknown: number; waived: number }
+export type AssetCategory = 'risk' | 'needs_attention' | 'no_checks' | 'passed';
 export interface AssetSummary {
   key: string; kind: string; name: string; labels: Record<string, string> | null; archived: boolean; ok: boolean;
   coverage: Coverage; risk: Risk; execution: Execution[]; reason: { code: string; message: string }; evidence: Evidence[];
+  category: string; hardware?: Partial<Record<'cpu' | 'memory' | 'disk' | 'os', string>>;
 }
 export interface AssetSummaries { version: string; as_of: string; max_age_days: number | null; rows: AssetSummary[] }
 export type AssetDirectoryEntry = Pick<AssetSummary, 'key' | 'kind' | 'name' | 'labels' | 'archived'>;
 export interface ListResult { version: string; records: AssetDirectoryEntry[] }
 export interface ExpiryEntry { kind: string; name: string; file: string; expires_at: string; days_left: number }
 export interface ExpiryReport { version: string; ok: boolean; as_of: string; within_days: number; entries: ExpiryEntry[] }
+export interface CertificateEntry {
+  host: string; port: number; apps: string[]; not_after: string | null; days_left: number | null;
+  verified: boolean | null; verification: string | null; observed_at: string | null; stale: boolean; data_state: string; expiry_state: string;
+}
+export interface CertificatesReport {
+  version: string; as_of: string; max_age_days: number; has_snapshots: boolean; message: string;
+  groups: { app: string; ownership: string; certificates: CertificateEntry[] }[]; uncollected: CertificateEntry[];
+}
 export interface Check {
   id: string; rule: string; target: string; plugin: string; instance: string; service: string; aspect: string;
   status: string; code: string; message: string; evidence: Evidence[];

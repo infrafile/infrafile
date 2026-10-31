@@ -6,7 +6,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
   const page = await context.newPage();
   page.setDefaultTimeout(5000);
   try {
-    await page.clock.install();
+    await page.clock.pauseAt(Date.now());
     const sameReportTime = new Date(Date.now() - 60000).toISOString().replace(/\.\d{3}Z$/, 'Z');
     for (const name of ['asset-summaries', 'context']) await page.route('**/api/' + name, async route => {
       const response = await route.fetch(), body = await response.json();
@@ -14,13 +14,13 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
       await route.fulfill({ response, json: body });
     });
     await pair(page, entry);
+    await page.goto(entry.origin + '/assets');
     await page.getByRole('heading', { name: '登记期望', exact: true }).waitFor();
     assert(await page.getByText('摘要有更新的结果。', { exact: false }).count() === 0, 'initial reports with the same server timestamp must not show a newer-summary warning');
     await page.unroute('**/api/asset-summaries'); await page.unroute('**/api/context');
     const toggle = page.getByRole('checkbox', { name: '自动重读（60 秒）', exact: true });
     const status = page.locator('[data-auto-read]:visible');
     assert(await toggle.isChecked(), 'automatic rereading is not enabled by default');
-    await page.clock.pauseAt(new Date());
     let mode = 'normal', expiryFailure = false, summaries = 0, expiries = 0, contexts = 0, active = 0, maximum = 0;
     const timings = [];
     let release, lateSettled;
@@ -35,7 +35,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
         const response = await route.fetch();
         const body = await response.json();
         if (current === 'normal') timings.push({ assets: body.rows.length, milliseconds: performance.now() - started });
-        if (current === 'changed') { const row = body.rows.find(row => row.kind === 'Server' && !row.archived); row.name = 'changed-by-saved-observation'; row.risk.confirmed = 1; }
+        if (current === 'changed') { const row = body.rows.find(row => row.kind === 'Server' && !row.archived); row.name = 'changed-by-saved-observation'; row.risk.confirmed = 1; row.category = 'risk'; }
         if (current === 'late') body.rows[0].name = 'late-discarded-result';
         await route.fulfill({ response, json: body });
       } catch (error) { if (current !== 'late') throw error; }
@@ -172,6 +172,7 @@ module.exports = async function autoReadViews(browser, entry, { pair, base, asse
     fs.writeFileSync(path.join(base, 'auto-read-timings.json'), JSON.stringify(timings, null, 2));
     return { interval: true, serial_reads: true, focus_visibility: true, disabled_pauses: true, deferred_updates: true, selection_detail_focus_scroll_preserved: true, failures_and_recovery: true, expiry_failure_preserves: true, scope_cancels_old_request: true, three_pages: true, manual_failure_clears: true, unauthorized_clears: true, summary_timings: timings };
   } finally {
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
     await context.close();
   }
 };
@@ -180,12 +181,11 @@ module.exports.edit = async function autoReadEditor(browser, entry, { pair, asse
   const context = await browser.newContext();
   const page = await context.newPage();
   try {
-    await page.clock.install();
+    await page.clock.pauseAt(Date.now());
     await pair(page, entry);
     await page.goto(entry.origin + '/changes#key=Server%2Fweb');
     const editor = page.getByLabel('完整记录 JSON', { exact: true });
     await editor.waitFor();
-    await page.clock.pauseAt(new Date());
     const record = JSON.parse(await editor.inputValue()); record.spec.address = '192.0.2.99';
     const draft = JSON.stringify(record, null, 2);
     await editor.fill(draft);

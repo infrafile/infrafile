@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Badge, Button, SegmentedControl, TextField } from '@radix-ui/themes';
 import { ApiError, query } from './api';
 import type { AssetDirectoryEntry, AssetSummaries, ExpiryReport, ListResult } from './contracts';
-import { assetChanges, assetStatus, defaultFilters, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
+import { assetChanges, assetStatus, categoryLabels, defaultFilters, filterAssets, filterDirectory, selectAsset, type AssetFilters } from './assetState';
 import { AssetDetail } from './AssetDetail';
 import { ScopeBar } from './ScopeBar';
 import { isAssetKey, type PageProps } from './scope';
@@ -16,7 +16,7 @@ const directoryRows = (value: Directory) => value.mode === 'complete' ? value.su
 const directoryChanges = (previous: Directory, next: Directory) => assetChanges(directoryRows(previous), directoryRows(next)) || (JSON.stringify(previous.expiry) === JSON.stringify(next.expiry) ? 0 : 1);
 const kinds = [['', '全部资产'], ['Server', '服务器'], ['Domain', '域名'], ['Resource', '资源'], ['App', '应用'], ['Repo', '代码仓'], ['Account', '账号']];
 export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar }: PageProps & { renderSidebar: (children: ReactNode) => ReactNode }) {
-  const [filters, setFilters] = useState<AssetFilters>(defaultFilters), [refresh, setRefresh] = useState(0);
+  const [filters, setFilters] = useState<AssetFilters>(() => ({ ...defaultFilters, status: scope.category ?? 'all' })), [refresh, setRefresh] = useState(0);
   const [announcement, setAnnouncement] = useState(''), [detailOpen, setDetailOpen] = useState(!!scope.key);
   const list = useRef<HTMLDivElement>(null), detail = useRef<HTMLElement>(null), cause = useRef<'initial' | 'filter' | 'link'>(scope.key ? 'link' : 'initial');
   const load = useCallback(async (signal: AbortSignal, automatic = false): Promise<Directory> => {
@@ -39,6 +39,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
   const data = state.status === 'ready' ? state.data : undefined;
   const rows = useMemo(() => !data ? [] : data.mode === 'complete' ? filterAssets(data.summary.rows, filters) : filterDirectory(data.rows, filters), [data, filters]);
   const summaries = data?.mode === 'complete' ? new Map(data.summary.rows.map(row => [row.key, row])) : undefined;
+  useEffect(() => { setFilters(current => ({ ...current, status: scope.category ?? 'all' })); }, [scope.category]);
   useEffect(() => {
     if (!data) return;
     const selected = selectAsset(rows, scope.key, cause.current);
@@ -48,7 +49,10 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
       setAnnouncement(selected.key ? '已选择 ' + selected.key : '没有符合筛选条件的资产。');
     }
   }, [data, rows, scope, onScopeChange]);
-  const updateFilters = (next: Partial<AssetFilters>) => { cause.current = 'filter'; setFilters(current => ({ ...current, ...next })); };
+  const updateFilters = (next: Partial<AssetFilters>) => {
+    cause.current = 'filter'; setFilters(current => ({ ...current, ...next }));
+    if (next.status) onScopeChange({ ...scope, category: next.status === 'all' ? undefined : next.status });
+  };
   const navigate = (key: string, enter = true) => {
     cause.current = 'link'; onScopeChange({ ...scope, key, issue: '' });
     if (enter) enterDetail();
@@ -63,9 +67,9 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
         <SegmentedControl.Root aria-label="归档状态" size="1" value={filters.archived} onValueChange={archived => updateFilters({ archived: archived as AssetFilters['archived'] })}>
           <SegmentedControl.Item value="active">在用</SegmentedControl.Item><SegmentedControl.Item value="archived">已归档</SegmentedControl.Item><SegmentedControl.Item value="all">全部</SegmentedControl.Item>
         </SegmentedControl.Root>
-        <SegmentedControl.Root aria-label="资产状态" size="1" disabled={!summaries} value={filters.status} onValueChange={status => updateFilters({ status: status as AssetFilters['status'] })}>
-          {[['all', '全部'], ['risk', '有风险'], ['pending', '待核实'], ['passed', '通过']].map(([value, name]) => <SegmentedControl.Item key={value} value={value}>{name}</SegmentedControl.Item>)}
-        </SegmentedControl.Root>
+        <fieldset className="asset-status" disabled={!summaries}><legend>资产状态</legend>
+          {[['all', '全部'], ['risk', '有风险'], ['needs_attention', '需处理'], ['no_checks', '暂无检查'], ['passed', '通过']].map(([value, name]) => <label key={value}><input type="radio" name="asset-status" value={value} checked={filters.status === value} onChange={() => updateFilters({ status: value as AssetFilters['status'] })} />{name}</label>)}
+        </fieldset>
         <p role="status" className="sr-only">{announcement}</p>
         <div className="list-auto-read"><AutoReadStatus state={state.auto} /></div>
       </div>
@@ -82,7 +86,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
               navigate(rows[next].key, false); list.current?.querySelectorAll<HTMLButtonElement>('[role=option]')[next]?.focus();
             }
           }}>
-          <span className="asset-row-top"><strong>{row.name}</strong>{summary ? <Badge color={status === 'risk' ? 'red' : status === 'passed' ? 'green' : 'amber'}>{status === 'risk' ? '有风险' : status === 'passed' ? '范围内通过' : '待核实'}</Badge> : <Badge color="gray">状态未读取</Badge>}</span>
+          <span className="asset-row-top"><strong>{row.name}</strong>{summary ? <Badge color={status === 'risk' ? 'red' : status === 'passed' ? 'green' : status === 'no_checks' ? 'gray' : 'amber'}>{categoryLabels[status!]}</Badge> : <Badge color="gray">状态未读取</Badge>}</span>
           <span className="asset-key">{row.key}{row.archived ? ' · 已归档' : ''}</span>
           {summary && <><span className="asset-reason">{summary.reason.message}</span><span className="asset-counts">风险 {summary.risk.confirmed} · 未知检查 {summary.coverage.unknown} · 未知发现 {summary.risk.unknown}</span></>}
         </button>;
@@ -93,7 +97,7 @@ export function AssetsPage({ scope, onScopeChange, onUnauthorized, renderSidebar
       <section className="asset-detail" ref={detail} tabIndex={-1} aria-label="资产详情">
         <div className="detail-toolbar"><Button className="back-button" size="1" variant="soft" onClick={() => { setDetailOpen(false); requestAnimationFrame(() => list.current?.querySelector<HTMLButtonElement>('[aria-selected=true]')?.focus({ preventScroll: true })); }}>返回资产列表</Button><ScopeBar scope={scope} onScopeChange={onScopeChange} onRefresh={() => setRefresh(value => value + 1)} /></div>
         <AutoReadStatus state={state.auto} />
-        {outside && <div className="notice"><span>此资产不在当前筛选范围内。</span> <Button size="1" variant="soft" onClick={() => { cause.current = 'link'; setFilters({ ...defaultFilters, archived: 'all' }); }}>清除筛选</Button></div>}
+        {outside && <div className="notice"><span>此资产不在当前筛选范围内。</span> <Button size="1" variant="soft" onClick={() => { cause.current = 'link'; setFilters({ ...defaultFilters, archived: 'all' }); onScopeChange({ ...scope, category: undefined }); }}>清除筛选</Button></div>}
         {scope.key && isAssetKey(scope.key) ? data ? <AssetDetail key={`${scope.key}/${scope.days}/${refresh}`} assetKey={scope.key} days={scope.days} expiry={data.expiry} summaryReadAt={data.mode === 'complete' ? data.summary.as_of : null} directory={directoryRows(data)} onNavigate={navigate} onUnauthorized={onUnauthorized} /> : <p className="empty">正在读取资产目录…</p> : <p className="empty">{scope.key ? '此目标不是资产，请前往巡检或变更查看。' : '选择资产查看风险与证据。'}</p>}
       </section>
     </main>
