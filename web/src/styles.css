@@ -78,8 +78,8 @@ summary { cursor: pointer; }
 pre { background: var(--gray-2); color: var(--gray-11); border: 1px solid var(--gray-5); border-radius: 5px; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.7 ui-monospace, SFMono-Regular, monospace; max-width: 100%; }
 .empty { color: var(--gray-11); padding: 20px 0; font-size: 13px; }
 .asset-list>.empty { padding: 20px; }
-.notice, .error { margin: 12px 0; padding: 12px; border-radius: 5px; font-size: 12px; line-height: 1.6; background: var(--amber-3); color: var(--amber-11); overflow-wrap: anywhere; }
-.error { background: var(--red-3); color: var(--red-11); }
+.notice, .error { margin: 12px 0; padding: 12px; border-radius: 5px; font-size: 12px; line-height: 1.6; background: var(--amber-3); color: var(--amber-12); overflow-wrap: anywhere; }
+.error { background: var(--red-3); color: var(--red-12); }
 .back-button { display: none; }
 .page { padding: 30px 36px; overflow-y: auto; min-width: 0; }
 .page>h1 { margin-bottom: 18px; }
