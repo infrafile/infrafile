@@ -48,7 +48,7 @@ gh release edit v1.0.0-rc.1 --repo infrafile/infrafile --draft=false --prereleas
 
 RC 不更新稳定 Homebrew tap，也不替换用户现有的 v0.3.0 安装。在独立目录运行已验签的 macOS arm64 / Linux amd64 归档，供 T17 独立上手和 T19 升级/恢复验收。formula 仍作为同批签名附件生成并核对 URL/哈希，稳定 tap 等正式发布门槛通过后再更新。
 
-候选已知限制：外部非维护者独立试用、14 个真实日历日的持续运行、正式范围切换及完整客户端受控场景尚待逐项验收；Windows 的新持久执行拒绝运行，其他未做原生验收的平台仅承诺构建产物。RC1 升级/恢复结果见下方完成记录。自有台账的控制面/DNS 结果不证明 HTTP/TLS/应用健康。详细门槛仍由[验收清单](plan/v1.0-acceptance.md)及工作包 issue 维护，RC 公开不表示 v1.0 完成。
+候选已知限制：完整通知送达、外部非维护者独立试用、14 个真实日历日的持续运行及正式范围切换尚待逐项验收；Windows 的新持久执行拒绝运行，其他未做原生验收的平台仅承诺构建产物。各候选的升级/恢复结果见下方完成记录。自有台账的控制面/DNS 结果不证明 HTTP/TLS/应用健康。详细门槛仍由[验收清单](plan/v1.0-acceptance.md)及工作包 issue 维护，RC 公开不表示 v1.0 完成。
 
 ## 验签
 
@@ -97,6 +97,19 @@ ifl version --json
 ```
 
 Homebrew 要求信任时，审阅配方后只信任这一 formula：`brew trust --formula infrafile/tap/infrafile`，见 [Tap Trust](https://docs.brew.sh/Tap-Trust)。升级已有安装使用 `brew update`、`brew upgrade infrafile/tap/infrafile`。最后按[快速上手](quickstart.md)跑完临时 homelab 流程，才能把“签名产物已发布”与“包管理器安装可用”两项都记为完成。
+
+## v1.0.0-rc.2 候选发布验收
+
+2026-10-31（北京时间）已公开[第二个签名预发布候选](https://github.com/infrafile/infrafile/releases/tag/v1.0.0-rc.2)，tag 固定在 `1c21b9155917bdf64efd82158d7cbb9e4420dd8c`。稳定 Latest 和稳定 Homebrew tap 继续为 v0.3.0；没有调整通知渠道或正式发布门槛。
+
+RC2 包含 RC1 之后的 MCP 单次查询固定代次、React/Radix 工作台、总览与服务端资产分类、保存结果自动重读、证书元数据和登记到期展示，以及文字对比度修复。读取已保存结果不触发采集，未检查与 unknown 不代表健康；候选契约以 RC2 tag 内文档为准。
+
+- [精确提交 CI](https://github.com/infrafile/infrafile/actions/runs/41148983694)及[正式构建/签名工作流](https://github.com/infrafile/infrafile/actions/runs/41201616421)成功。10 个附件齐全，两份 Cosign bundle 均核对本仓 `release.yml@refs/tags/v1.0.0-rc.2` 身份及 GitHub Actions issuer；六归档哈希、必需文档/示例/脚本和配方逐字节重生成通过。该记录针对正式签名产物，不沿用前一轮未签名 snapshot。
+- macOS arm64 与原生 Linux amd64 使用已验签的 v0.3.0、RC1、RC2 二进制完成安装/升级/别名、离线上手、旧七个 MCP 工具契约与调用、RC1 历史读取、重复刷新无新增事件、损坏历史拒绝、钩子失败后新进程恢复和重新审阅后提交。两平台各 35 个旧夹具文件未被升级查询改写；40 项 unknown 保持，回退在独立目录进行，升级后新修改保留。Linux 只收到公开归档与虚构夹具，临时目录已清理。
+- 独立 Homebrew 前缀使用字节一致的签名配方，完成 v0.3.0 安装、RC1/RC2 实际 `brew upgrade`、每版 `brew test` 和 `infrafile`/`ifl` 同一二进制验证。初始归档来自已验签下载并预填缓存；RC2 公开后另行强制从发布 URL 下载，哈希与签名清单相同。安装二进制与 macOS 归档哈希一致，系统前缀与稳定 tap 未修改。自定义前缀仅作隔离验收，不是推荐的 Homebrew 部署位置。
+- 签名 macOS RC2 通过 Chromium/WebKit 完整工作台流程，包含总览/自动重读、主题/窄屏、认证撤销/HTTPS、编辑失败恢复和执行回执。Homebrew 安装程序在服务进程 PATH 无 Node、浏览器禁止外部资源请求时，四个页面均可用。测试使用虚构数据，不执行真实云写或发送通知。
+
+只有 macOS arm64 / Linux amd64 在本轮原生运行；另外四个平台仅验证构建/归档/哈希，Windows 持久写入边界保持。RC2 可用于后续独立试用，T20 的正式发布部分仍开放：T10 通知送达暂缓，T17 尚无独立非维护者参与者，T18 真实 14 日、两次周采集及正式范围切换继续分别验收。后续正式版须重新核对其精确提交、签名、安装/升级与稳定 tap，不由本次 RC 验收自动通过。
 
 ## v1.0.0-rc.1 候选发布验收
 
