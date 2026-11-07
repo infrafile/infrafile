@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 在临时副本运行快速上手；只使用虚构示例和内置 example 插件。
 set -euo pipefail
+umask 077
 binary="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 example="$(cd "$2" && pwd)"
 work="$(mktemp -d)"
@@ -58,6 +59,58 @@ test ! -e "$v1/history"
 "$binary" findings list "$v1" --json > "$work/history.json"
 "$binary" findings changes "$v1" --after 0 --json > "$work/changes.json"
 "$binary" inspect "$v1" --max-age 7d --json > "$work/inspect-history.json"
+
+# Exercise the reviewed import path in a fresh Git ledger, using no SSH connection.
+edit="$work/edit"
+"$binary" init "$edit"
+printf '\nstorageVersion: v1\n' >> "$edit/infrafile.yaml"
+git -C "$edit" init -q -b main
+git -C "$edit" config user.name 'Infrafile Smoke'
+git -C "$edit" config user.email 'smoke@example.com'
+git -C "$edit" config commit.gpgSign false
+git -C "$edit" add .
+git -C "$edit" commit -q -s -m 'Initialize smoke ledger'
+before="$(git -C "$edit" rev-parse HEAD)"
+cat > "$work/ssh-source.conf" <<'EOF'
+Host smoke-web
+    HostName 192.0.2.10
+    User ops
+    Port 22
+EOF
+"$binary" import ssh-config --dir "$edit" --file "$work/ssh-source.conf" \
+  --draft "$work/ssh-draft.json" --json > "$work/ssh-draft-report.json"
+python3 - "$work/ssh-draft.json" <<'PY'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+draft = json.loads(path.read_text())
+assert len(draft['candidates']) == 1
+draft['candidates'][0]['record']['metadata']['description'] = 'Reviewed smoke import'
+path.write_text(json.dumps(draft) + '\n')
+PY
+"$binary" import review "$work/ssh-draft.json" --dir "$edit" --file "$work/ssh-source.conf" \
+  --json > "$work/ssh-review.json"
+"$binary" change preview "$edit" --draft "$work/ssh-draft.json" --source-file "$work/ssh-source.conf" \
+  --out "$work/edit-preview.json" --json > "$work/edit-preview-output.json"
+test "$(git -C "$edit" rev-parse HEAD)" = "$before"
+test -z "$(git -C "$edit" status --porcelain)"
+if "$binary" change apply "$work/edit-preview.json" "$edit" --digest invalid --json \
+  > "$work/edit-rejected.json" 2> "$work/edit-rejected.stderr"; then
+  echo 'unreviewed digest was accepted' >&2
+  exit 1
+else
+  test "$?" -eq 2
+fi
+test "$(git -C "$edit" rev-parse HEAD)" = "$before"
+test -z "$(git -C "$edit" status --porcelain)"
+digest="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["digest"])' "$work/edit-preview.json")"
+"$binary" change apply "$work/edit-preview.json" "$edit" --digest "$digest" --json > "$work/edit-applied.json"
+"$binary" change status "$edit" --json > "$work/edit-status.json"
+"$binary" show Server/smoke-web "$edit" --json > "$work/edit-server.json"
+"$binary" import ssh-config --dir "$edit" --file "$work/ssh-source.conf" \
+  --draft "$work/ssh-repeat.json" --json > "$work/ssh-repeat-report.json"
+test "$(git -C "$edit" rev-list --count HEAD)" -eq 2
+test -z "$(git -C "$edit" status --porcelain)"
+git -C "$edit" log -1 --format=%B > "$work/edit-commit.txt"
 python3 - "$work" <<'PY'
 import datetime, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
@@ -106,5 +159,12 @@ assert read('changes.json')['changes'] == first['changes']
 after = read('inspect-history.json')
 assert after['history']['input_hash'] == history['history']['data']['input_hash']
 assert after['coverage'] == inspection['coverage'] and not after['ok']
+assert read('ssh-review.json')['ok']
+assert read('edit-preview.json') == read('edit-preview-output.json')
+assert read('edit-applied.json')['status'] == 'committed'
+assert read('edit-status.json')['status'] == 'clean'
+assert read('edit-server.json')['record']['metadata']['description'] == 'Reviewed smoke import'
+assert read('ssh-repeat-report.json')['records'][0]['status'] == 'exists'
+assert 'Signed-off-by: Infrafile Smoke <smoke@example.com>' in (root / 'edit-commit.txt').read_text()
 print('quickstart smoke passed')
 PY

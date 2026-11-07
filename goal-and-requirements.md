@@ -36,4 +36,4 @@ infrafile 面向个人和小团队，以 Git 仓库中的明文 YAML 管理基�
 
 ## 能力边界
 
-当前入口为 CLI 和本地 stdio MCP；`serve` 尚未实现，其已记录的设计约束保留在 `infrafile-architecture`，不作为当前能力。首次整理没有扩大产品范围；具体协议、证据资格和已验证范围由架构及各模块 spec 记录。
+稳定 v0.3.0 的入口为 CLI 和本地 stdio MCP；v1.0 RC2 已交付 `serve` 单用户工作台、共享台账变更、覆盖报告、问题历史与 Agent 上下文。候选版的安装和完整接入见[RC 独立接入](docs/rc-onboarding.md)，正式版仍受[验收门槛](docs/plan/v1.0-acceptance.md)约束。具体协议、证据资格和已验证范围由架构及各模块 spec 记录。

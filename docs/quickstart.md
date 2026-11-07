@@ -2,6 +2,8 @@
 
 这套流程只使用随包提供的虚构 homelab，不需要云账号、密钥或 1Password，也不连接实际服务器。
 
+试用 v1.0 候选版的工作台、审阅提交与真实 Cloudflare 只读接入，请继续使用 [RC 独立接入流程](rc-onboarding.md)。稳定 Homebrew 配方仍为 v0.3.0，不包含这些新增入口。
+
 ## 安装
 
 macOS / Linux，amd64 / arm64：

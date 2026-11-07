@@ -23,6 +23,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm install --global npm@11.21.1
       - run: make check build
+      - run: bash scripts/smoke.sh bin/infrafile examples/homelab
       - run: npx --prefix web playwright install --with-deps chromium webkit
       - run: INFRAFILE_BROWSER_ENGINE=chromium make browser-test
       - run: INFRAFILE_BROWSER_ENGINE=webkit make browser-test
