@@ -22,6 +22,7 @@ git commit -s
 
 ```bash
 make check build  # 安装锁定前端依赖、构建、类型/单测、Go 门禁、配方与 Schema 测试，输出 bin/infrafile
+bash scripts/smoke.sh bin/infrafile examples/homelab  # 临时台账中的离线上手、导入审阅与 Git 提交
 make frontend     # npm ci + Vite；直接 go test/go build 前也需先生成内嵌资源
 npx --prefix web playwright install chromium webkit
 INFRAFILE_BROWSER_ENGINE=chromium make browser-test

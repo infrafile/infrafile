@@ -34,6 +34,7 @@ v0.2 新增离线 `audit`：快照过期、孤儿、僵尸、源站暴露和 CDN
 - [v1.0 任务拆分](docs/plan/v1.0-tasks.md)与[验收门槛](docs/plan/v1.0-acceptance.md)
 - [v0.3 回源采集与漂移检查](docs/first-party-plugins.md#回源采集v03)
 - [快速上手](docs/quickstart.md)
+- [v1.0 RC 独立接入](docs/rc-onboarding.md)：建仓、导入审阅、Git 提交、Web/MCP 与真实只读接入
 - [发布与验签](docs/release.md)
 - [凭据引用与运行命令](docs/secrets.md)
 - [插件与观测快照](docs/plugins.md)

@@ -7,7 +7,7 @@
 ## 构建与发布约定
 
 - GoReleaser 固定 v2.19.0，Cosign 固定 v3.1.4；Go 版本来自 go.mod。
-- Linux / macOS / Windows 各提供 amd64、arm64。归档包含二进制、LICENSE、README、docs、examples，以及 `scripts/smoke.sh` 和 `scripts/prepare_agent_acceptance.py`。Homebrew 将示例、文档和脚本安装到 pkgshare；脚本需要 Bash / Python 3。
+- Linux / macOS / Windows 各提供 amd64、arm64。归档包含二进制、LICENSE、README、docs、examples，以及 `scripts/smoke.sh` 和 `scripts/prepare_agent_acceptance.py`。Homebrew 将示例、文档和脚本安装到 pkgshare；脚本需要 Bash / Python 3，Linux/macOS 的 smoke 另需 Git，以验证隔离台账中的导入审阅和提交。Windows 持久写入限制见[兼容说明](compatibility.md)。
 - `checksums.txt` 列出六个归档的 SHA-256，`checksums.txt.sigstore.json` 是签名 bundle。
 - `scripts/homebrew.py` 从同批校验和生成 macOS / Linux formula，包含 `infrafile` 与 `ifl` 软链，以及共享示例和文档。formula 和自己的签名 bundle 一并上传草稿 Release。
 - GoReleaser 的旧 brews 发布器[已经弃用](https://goreleaser.com/customization/publish/homebrew_formulas/)，这里保留标准 formula，使用校验和生成配方。tap 的提交由维护者在验签后完成，无需给构建工作流配置跨仓令牌。
