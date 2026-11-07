@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>infrafile 工作台</title><link rel="stylesheet" href="/app.css">{{if .LoggedIn}}<meta name="csrf-token" content="{{.CSRF}}"><script src="/app.js" type="module"></script>{{end}}</head>
 <body class="{{if .LoggedIn}}workbench{{else}}login{{end}}">
 {{if .LoggedIn}}
-<div id="root" data-repo="{{.Repo}}" data-expires="{{.Expires}}"><noscript>请启用浏览器脚本以查询此台账；也可使用本地 CLI。</noscript></div>
+<div id="root" data-repo="{{.Repo}}" data-expires="{{.Expires}}" data-ops="{{.Ops}}"><noscript>请启用浏览器脚本以查询此台账；也可使用本地 CLI。</noscript></div>
 <div id="session-controls" hidden><details class="session"><summary>会话与退出</summary><p>会话有效至 <time>{{.Expires}}</time></p><form method="post" action="/logout"><input type="hidden" name="csrf" value="{{.CSRF}}"><button type="submit">退出并撤销会话</button><button type="submit" formaction="/revoke-all">撤销所有设备的会话</button></form></details></div>
 {{else}}
 <main>

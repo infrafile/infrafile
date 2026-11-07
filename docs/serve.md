@@ -1,6 +1,134 @@
 # 单用户工作台（v1.0 开发）
 
-`infrafile serve` 固定一个数据仓，提供配对登录、总览/资产/巡检/变更四个页面和十四个离线读取 API，默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
+`infrafile serve` 固定一个数据仓，默认提供配对登录、总览/资产/巡检/变更四页；可选绑定运维读模型后增加统一运维页。共有十五个只读查询 API（运维查询未配置时只返回未启用），默认只读；显式 `--allow-edit` 可启用共享的台账预览、Git 提交和恢复。React + Radix Themes 页面、样式和浏览器脚本嵌入二进制，运行无需 Node 或外部资源。变更页包含已尝试执行的云计划及本地回执，只读展示，不在浏览器执行云操作。当前正式 v0.3.0 尚无此命令。
+
+## 可选统一运维页（M1）
+
+以下统一运维、按需采集与固定任务接口为尚未发布的可选扩展，已签名 RC2 不包含这些功能。它们不扩展现有云端 apply 或 MCP 的权限，生产方适配器由使用方独立维护和验收。
+
+集合字段须为数组，空集合写 `[]`；机器的 `hardware` 须为对象，未知规格写 `{}`。`null` 或缺失的必需集合会在返回浏览器前被拒绝。
+
+```sh
+infrafile serve --dir /private/generated/bundle/candidate \
+  --ops-overview /private/generated/ops.json \
+  --ops-authority /private/authority
+```
+
+这是单用户、本机loopback只读扩展，拒绝与 `--allow-edit` 或远程代理模式组合。默认进入 `/ops`，原四页与资产深链保留。未绑定结果文件时原默认入口不变，直接访问 `/ops` 显示未启用，不创建空白健康数据。后台配对仍遵守下文的私有配对文件规则；不改变默认安装或系统调度。
+
+结果契约 `infrafile-ops/v1` 包含机器、应用、部署、资源关系及监控的白名单字段，最大2MiB/100监控；浏览器不提交路径、命令、选择条件或采集参数。生产方负责从唯一权威生成当前代数据，不能编辑此结果文件代替原台账。每次读取核对所绑定数据仓的全部inventory文件和配置摘要、对象分母、live身份和外键；不一致或非法/符号链接/超限文件拒绝，错误不含输入正文。`--ops-authority` 可额外核对原始输入摘要：有变化显示“冻结观测”，未提供则明确未核对，不推断权威切换成功。
+
+页面按机器、应用和监控筛选，详情查看部署、依赖、观测时间及保留事项。运行证据、就绪、完整业务健康独立显示，不以进程或某条监控通过宣称应用健康。未知、已过期、失败和暂停分别呈现；监控配置记录另有时效，过期配置不能给出当前健康结论。所有时效在服务端按每项观测时间/窗口重新计算，导出时间不替代观测时间。
+
+每60秒仅重新读取文件；固定排序与当前筛选/详情保留，时效变化直接生效。自动读取失败时保留历史时间，但把无法复核的绿色撤为未知；401清空业务数据。单独绑定M1没有新的SSH、插件、Kuma采集、告警或启停/部署入口。没有持续主机指标或CPU/内存使用率时显示未采集，不填0。
+
+部署可带可选 `criteria`，包含已配置判据的组件、种类、工作负载/数据属性、明确对象、观察机和独立的带时间证据。ID必须唯一且与该部署的checks对应，观察机为本代Server，种类与证据层需匹配。fleet证据独立判断过期；其余app-policy记录只能UNKNOWN且无观测时间，配置不能冒充执行结果。页面按组件折叠，定时任务、兼容代理、进程与手工边界分开；旧包无详情时标缺失。自动重读失败同时去除嵌套判据的旧绿色，不改变完整业务健康或开放新动作。
+
+`scripts/test_ops_criteria_browser.cjs` 在私有包副本中验收判据时效、定时/进程/代理/手工语义、转义、窄屏与自动重读失败；不绑定远端生产方，不调用SSH。使用 `INFRAFILE_OPS_PACKAGE` / `INFRAFILE_BINARY`，支持 `INFRAFILE_BROWSER_ENGINE=webkit`。
+
+应用可带可选`production`，按`readiness/traffic/replicas/recovery/release`五个唯一分组展示尚需证明的条件和已复核的局部观察。
+每项观察有唯一ID、属于该应用部署的主机范围、摘要、来源标签/摘要及独立的带时间证据；有数量、字段长度和来源状态约束。
+服务端逐次判断时效，未来时间变未知、过期保留历史结果；自动重读失败同时去除局部绿色。应用详情列出五类未验证准入条件，
+选定部署时仅显示包含该主机的观察；旧包缺失时显示未包含。本结构不计算生产准入通过，不改变运行/业务健康，也不生成或启用任何动作。
+
+## 可选离线同代刷新
+
+`--ops-refresh /private/generated/refresh.json` 显式绑定固定生成程序，仅限已有本机只读Ops模式。配置固定程序/argv/解释器/工作目录/文件摘要、私有生成根和共享锁；数据附件不能自行开放此能力。`POST /api/ops-refresh {}` 复用会话/Origin/CSRF，拒绝命令、路径或其他参数；自动重读不生成。
+
+生产方写新UUID目录并返回 `infrafile-ops-generation/v1` 的package/overview摘要/分母。服务端核对目录边界、完整模型、当前源、同代reader/actor和动作范围后，才原子切换数据仓及绑定；URL、会话、回执目录和限流时钟不变。失败、超时、非法/混代结果保留旧代，原观测时间不刷新。相同进程内的视图访问受代锁保护；会话撤销不依赖该锁，提交前再次核会话。
+
+全局槽与生产方POSIX flock共同保护刷新，未过期预检或未核实执行阻止切换；不抢占正在执行的任务。生成最多25秒，stdout 4KiB/stderr 8KiB，取消结束本地进程组。旧包保留；本功能不安装调度、切默认仓或清理回执，不承诺未核实执行的跨程序版本自动恢复。生产方负责复用已保存观察的原时间，不把离线生成当采集。
+
+浏览器用 `INFRAFILE_OPS_REFRESH=1` 运行 `scripts/test_ops_action_browser.cjs` 补验预检/不确定执行阻止刷新、同会话原子切换、旧回执幂等及失败保留；使用本地假生成器，不访问SSH或真实unit。
+
+## 可选按需只读采集（M2）
+
+在上述本机只读模式额外指定 `--ops-reader /private/generated/reader.json` 才启用。要求同时固定 `--ops-overview` 和 `--ops-authority`；拒绝编辑或远程代理。它不是任意命令入口，受控任务需另按M3显式绑定。
+
+启动时读取仓外0600的 `infrafile-ops-reader/v1` 绑定，固定程序argv、工作目录、解释器真实目标、代码文件摘要、同代Ops文件摘要及能力目标。保留虚拟环境的启动路径，同时核对它解析到的解释器真实文件。每次显式读取重新验证这些摘要与权威来源；代码/配置/来源已变时禁止调用，页面标明原因。绑定由可信本机生产方生成；不能把从外部下载的程序绑定当作可信配置。
+
+只读目录最多32项固定能力（动作目录不随之扩容）；机器详情按目标匹配。应用关联多台机器时先明确选择读取机器，不默认第一台，选择不发请求；切换会取消旧读取并清除旧目标结果，返回身份仍由服务端严格核对。
+
+`ops-overview` 增加服务端派生的 `read_capabilities`，不是从结果文件接收动作。未纳管对象只显示保存证据，没有采集按钮。`POST /api/ops-read` 仅接受 `{action_id,target}`；不接受命令、路径、URL、unit、超时或其他采集参数，沿用Host/Origin/会话/CSRF及严格JSON校验。普通列表和60秒重读不会调用适配器。
+
+显式读取在全局单槽内执行已有固定程序，不经shell解释浏览器输入；同时限制最小读取间隔。单次程序最长15秒，stdout最多64KiB/stderr最多8KiB；超限立即停止。程序代码文件上限4MiB，已固定摘要的解释器单独上限64MiB。复用CLI已有进程组取消器，切换对象、取消读取、请求中断或超时会结束本地程序及SSH子进程。生产方还必须提供独立远端限时；仅客户端取消不能证明任意远端进程即时消失。
+
+响应 `infrafile-ops-read/v1` 保留请求身份、目标、开始/结束/远端观测时间、耗时、执行状态/错误码与有限字段/文本行。执行完成不等于所有检查通过，各节结果单列；不把采集失败判为服务宕机。超时、认证失败、全局占用、频率限制、来源变化和非法/超限输出分别展示；失败不保留上次成功为当前状态。返回的请求身份/目标/时效/字段预算均校验，不回显原stderr。成功观测在本页超过其TTL变过期，不发新请求刷新时间；本轮结果不覆盖原fleet、Kuma或业务健康证据。
+
+`scripts/test_ops_read_browser.cjs` 用私有包的本地副本和固定假读取器验收无自动采集、有限输出转义、过期、失败、超时、超量、切换取消、未纳管对象与来源变化；不调用真实SSH。设 `INFRAFILE_OPS_PACKAGE`，可用 `INFRAFILE_BROWSER_ENGINE=webkit` 补验；多目标生产方可设 `INFRAFILE_OPS_READ_PROFILE` 选择某个固定能力ID逐项验收。PAUSED节保留主动停用语义，UNKNOWN表示观测不足。`INFRAFILE_OPS_MULTI_PROFILE=1` 可补验同一应用的多机显式选择、切换取消与身份绑定；同时用 `INFRAFILE_OPS_READ_PROFILE` 指定有共同应用的能力。真实远端验收由使用方按其固定能力范围独立记录。
+
+## 可选固定任务受控执行（M3）
+
+显式 `--ops-actions /private/generated/actor.json --ops-action-state /private/action-state` 才启用，默认关闭。
+必须是本机回环、已有Ops结果和固定权威源，拒绝远程代理和台账编辑。先创建仓外私有回执目录及其父目录，
+结果可选 `identity_kind` 为 `systemd_invocation` 或 `docker_transaction`；省略保持原InvocationID语义。Docker事务身份须等于原请求ID，页面显示事务ID；不把它当systemd InvocationID。提交/核实时摘要或身份类型变更保留未知，旧ID与其类型一起保留；超时没有身份信息时保留原超时原因。
+
+目录0700；配对规则不变。`infrafile-ops-actor/v1` 沿用固定解释器/代码/来源摘要绑定，但与只读reader分开。
+生产方必须提供专用forced-command身份及仅允许固定动作的远端包装，不把通用SSH/任意shell交给Web。
+
+`ops-overview` 只从已配置的本机绑定派生 `action_capabilities`；不能在ops.json内注入动作。
+选中对象先读本机latest回执，没有隐式远端采集/执行。严格同源会话/CSRF的POST接口：
+
+- `ops-action/plan {action_id,target}`：预检、生成短期计划，不执行任务。
+- `ops-action/apply {id,digest,reviewed:true}`：再次核对计划/来源、持久写前记录后，只提交一次固定任务。
+- `ops-action/latest {action_id,target}`、`ops-action/receipt {id}`：只读本机保存记录。
+- `ops-action/reconcile {id}`：显式只查询远端同一ID的回执，绝不重发执行。
+
+未知参数、命令/路径/URL/unit、调用方超时、其他目标与未审阅提交均拒绝。已有执行的关联身份由受限生产方给出；
+计划摘要绑定实际目标与配置，过期或漂移需重新预检。本机与M2共享一项远端任务槽；
+回执的exclusive dispatch claim与fsync写前记录必须先成功，重复ID返回原回执。
+原HTTP请求关闭或会话退出后，已提交任务仍有独立最多45秒的执行上下文；重启后读取持久记录，
+不自动重发submitting/uncertain。远端必须另有独立限时、互斥、持久记录与去重。
+
+响应 `infrafile-ops-action/v1` 明确prepared/submitting/running/completed/failed/rejected/uncertain，
+保留计划、时间、错误码、执行身份与有限字段。没有对应执行证据不得判完成；页面保留“不重试、先查回执”路径。
+完成/失败与整项业务健康分开。所有结果仍按身份/大小/类型/秘密规则校验，stdout64KiB、stderr8KiB，原文错误不展示。
+私有本机回执单件64KiB、总32MiB、目录最多1024项；上限或损坏拒绝新任务，无自动删除未核实记录。
+移除动作绑定或关闭候选即可退出；没有通用服务重启/部署/云操作按钮。
+
+`scripts/test_ops_action_browser.cjs` 使用本地假适配器验证审阅、去重、持久重载、丢失响应、超时后只查回执、
+关闭详情不取消已提交任务、已有执行归属及来源漂移。虚构测试不调用SSH或实际unit。
+它不替代使用方对专用身份、unit限时、真实任务与远端配置前后摘要的单独验收。
+
+## 操作目录与明确目标
+
+`ops-overview`在完整校验后派生`operations`，包含现役Server和每个应用部署，引用本机绑定的read/action ID。
+附件不能注入操作目录或权限。控制对象来自同代判据配置；观察机不作为部署控制器，进程名不当成唯一实例。
+相同host+unit/容器名在多个应用复用时单列`shared_controllers_with`；共享资源消费另列`shared_with`。
+这些是登记边界，不替代当前运行、接流量或完整影响核对。目录只显示尚缺的控制条件，不自动授予启停/发布。
+
+机器行另派生`hosted_resources: [{key, consumers: [{application, host, deployment}]}]`，
+由同代资源的`hosts`和部署的`resources`精确连接，展示同机及跨机使用方，保留每项部署身份。
+多节点资源在每个登记宿主显示，不推断角色、副本或故障切换；使用方不会变成该机器的本地应用或获授动作。
+未登记使用方不代表闲置，未登记宿主资源不代表没有依赖；旧版本缺少该字段时明确关系尚未核对。
+操作目录支持按资源或使用方搜索，查看这些关系只读取本机已绑定台账。
+
+页面操作目录可按对象/入口筛选并打开具体部署范围。多个动作必须明确选择机器和动作，不默认首项。
+选择本身不预检/执行；换目标清除当前显示的计划、审阅和本地请求，不撤销持久提交，原回执仍可恢复。
+应用关联须有该目标上的部署，related_keys不能把另一个host的入口放入当前机器详情。
+部署详情只匹配app+host的固定绑定；具体服务范围仍由受限适配器和被审阅计划确定。
+原未核实记录保持全局写入互斥，不能通过切换目标绕过。
+
+缺失目录明确未核对，不报告零纳管；读取失败/来源变化时绑定禁用，组件配置不因此变成运行或健康证据。
+`scripts/test_ops_action_browser.cjs`的`INFRAFILE_OPS_MULTI_ACTION=1`模式用两个本地假动作验证选择、
+计划/审阅隔离、持久未知、独立回执和部署范围；不运行真实服务或SSH。
+
+## 重启后的原执行回执核实
+
+可选`--ops-recoveries /private/recoveries.json`加载本机可信生产方生成的`infrafile-ops-recoveries/v1`注册表；
+仍需当前动作绑定及私有回执目录，不支持远程代理或编辑。注册表逐项绑定原actor文件摘要、原Ops和
+`infrafile-ops-reconciler/v1`程序。原冻结台账、所有来源文件、当前状态程序与解释器均固定摘要。
+新程序能力必须与原actor完全相同；它在后端和适配器CLI两层只允许status，不允许plan/apply。
+原代码可以失效；恢复不执行旧程序，也不采用新台账替代旧的身份/密文/配置。
+
+总览派生`recoveries`只列未核实提交，附件不能注入这些入口。页面只在用户明确点击时读取本地记录
+或核实原远端结果；打开、自动重读和配对均不调用适配器。未知Binding不回退当前actor，程序/冻结源/
+注册表变化或返回的计划摘要/已知InvocationID不符保持uncertain。保留原提交身份、计划、防重claim。
+状态程序最长15秒，共享既有任务槽和跨进程锁，沿用输出上限与认证/CSRF规则。未核实记录仍阻止
+新预检、其他提交及生成切换。终态查询不访问远端；失败、缺包或凭据失效不能据此判未执行。
+
+`scripts/test_ops_recovery_browser.cjs`使用两次本地服务进程和假适配器，覆盖丢回复、关闭入口、代码/
+台账变化、冷启动重新配对、原回执恢复及重载不重复；不调用SSH或实际服务。
 
 ## 本机启动
 
@@ -85,6 +213,7 @@ infrafile serve --dir /absolute/path/to/ledger \
 | changes | `{}` | `{version,present,last_sequence,pruned_through,changes}`；相当于 findings changes 从 pruned_through 读取全部保留事件，不接受任意游标或路径 |
 | executions | 可选 key，仅 Resource 主键 | [executions list](json/executions.md) 的有界索引，不扫描任意计划文件 |
 | execution | id，64位小写十六进制 | [完整执行回执](json/executions.md)及所绑定计划；没有该 ID 返回失败，不接受路径 |
+| ops-overview | `{}` | 可选 `infrafile-ops/v1` 只读结果；未绑定时 `{version,enabled:false}`；沿用会话/CSRF/Host约束，不触发任何采集或执行 |
 
 原八个查询结果与 MCP structuredContent 一致；context 也共享 CLI/MCP 实现，开发版 MCP 共十工具。changes 和两个执行回执入口只在工作台提供，复用 CLI 严格读取器。context 的 match 为 matched / not_observed / incomplete / ambiguous / identity_mismatch / unsupported，只有 matched 的 values 用作此资产的保存事实；当前证据资格仍由 inspection 决定。成功生成报告返回 HTTP 200，即使 `ok=false` 或存在 unknown；不能把 HTTP 成功当作健康通过。资产与巡检查询重新校验当前台账；changes/executions/execution 沿用历史救援契约，严格读取保存记录，不要求当前 inventory 有效。查询不运行插件、联网、解析凭据或写台账/历史。没有云端 plan/apply、sync、import、run、secret 或任意文件下载 API。
 
@@ -126,6 +255,8 @@ infrafile serve --dir /absolute/path/to/ledger \
 错误只返回 `{version:"v1", ok:false, error:<固定状态文本>}`：400 参数/表单错误，401 未登录或会话失效，403 来源/CSRF/配对拒绝，404 未提供入口，413 请求体过大，415 媒体类型错误，422 台账/查询/结果拒绝，429 尝试/并发/会话上限，503 根目录或配对发布失败，504 查询超时/取消。不返回请求、路径、配对码、Cookie 或云端错误原文；退出 0 表示服务正常停止，不代表台账健康。
 
 ## 浏览器验收
+
+`make ops-browser-test` 从仓库的虚构 homelab 生成独立证据包，依次验证运维总览、按需读取、审阅执行、原回执恢复、保存读取和判据时效；使用本地假适配器，不依赖私有台账或 SSH。普通 CI 执行此入口。可用 `INFRAFILE_BROWSER_ENGINE=webkit make ops-browser-test` 切换浏览器，单独脚本仍接受 `INFRAFILE_OPS_PACKAGE` 指向自己的测试包。
 
 HTTP/会话/路径/秘密边界随 `make check` 运行。`scripts/test_serve_browser.cjs` 另用真实二进制、虚构示例和 Chromium 验证表单 Origin、两设备独立会话、单独/全部撤销、过期、重启及 HTTPS 代理 Cookie；只读数据逐文件不变。另建虚构 Git 仓验收 CLI/Web 字节哈希一致、审阅后提交、第二设备旧预览拒绝、钩子失败后的重启恢复及窄屏键盘操作。执行卡片使用虚构本地插件实际生成/审阅/执行两份计划，验证写前记录、丢失响应保持 uncertain、重复只回读、CLI 计划详情相同、说明文本转义、范围空态和浏览不写文件；不访问云账号。全部核对日志无令牌和配对文件清理。
 

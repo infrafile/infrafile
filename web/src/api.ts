@@ -1,6 +1,6 @@
 import type { JsonValue } from './contracts';
 
-export type QueryName = 'list' | 'show' | 'inspect' | 'context' | 'asset-summaries' | 'certificates' | 'changes' | 'executions' | 'execution' | 'expiry' | 'audit' | 'validate' | 'schema' | 'capabilities' | 'change/status' | 'change/preview' | 'change/apply' | 'change/recover';
+export type QueryName = 'list' | 'show' | 'inspect' | 'context' | 'asset-summaries' | 'certificates' | 'changes' | 'executions' | 'execution' | 'expiry' | 'audit' | 'validate' | 'schema' | 'capabilities' | 'ops-overview' | 'ops-refresh' | 'ops-read' | 'ops-read/latest' | 'ops-action/plan' | 'ops-action/apply' | 'ops-action/latest' | 'ops-action/receipt' | 'ops-action/reconcile' | 'change/status' | 'change/preview' | 'change/apply' | 'change/recover';
 
 export class ApiError extends Error {
   constructor(public readonly status: number) {

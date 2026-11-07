@@ -53,6 +53,21 @@ type workbench struct {
 	sessions                  map[string]webSession
 	attempts                  int
 	allowEdit                 bool
+	opsFile                   string
+	opsAuthority              string
+	opsAuthorityInfo          os.FileInfo
+	opsReader                 *opsReadProvider
+	opsReads                  chan struct{}
+	opsReadLast               time.Time
+	opsReadDir                string
+	opsReadRoot               os.FileInfo
+	opsActor                  *opsReadProvider
+	opsRecoveries             map[string]*opsRecoveryProvider
+	opsActionDir              string
+	opsActionRoot             os.FileInfo
+	opsActionMu               sync.Mutex
+	opsGenerationMu           sync.RWMutex
+	opsRefresher              *opsRefreshProvider
 }
 
 func newWorkbench(ctx context.Context, dir string, address serveAddress, ttl time.Duration, now func() time.Time, publish func(string) error) (*workbench, error) {
@@ -77,7 +92,7 @@ func newWorkbench(ctx context.Context, dir string, address serveAddress, ttl tim
 	if err != nil {
 		return nil, err
 	}
-	w := &workbench{dir: dir, rootInfo: info, address: address, sessionTTL: ttl, now: now, publish: publish, queries: map[string]*jsonschema.Schema{}, requests: make(chan struct{}, 4), sessions: map[string]webSession{}}
+	w := &workbench{dir: dir, rootInfo: info, address: address, sessionTTL: ttl, now: now, publish: publish, queries: map[string]*jsonschema.Schema{}, requests: make(chan struct{}, 4), opsReads: make(chan struct{}, 1), sessions: map[string]webSession{}}
 	for _, tool := range definitions {
 		if tool.name == "plan" {
 			continue
@@ -210,10 +225,23 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		webError(out, 429)
 		return
 	}
-	current, err := os.Lstat(w.dir)
-	if err != nil || !current.IsDir() || !os.SameFile(w.rootInfo, current) {
-		webError(out, 503)
-		return
+	// Session revocation must remain available while a generation is being built.
+	authOnly := r.URL.Path == "/logout" || r.URL.Path == "/revoke-all" || r.URL.Path == "/pair" || r.URL.Path == "/api/session"
+	generationLocked := !authOnly
+	if generationLocked {
+		w.opsGenerationMu.RLock()
+	}
+	defer func() {
+		if generationLocked {
+			w.opsGenerationMu.RUnlock()
+		}
+	}()
+	if !authOnly {
+		current, err := os.Lstat(w.dir)
+		if r.URL.Path != "/api/ops-refresh" && (err != nil || !current.IsDir() || !os.SameFile(w.rootInfo, current)) {
+			webError(out, 503)
+			return
+		}
 	}
 	r.Body = http.MaxBytesReader(out, r.Body, 64<<10)
 	if r.Method == http.MethodGet && (r.URL.Path == "/app.css" || r.URL.Path == "/app.js") {
@@ -226,7 +254,7 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		out.Write(data)
 		return
 	}
-	if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/overview" || r.URL.Path == "/assets" || r.URL.Path == "/inspections" || r.URL.Path == "/changes") {
+	if r.Method == http.MethodGet && (r.URL.Path == "/" || r.URL.Path == "/ops" || r.URL.Path == "/overview" || r.URL.Path == "/assets" || r.URL.Path == "/inspections" || r.URL.Path == "/changes") {
 		w.page(out, r)
 		return
 	}
@@ -259,8 +287,22 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		webError(out, 403)
 		return
 	}
+	if r.URL.Path == "/api/ops-refresh" {
+		w.opsGenerationMu.RUnlock()
+		generationLocked = false
+		w.opsRefreshHTTP(out, r, csrf, expires)
+		return
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/change/") {
 		w.changeHTTP(out, r, csrf, expires)
+		return
+	}
+	if r.URL.Path == "/api/ops-read" || r.URL.Path == "/api/ops-read/latest" {
+		w.opsReadHTTP(out, r, csrf, expires)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/ops-action/") {
+		w.opsActionHTTP(out, r, csrf, expires)
 		return
 	}
 	tool := strings.TrimPrefix(r.URL.Path, "/api/")
@@ -317,7 +359,12 @@ func (w *workbench) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 		webError(out, 401)
 		return
 	}
-	result, err := workbenchCall(ctx, w.dir, tool, args, w.now())
+	var result any
+	if tool == "ops-overview" {
+		result, err = w.opsOverview(ctx)
+	} else {
+		result, err = workbenchCall(ctx, w.dir, tool, args, w.now())
+	}
 	if ctx.Err() != nil {
 		webError(out, 504)
 		return
@@ -370,7 +417,8 @@ func (w *workbench) page(out http.ResponseWriter, r *http.Request) {
 	err := workbenchTemplate.ExecuteTemplate(&page, "serve.html", struct {
 		LoggedIn                  bool
 		CSRF, Repo, Expires, Page string
-	}{loggedIn, csrf, filepath.Base(w.dir), session.expires.UTC().Format(time.RFC3339), r.URL.Path})
+		Ops                       bool
+	}{loggedIn, csrf, filepath.Base(w.dir), session.expires.UTC().Format(time.RFC3339), r.URL.Path, w.opsFile != ""})
 	if err != nil {
 		webError(out, 500)
 		return

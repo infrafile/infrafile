@@ -22,6 +22,7 @@ func workbenchQueries() ([]queryTool, error) {
 		}
 	}
 	tools = append(tools, queryTool{"changes", "只读保存的问题变化", map[string]any{"type": "object", "additionalProperties": false}})
+	tools = append(tools, queryTool{"ops-overview", "只读已绑定本仓的运维结果，不执行采集", map[string]any{"type": "object", "additionalProperties": false}})
 	tools = append(tools,
 		queryTool{"certificates", "只读保存的 TLS 证书元数据与应用归属", map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"max_age_days": map[string]any{"type": "integer", "minimum": 0}}}},
 		queryTool{"executions", "只读执行回执及所绑定计划的索引", map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"key": map[string]any{"type": "string", "pattern": `^Resource/[a-z0-9][a-z0-9.-]*$`, "maxLength": 262}}}},

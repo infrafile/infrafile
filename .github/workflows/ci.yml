@@ -27,3 +27,4 @@ jobs:
       - run: npx --prefix web playwright install --with-deps chromium webkit
       - run: INFRAFILE_BROWSER_ENGINE=chromium make browser-test
       - run: INFRAFILE_BROWSER_ENGINE=webkit make browser-test
+      - run: make ops-browser-test
