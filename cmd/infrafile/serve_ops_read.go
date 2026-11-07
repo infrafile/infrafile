@@ -176,7 +176,7 @@ func (w *workbench) loadOpsProvider(ctx context.Context, path, version string, m
 	}
 	ids := map[string]bool{}
 	for _, cap := range config.Capabilities {
-		if !opsReadID.MatchString(cap.ID) || ids[cap.ID] || !keys[cap.Target] || len(cap.Target) < 8 || cap.Target[:7] != "Server/" || cap.TimeoutSeconds < 1 || cap.TimeoutSeconds > maximumSeconds || cap.MaxAgeSeconds < 1 || cap.MaxAgeSeconds > 600 || cap.MinIntervalSeconds < 1 || cap.MinIntervalSeconds > 300 || cap.Enabled || cap.UnavailableReason != "" || cap.SavedRead || len(cap.Label) > 256 || len(cap.Description) > 1024 || len(cap.RelatedKeys) > 16 {
+		if !opsReadID.MatchString(cap.ID) || ids[cap.ID] || !keys[cap.Target] || len(cap.Target) < 8 || cap.Target[:7] != "Server/" || cap.TimeoutSeconds < 1 || cap.TimeoutSeconds > maximumSeconds || cap.MaxAgeSeconds < 1 || cap.MaxAgeSeconds > 600 || cap.MinIntervalSeconds < 1 || cap.MinIntervalSeconds > 300 || cap.Enabled || cap.UnavailableReason != "" || cap.SavedRead || len(cap.Label) > 256 || len(cap.Description) > 1024 || cap.RelatedKeys == nil || len(cap.RelatedKeys) > 16 {
 			return nil, fmt.Errorf("invalid read capability")
 		}
 		ids[cap.ID] = true
@@ -332,7 +332,7 @@ func (w *workbench) collectOpsID(ctx context.Context, action, target, identity s
 
 func validateOpsRead(o opsReadResult, r opsReadRequest, now time.Time) error {
 	invalid := func() error { return fmt.Errorf("invalid reader result") }
-	if o.Version != r.Version || o.RequestID != r.RequestID || o.ActionID != r.ActionID || o.Target != r.Target || o.MaxAgeSeconds < 1 || o.MaxAgeSeconds > 600 || o.DurationMS < 0 || o.DurationMS > 16000 || len(o.Sections) > 8 || !opsReadCode.MatchString(o.ErrorCode) {
+	if o.Version != r.Version || o.RequestID != r.RequestID || o.ActionID != r.ActionID || o.Target != r.Target || o.MaxAgeSeconds < 1 || o.MaxAgeSeconds > 600 || o.DurationMS < 0 || o.DurationMS > 16000 || o.Sections == nil || len(o.Sections) > 8 || !opsReadCode.MatchString(o.ErrorCode) {
 		return invalid()
 	}
 	switch o.Status {
@@ -359,7 +359,7 @@ func validateOpsRead(o opsReadResult, r opsReadRequest, now time.Time) error {
 	ids := map[string]bool{}
 	lines := 0
 	for _, s := range o.Sections {
-		if !opsReadID.MatchString(s.ID) || ids[s.ID] || len(s.Title) > 256 || len(s.Fields) > 32 {
+		if !opsReadID.MatchString(s.ID) || ids[s.ID] || len(s.Title) > 256 || s.Fields == nil || s.Lines == nil || len(s.Fields) > 32 {
 			return invalid()
 		}
 		ids[s.ID] = true

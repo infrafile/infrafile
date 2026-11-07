@@ -129,6 +129,22 @@ func TestOpsReaderAuthenticationArgumentsAndNoImplicitCollection(t *testing.T) {
 	}
 }
 
+func TestOpsReaderRejectsNullRelatedKeys(t *testing.T) {
+	f, _, _ := readerFixture(t, "ok")
+	config := f.app.opsReader.config
+	config.Capabilities[0].RelatedKeys = nil
+	raw, err := json.Marshal(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f.app.opsReader.path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.loadOpsReader(context.Background(), f.app.opsReader.path); err == nil {
+		t.Fatal("null related keys reached browser capabilities")
+	}
+}
+
 func TestOpsReaderChangedSourceAndCodeRefuseBeforeSpawn(t *testing.T) {
 	for _, kind := range []string{"source", "code", "config", "ledger"} {
 		t.Run(kind, func(t *testing.T) {
@@ -209,16 +225,22 @@ func TestOpsReadResultCannotInjectSecretsIdentityOrExtraOutput(t *testing.T) {
 	now := time.Now().UTC()
 	stamp := now.Format(time.RFC3339Nano)
 	req := opsReadRequest{Version: opsReadVersion, RequestID: "example", ActionID: "read", Target: "Server/example"}
-	valid := opsReadResult{Version: req.Version, RequestID: req.RequestID, ActionID: req.ActionID, Target: req.Target, Status: "PASS", ErrorCode: "ok", StartedAt: stamp, FinishedAt: stamp, ObservedAt: &stamp, DurationMS: 1, MaxAgeSeconds: 300, Sections: []opsReadSection{{ID: "sample", Title: "Sample", Status: "PASS", Lines: []string{}}}}
+	valid := opsReadResult{Version: req.Version, RequestID: req.RequestID, ActionID: req.ActionID, Target: req.Target, Status: "PASS", ErrorCode: "ok", StartedAt: stamp, FinishedAt: stamp, ObservedAt: &stamp, DurationMS: 1, MaxAgeSeconds: 300, Sections: []opsReadSection{{ID: "sample", Title: "Sample", Status: "PASS", Fields: []opsReadField{}, Lines: []string{}}}}
 	if validateOpsRead(valid, req, now) != nil {
 		t.Fatal("baseline invalid")
 	}
-	for _, kind := range []string{"target", "ip", "lines", "old", "failure_with_evidence"} {
+	for _, kind := range []string{"target", "ip", "lines", "old", "failure_with_evidence", "null_fields", "null_lines", "null_failure_sections"} {
 		t.Run(kind, func(t *testing.T) {
 			raw, _ := json.Marshal(valid)
 			var changed opsReadResult
 			json.Unmarshal(raw, &changed)
 			switch kind {
+			case "null_fields":
+				changed.Sections[0].Fields = nil
+			case "null_lines":
+				changed.Sections[0].Lines = nil
+			case "null_failure_sections":
+				changed.Status, changed.ErrorCode, changed.ObservedAt, changed.Sections = "UNKNOWN", "provider_failed", nil, nil
 			case "target":
 				changed.Target = "Server/other"
 			case "ip":
@@ -243,7 +265,7 @@ func TestOpsReadPausedSectionPreservesDeliberateStop(t *testing.T) {
 	now := time.Now().UTC()
 	stamp := now.Format(time.RFC3339Nano)
 	request := opsReadRequest{Version: opsReadVersion, RequestID: "example_request_123", ActionID: "standby-read", Target: "Server/standby"}
-	result := opsReadResult{Version: request.Version, RequestID: request.RequestID, ActionID: request.ActionID, Target: request.Target, Status: "PASS", ErrorCode: "ok", StartedAt: stamp, FinishedAt: stamp, ObservedAt: &stamp, MaxAgeSeconds: 300, Sections: []opsReadSection{{ID: "unit", Title: "Retained disabled unit", Status: "PAUSED"}}}
+	result := opsReadResult{Version: request.Version, RequestID: request.RequestID, ActionID: request.ActionID, Target: request.Target, Status: "PASS", ErrorCode: "ok", StartedAt: stamp, FinishedAt: stamp, ObservedAt: &stamp, MaxAgeSeconds: 300, Sections: []opsReadSection{{ID: "unit", Title: "Retained disabled unit", Status: "PAUSED", Fields: []opsReadField{}, Lines: []string{}}}}
 	if err := validateOpsRead(result, request, now); err != nil {
 		t.Fatal(err)
 	}

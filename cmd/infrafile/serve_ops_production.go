@@ -33,7 +33,7 @@ func validateOpsProduction(o *opsOverview, now time.Time) error {
 			default:
 				return fmt.Errorf("invalid production axis")
 			}
-			if axes[g.ID] || len(g.Requirements) < 1 || len(g.Requirements) > 8 || len(g.Observations) > 16 {
+			if axes[g.ID] || len(g.Requirements) < 1 || len(g.Requirements) > 8 || g.Observations == nil || len(g.Observations) > 16 {
 				return fmt.Errorf("invalid production gate")
 			}
 			axes[g.ID] = true

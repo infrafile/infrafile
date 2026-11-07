@@ -52,6 +52,7 @@ func TestOpsProductionRejectsScopeStateAndOriginMismatch(t *testing.T) {
 		{"missing axis", func(p *opsProduction) { p.Gates = p.Gates[:4] }},
 		{"duplicate axis", func(p *opsProduction) { p.Gates[1].ID = p.Gates[0].ID }},
 		{"no requirement", func(p *opsProduction) { p.Gates[0].Requirements = nil }},
+		{"null observations", func(p *opsProduction) { p.Gates[0].Observations = nil }},
 		{"foreign host", func(p *opsProduction) { p.Gates[0].Observations[0].Hosts = []string{"Server/foreign"} }},
 		{"duplicate sample", func(p *opsProduction) { p.Gates[1].Observations = p.Gates[0].Observations }},
 		{"pause bypass", func(p *opsProduction) { p.Gates[0].Observations[0].Evidence.Status = "PAUSED" }},
