@@ -1,4 +1,4 @@
-.PHONY: frontend build test fmt vet check browser-test
+.PHONY: frontend build test fmt vet check browser-test ops-browser-test
 
 frontend:
 	npm --prefix web ci
@@ -29,3 +29,6 @@ check: frontend
 # Reuse the binary produced by `make build` (also accepts INFRAFILE_BINARY).
 browser-test:
 	npm --prefix web run test:browser
+
+ops-browser-test:
+	node scripts/test_ops_suites.cjs

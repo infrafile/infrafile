@@ -1,6 +1,6 @@
 import type { AssetCategory } from './contracts';
 import { isAssetCategory } from './assetState';
-export type WorkbenchPage = 'overview' | 'assets' | 'inspections' | 'changes';
+export type WorkbenchPage = 'overview' | 'assets' | 'inspections' | 'changes' | 'ops';
 export interface Scope { key: string; days: number; issue: string; category?: AssetCategory }
 export interface PageProps {
   scope: Scope;

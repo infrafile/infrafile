@@ -1,0 +1,35 @@
+// Offline criteria acceptance: fixture package copies, no providers/SSH or task execution.
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
+const {spawn}=require('node:child_process'),{once}=require('node:events');
+const pw=require('../web/node_modules/playwright');
+const assert=(ok,m)=>{if(!ok)throw Error(m)},sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const hash=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
+const input=process.env.INFRAFILE_OPS_PACKAGE;assert(input,'set generated fixture package');
+const binary=path.resolve(process.env.INFRAFILE_BINARY||'bin/infrafile');
+const base=fs.mkdtempSync(path.join(os.tmpdir(),'infrafile-ops-criteria-browser-'));fs.chmodSync(base,0o700);
+const repo=path.join(base,'candidate'),authority=path.join(base,'authority'),modelPath=path.join(base,'ops.json'),pair=path.join(base,'pair');
+fs.cpSync(path.join(input,'bundle/candidate'),repo,{recursive:true});fs.mkdirSync(authority);
+const originalHash=hash(path.join(input,'ops.json')),model=JSON.parse(fs.readFileSync(path.join(input,'ops.json')));
+for(const name of Object.keys(model.authority_files)){const dest=path.join(authority,name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join(input,'bundle/source',name),dest)}
+const find=fn=>{for(const dep of model.deployments){const c=dep.criteria?.find(fn);if(c)return{dep,c}}throw Error('required criterion fixture missing')};
+const fresh=find(c=>c.kind==='fleet_container_running'&&c.evidence.status==='PASS');
+const scheduled=find(c=>c.kind==='systemd_timer'&&c.workload_mode==='scheduled'),processCheck=find(c=>c.kind==='process_running');
+const proxy=model.deployments.find(d=>d.kind==='nginx-proxy');assert(proxy,'proxy fixture missing');
+const manual=find(c=>c.kind==='manual');manual.c.component='<img src=x onerror=alert(1)>';
+fresh.c.evidence.observed_at=new Date().toISOString();fresh.c.evidence.max_age_seconds=10;
+fs.writeFileSync(modelPath,JSON.stringify(model),{mode:0o600});
+const child=spawn(binary,['serve','--dir',repo,'--ops-overview',modelPath,'--ops-authority',authority,'--listen','127.0.0.1:0','--pair-file',pair],{stdio:['ignore','pipe','pipe']});let stderr='',browser;child.stderr.on('data',b=>stderr+=b);
+const report={binary_sha256:hash(binary),checks:{},criteria:model.deployments.reduce((n,d)=>n+(d.criteria?.length||0),0)};
+(async()=>{try{let origin;for(let i=0;i<150;i++){origin=stderr.match(/工作台：(http:\/\/[^\s]+)/)?.[1];if(origin)break;assert(child.exitCode===null,'preview start failed');await sleep(40)}assert(origin,'preview readiness timeout');
+browser=await pw[process.env.INFRAFILE_BROWSER_ENGINE||'chromium'].launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[],requests=[];await page.clock.install();page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/\/api\/ops-(read|action)/.test(r.url()))requests.push(r.url())});
+await page.goto(origin);await page.getByLabel('配对码',{exact:true}).fill(fs.readFileSync(pair,'utf8').trim());await page.getByRole('button',{name:'连接工作台',exact:true}).click();await page.getByRole('heading',{name:'所有机器与应用',exact:true}).waitFor();
+const open=async dep=>{if(await page.getByRole('button',{name:'关闭详情',exact:true}).count())await page.getByRole('button',{name:'关闭详情',exact:true}).click();await page.getByRole('button',{name:'应用',exact:true}).click();const app=model.applications.find(a=>a.key===dep.application);await page.getByLabel('搜索',{exact:true}).fill(app.name);await page.getByRole('button',{name:'查看 '+app.name,exact:true}).click();return page.locator('.ops-instance').filter({has:page.getByRole('heading',{level:3,name:app.name+' · '+dep.host.split('/')[1],exact:true})})};
+const criterion=async({dep,c})=>{const instance=await open(dep);const group=instance.locator('.ops-criteria details').filter({has:page.getByText(c.id,{exact:true})});if(await group.getAttribute('open')===null)await group.locator('summary').click();return group.locator('li').filter({has:page.getByText(c.id,{exact:true})})};
+let row=await criterion(fresh);await row.getByText('已保存证据通过',{exact:true}).waitFor();await sleep(11000);await page.getByRole('button',{name:'重新读取保存结果',exact:true}).click();await page.getByRole('heading',{name:'所有机器与应用',exact:true}).waitFor();row=await criterion(fresh);await row.getByText('已过期',{exact:true}).waitFor();await row.getByText('历史结果：通过',{exact:true}).waitFor();report.checks.saved_criterion_ages_without_promoting_health=true;
+row=await criterion(scheduled);await row.getByText('本轮未执行此判据，配置存在不代表检查通过。',{exact:true}).waitFor();assert(await row.locator('.ops-pass').count()===0,'timer configuration became green');await row.getByText('未知',{exact:true}).waitFor();report.checks.scheduled_timer_stays_unknown_and_needs_no_daemon=true;
+row=await criterion(processCheck);await row.getByText('进程检查',{exact:true}).waitFor();await row.getByText('本轮未执行此判据，配置存在不代表检查通过。',{exact:true}).waitFor();report.checks.process_selector_is_explicit_and_unobserved=true;
+let instance=await open(proxy);await instance.getByText('nginx-proxy · 兼容代理，以入口判据为准',{exact:true}).waitFor();report.checks.compatibility_proxy_not_confused_with_retired_daemon=true;
+row=await criterion(manual);await row.getByText('手工复核',{exact:true}).waitFor();assert(await page.locator('.ops-criteria img').count()===0,'criterion label executed markup');await row.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(base,'desktop.png'),fullPage:true});await page.setViewportSize({width:390,height:844});await row.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(base,'mobile.png'),fullPage:true});await page.setViewportSize({width:1440,height:1000});report.checks.manual_boundary_escaping_and_mobile=true;
+fs.renameSync(modelPath,modelPath+'.held');await page.clock.fastForward(61000);await page.getByText('本次重新读取失败，以下为上次结果；当前时效未核实。',{exact:true}).waitFor();assert(await page.locator('.ops-criteria .ops-pass').count()===0,'failed reread kept green criteria');report.checks.automatic_failure_clears_nested_success=true;
+assert(requests.length===0,'viewing criteria invoked provider');assert(errors.length===0,'browser errors');assert(hash(path.join(input,'ops.json'))===originalHash,'original package changed');report.checks.no_remote_requests_and_original_package_preserved=true;fs.writeFileSync(path.join(base,'evidence.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600});console.log(JSON.stringify({evidence:path.join(base,'evidence.json'),checks:report.checks}));
+}finally{if(browser)await browser.close();if(child.exitCode===null){const done=once(child,'exit');child.kill('SIGTERM');const timer=setTimeout(()=>child.kill('SIGKILL'),6000);await done;clearTimeout(timer)}if(fs.existsSync(pair))fs.unlinkSync(pair)}})().catch(e=>{console.error('criteria browser acceptance failed:',e.message,'private output:',base);process.exitCode=1});

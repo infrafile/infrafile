@@ -21,6 +21,12 @@ import (
 
 type serveOptions struct {
 	dir, listen, externalURL, trustedProxy, pairFile string
+	opsFile, opsAuthority                            string
+	opsReader                                        string
+	opsReadState                                     string
+	opsActor, opsActionState                         string
+	opsRefresh                                       string
+	opsRecoveries                                    string
 	sessionTTL                                       time.Duration
 	allowEdit                                        bool
 }
@@ -57,6 +63,24 @@ func newServeCmd(global *globalOpts) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		if o.opsFile != "" && (o.allowEdit || address.proxy.IsValid()) {
+			return fmt.Errorf("运维视图仅限本机回环只读，不启用编辑或远程代理")
+		}
+		if o.opsReader != "" && (o.opsFile == "" || o.opsAuthority == "" || o.allowEdit || address.proxy.IsValid()) {
+			return fmt.Errorf("按需读取需要本机只读运维视图及固定权威来源")
+		}
+		if o.opsReadState != "" && o.opsReader == "" {
+			return fmt.Errorf("保存读取需要固定只读采集适配器")
+		}
+		if o.opsActor != "" && (o.opsFile == "" || o.opsAuthority == "" || o.opsActionState == "" || o.allowEdit || address.proxy.IsValid()) {
+			return fmt.Errorf("受控动作需要本机固定运维来源及仓外私有回执目录")
+		}
+		if o.opsRefresh != "" && (o.opsFile == "" || o.opsAuthority == "" || o.allowEdit || address.proxy.IsValid()) {
+			return fmt.Errorf("同代刷新需要本机只读运维视图及固定权威来源")
+		}
+		if o.opsRecoveries != "" && (o.opsActor == "" || o.opsActionState == "") {
+			return fmt.Errorf("回执恢复需要固定动作及私有回执目录")
+		}
 		o.dir, err = filepath.Abs(o.dir)
 		if err == nil {
 			o.dir, err = filepath.EvalSymlinks(o.dir)
@@ -64,6 +88,11 @@ func newServeCmd(global *globalOpts) *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("无法固定数据仓目录")
 		}
+		retentionRelease, err := opsRetainGeneration(o.opsFile)
+		if err != nil {
+			return fmt.Errorf("证据代正在维护或目录身份未通过核对")
+		}
+		defer retentionRelease()
 		if o.pairFile != "" && !outsideRepo(o.dir, o.pairFile) {
 			return fmt.Errorf("配对文件必须位于数据仓外")
 		}
@@ -77,6 +106,66 @@ func newServeCmd(global *globalOpts) *cobra.Command {
 			return err
 		}
 		app.allowEdit = o.allowEdit
+		if o.opsFile != "" {
+			app.opsFile, err = filepath.Abs(o.opsFile)
+			if err != nil {
+				return fmt.Errorf("无效运维结果路径")
+			}
+			if _, err := opsRead(filepath.Dir(app.opsFile), filepath.Base(app.opsFile), 2<<20); err != nil {
+				return err
+			}
+		}
+		if o.opsAuthority != "" {
+			if o.opsFile == "" {
+				return fmt.Errorf("ops-authority 需要 ops-overview")
+			}
+			app.opsAuthority, err = filepath.EvalSymlinks(o.opsAuthority)
+			if err != nil {
+				return fmt.Errorf("无效权威来源目录")
+			}
+			app.opsAuthority, err = filepath.Abs(app.opsAuthority)
+			if err != nil {
+				return fmt.Errorf("无效权威来源目录")
+			}
+			app.opsAuthorityInfo, err = os.Lstat(app.opsAuthority)
+			if err != nil || !app.opsAuthorityInfo.IsDir() {
+				return fmt.Errorf("无效权威来源目录")
+			}
+		}
+		if o.opsReader != "" {
+			app.opsReader, err = app.loadOpsReader(cmd.Context(), o.opsReader)
+			if err != nil {
+				return fmt.Errorf("按需读取绑定无效；请核对同代结果、固定程序与来源")
+			}
+		}
+		if o.opsActor != "" {
+			app.opsActor, err = app.loadOpsProvider(cmd.Context(), o.opsActor, "infrafile-ops-actor/v1", 45)
+			if err != nil {
+				return fmt.Errorf("受控动作绑定未通过核对")
+			}
+			if err = app.openOpsActionState(o.opsActionState); err != nil {
+				return fmt.Errorf("受控动作回执目录无效")
+			}
+		}
+		if o.opsRefresh != "" {
+			app.opsRefresher, err = app.loadOpsRefresher(cmd.Context(), o.opsRefresh)
+			if err != nil {
+				return fmt.Errorf("同代生成程序绑定无效")
+			}
+		}
+		if o.opsRecoveries != "" {
+			if err = app.loadOpsRecoveries(cmd.Context(), o.opsRecoveries); err != nil {
+				return fmt.Errorf("原执行来源与只查状态程序未通过核对：%w", err)
+			}
+		}
+		if o.opsReadState != "" {
+			if app.opsActionDir != "" && opsStateOverlap(o.opsReadState, app.opsActionDir) || app.opsRefresher != nil && opsStateOverlap(o.opsReadState, app.opsRefresher.config.GenerationRoot) {
+				return fmt.Errorf("保存读取目录不能与动作回执或证据代重叠")
+			}
+			if err = app.openOpsReadState(o.opsReadState); err != nil {
+				return fmt.Errorf("保存读取目录未通过核对")
+			}
+		}
 		listener, err := net.Listen("tcp", o.listen)
 		if err != nil {
 			return fmt.Errorf("工作台监听失败")
@@ -115,6 +204,14 @@ func newServeCmd(global *globalOpts) *cobra.Command {
 	cmd.Flags().StringVar(&o.pairFile, "pair-file", "", "后台启动时将配对码写入仓外新建的 0600 文件；退出时删除")
 	cmd.Flags().DurationVar(&o.sessionTTL, "session-ttl", 8*time.Hour, "会话固定有效期，最长 24h")
 	cmd.Flags().BoolVar(&o.allowEdit, "allow-edit", false, "显式启用台账预览、Git 提交和恢复；不写云、不 push")
+	cmd.Flags().StringVar(&o.opsFile, "ops-overview", "", "固定的脱敏运维读模型；只读，不采集或执行命令")
+	cmd.Flags().StringVar(&o.opsAuthority, "ops-authority", "", "可选：核对运维结果的权威来源摘要，不修改来源")
+	cmd.Flags().StringVar(&o.opsReader, "ops-reader", "", "显式绑定本机私有的固定只读采集适配器；仅按需调用")
+	cmd.Flags().StringVar(&o.opsReadState, "ops-read-state", "", "仓外私有读取结果目录；保存原观测时间，读取缓存不访问远端")
+	cmd.Flags().StringVar(&o.opsActor, "ops-actions", "", "显式绑定固定受控动作适配器；默认关闭，先预检计划再提交")
+	cmd.Flags().StringVar(&o.opsActionState, "ops-action-state", "", "仓外私有的持久动作回执目录；不自动删除未核实回执")
+	cmd.Flags().StringVar(&o.opsRecoveries, "ops-recoveries", "", "显式绑定保留的原执行来源；仅允许状态核实，不允许重新执行")
+	cmd.Flags().StringVar(&o.opsRefresh, "ops-refresh", "", "显式绑定本机离线同代生成程序；保持当前地址和会话")
 	return cmd
 }
 
