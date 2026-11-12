@@ -23,7 +23,7 @@ check: frontend
 	@test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }
 	go vet ./...
 	go test -race ./...
-	python3 scripts/test_homebrew.py
+	python3 -B -m unittest discover -s scripts -p 'test_*.py'
 	node scripts/test_schema.mjs
 
 # Reuse the binary produced by `make build` (also accepts INFRAFILE_BINARY).
